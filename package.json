@@ -1,0 +1,16 @@
+{
+  "name": "full-stack-app",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:dev\"",
+    "backend:dev": "cd backend && npm run dev",
+    "frontend:dev": "cd frontend && npm run dev",
+    "backend:build": "cd backend && npm run build",
+    "frontend:build": "cd frontend && npm run build",
+    "backend:start": "cd backend && npm start",
+    "frontend:preview": "cd frontend && npm run preview"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

@@ -17,7 +17,7 @@ A full-stack web application with React + Vite frontend, TypeScript backend with
 
 - Node.js (v20 or higher)
 - npm or yarn
-- Supabase account and project
+- Access to the shared Supabase Dev project (credentials from team)
 
 ### Setup
 
@@ -30,25 +30,61 @@ A full-stack web application with React + Vite frontend, TypeScript backend with
 
 2. **Configure environment variables:**
    
-   Copy the example files and fill in your Supabase credentials:
+   Copy the example files and add the shared dev Supabase credentials:
    ```bash
    cp frontend/.env.example frontend/.env
    cp backend/.env.example backend/.env
    ```
    
-   Update the `.env` files with your Supabase URL and keys.
-
-3. **Set up Supabase database:**
-   
-   Create a `users` table in your Supabase project:
-   ```sql
-   CREATE TABLE users (
-     id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-     name TEXT NOT NULL,
-     email TEXT NOT NULL UNIQUE,
-     created_at TIMESTAMPTZ DEFAULT NOW()
-   );
+   **Frontend (.env):**
    ```
+   VITE_SUPABASE_URL=<shared_dev_supabase_url>
+   VITE_SUPABASE_ANON_KEY=<shared_dev_supabase_anon_key>
+   ```
+   
+   **Backend (.env):**
+   ```
+   PORT=5000
+   SUPABASE_URL=<shared_dev_supabase_url>
+   SUPABASE_ANON_KEY=<shared_dev_supabase_anon_key>
+   ```
+   
+   > **Note:** Get the actual credentials from your team lead. We use one shared Dev project for all team members.
+
+## Supabase Setup Strategy
+
+We use a **shared Supabase approach** for efficient team development:
+
+### Development Environment
+- **One shared "Dev" project** for the entire team
+- All developers use the same database and test against the same dev data
+- Credentials are distributed to team members (not in Git)
+- Low schema churn = minimal conflicts between developers
+
+### Production Environment  
+- **Separate "Prod" project** with its own keys
+- Production credentials are managed separately and securely
+
+### Database Schema Management
+
+**Initial Setup (one-time):**
+If the database tables don't exist yet, create them in the shared Dev project:
+
+```sql
+-- Run this in Supabase SQL Editor (shared Dev project)
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+**Migration Philosophy:**
+- Database migrations are tracked in Git (when we add them)
+- Any team member can reset/reseed the shared dev database
+- Schema changes are coordinated through the team
+- Migrations ensure reproducible database state across environments
 
 ### Development
 

@@ -1,13 +1,16 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Navbar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const handleNavigation = (path: string) => {
     if (location.pathname === path) {
       // smooth scroll to top
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // go to the path
+    navigate(path);
   };
 
   return (
@@ -25,18 +28,30 @@ const Navbar = () => {
         >
           About
         </button>
-        <li className="hover:underline">
-          <Link to="/events">Events</Link>
-        </li>
-        <li className="hover:underline">
-          <Link to="/login">Login</Link>
-        </li>
-        <li className="hover:underline">
-          <Link to="/register">Register</Link>
-        </li>
-        <li className="hover:underline">
-          <Link to="/membership">Membership</Link>
-        </li>
+        <button
+          className="hover:underline"
+          onClick={() => handleNavigation("/events")}
+        >
+          Events
+        </button>
+        <button
+          className="hover:underline"
+          onClick={() => handleNavigation("/login")}
+        >
+          Login
+        </button>
+        <button
+          className="hover:underline"
+          onClick={() => handleNavigation("/register")}
+        >
+          Register
+        </button>
+        <button
+          className="hover:underline"
+          onClick={() => handleNavigation("/membership")}
+        >
+          Membership
+        </button>
       </ul>
     </nav>
   );

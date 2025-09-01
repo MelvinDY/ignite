@@ -1,24 +1,26 @@
+import { Link } from "react-router-dom";
+
 const Navbar = () => {
   return (
     <nav className="sticky top-0 p-5 backdrop-blur-sm w-full shadow-2xl">
       <ul className="flex gap-10">
         <li>
-          <a href="/">Dashboard</a>
+          <Link to="/">Dashboard</Link>
         </li>
         <li>
-          <a href="/about">About</a>
+          <Link to="/about">About</Link>
         </li>
         <li>
-          <a href="/events">Events</a>
+          <Link to="/events">Events</Link>
         </li>
         <li>
-          <a href="/login">Login</a>
+          <Link to="/login">Login</Link>
         </li>
         <li>
-          <a href="/register">Register</a>
+          <Link to="/register">Register</Link>
         </li>
         <li>
-          <a href="/membership">Membership</a>
+          <Link to="/membership">Membership</Link>
         </li>
       </ul>
     </nav>

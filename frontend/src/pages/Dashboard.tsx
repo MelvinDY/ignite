@@ -22,7 +22,7 @@ const Dashboard = () => {
               className="absolute object-contain xs:w-3/4 xs:right-30 w-full lg:-bottom-32 lg:-right-48 -right-28 bottom-0 sm:-bottom-32 -z-10"
             ></img>
           </div>
-          <div className="p-4 gap-4 flex flex-col justify-center items-center h-full">
+          <div className="p-4 gap-4 flex flex-col justify-center items-center h-full z-1">
             <div className="w-full border rounded-xl bg-white">1</div>
             <div className="w-full border rounded-xl bg-white">2</div>
             <div className="w-full flex justify-center gap-2">

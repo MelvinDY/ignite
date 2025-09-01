@@ -17,7 +17,7 @@ function App() {
   return (
     <div className="flex flex-col h-full w-full">
       <Navbar />
-      <div className="flex-grow flex flex-col m-20 pt-16">
+      <div className="flex flex-col m-20 pt-16">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route

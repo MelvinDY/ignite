@@ -14,7 +14,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="fixed top-0 p-5 backdrop-blur-sm w-full shadow-2xl">
+    <nav className="fixed top-0 p-5 backdrop-blur-sm w-full shadow-2xl z-10">
       <ul className="flex gap-10">
         <button
           className="hover:underline"

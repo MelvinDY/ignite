@@ -1,3 +1,11 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --dark-red-bg: #3e000c;
+  --secondary-red: #7c0a2a;
+  --primary-text: white;
+  --secondary-text: #ffbe32;
+  --secondary-font: "Kaushan Script";
+}

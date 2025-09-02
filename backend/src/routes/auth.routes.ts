@@ -3,9 +3,13 @@ import { supabase } from '../lib/supabase';
 import { RegisterSchema } from '../validation/auth.schemas';
 import { hashPassword } from '../utils/crypto';
 import { makeResumeToken } from '../utils/tokens';
+import { issueSignupOtp } from '../services/otp.service';
 
 const router = Router();
 
+/**
+ * User Stories 1.1: User Registration
+ */
 router.post('/auth/register', async (req, res) => {
   // 1) validate
   const parsed = RegisterSchema.safeParse(req.body);
@@ -20,10 +24,9 @@ router.post('/auth/register', async (req, res) => {
 
   try {
     // 2) EMAIL already ACTIVE? (check Supabase Auth users)
-    // If your SDK has getUserByEmail, prefer that. Otherwise list & filter (fine in dev).
+    // If your SDK has getUserByEmail, prefer that. Otherwise list & filter (fine in dev, for now)
     let emailExists = false;
     try {
-      // @ts-ignore: some versions expose getUserByEmail
       const byEmail = await (supabase as any).auth.admin.getUserByEmail?.(emailLower);
       emailExists = !!byEmail?.data?.user;
     } catch { /* fall back to list */ }
@@ -68,46 +71,10 @@ router.post('/auth/register', async (req, res) => {
       });
     }
 
-    // 5) revival: EXPIRED by email
-    const { data: expiredByEmail } = await supabase
-      .from('user_signups')
-      .select('id')
-      .eq('signup_email', emailLower)
-      .eq('status', 'EXPIRED')
-      .maybeSingle();
-
-    if (expiredByEmail) {
-      const { data: revived, error: reviveErr } = await supabase
-        .from('user_signups')
-        .update({
-          full_name: fullName,
-          zid,
-          level,
-          year_intake: yearIntake,
-          is_indonesian: isIndonesian,
-          program,
-          major,
-          password_hash: await hashPassword(password),
-          status: 'PENDING_VERIFICATION',
-          email_verified_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', expiredByEmail.id)
-        .select('id')
-        .single();
-      if (reviveErr) throw reviveErr;
-
-      return res.status(201).json({
-        success: true,
-        userId: revived.id,                // signup id (staging)
-        resumeToken: makeResumeToken(revived.id),
-      });
-    }
-
-    // 6) revival: EXPIRED by zID
+    // 5) revival: EXPIRED by zID (zID is the true identifier)
     const { data: expiredByZid } = await supabase
       .from('user_signups')
-      .select('id')
+      .select('id, signup_email')
       .eq('zid', zid)
       .eq('status', 'EXPIRED')
       .maybeSingle();
@@ -116,7 +83,7 @@ router.post('/auth/register', async (req, res) => {
       const { data: revived, error: reviveErr } = await supabase
         .from('user_signups')
         .update({
-          signup_email: emailLower,
+          signup_email: emailLower,   // update email if different
           full_name: fullName,
           level,
           year_intake: yearIntake,
@@ -133,6 +100,12 @@ router.post('/auth/register', async (req, res) => {
         .single();
       if (reviveErr) throw reviveErr;
 
+      await issueSignupOtp(revived.id, emailLower, fullName);
+      
+      // logging
+      console.info('registration.created', { userId: revived.id });
+
+
       return res.status(201).json({
         success: true,
         userId: revived.id,
@@ -140,7 +113,19 @@ router.post('/auth/register', async (req, res) => {
       });
     }
 
-    // 7) fresh PENDING row in user_signups
+    // guard against same email tied to another expired zID
+    const { data: expiredByEmail } = await supabase
+      .from('user_signups')
+      .select('id, zid')
+      .eq('signup_email', emailLower)
+      .eq('status', 'EXPIRED')
+      .maybeSingle();
+
+    if (expiredByEmail && expiredByEmail.zid !== zid) {
+      return res.status(409).json({ code: 'ZID_MISMATCH' });
+    }
+
+    // 6) fresh PENDING row in user_signups
     const { data: created, error: insertErr } = await supabase
       .from('user_signups')
       .insert({
@@ -160,9 +145,15 @@ router.post('/auth/register', async (req, res) => {
       .single();
     if (insertErr) throw insertErr;
 
+    // sending otp
+    await issueSignupOtp(created.id, emailLower, fullName);
+
+    // logging
+    console.info('registration.created', { userId: created.id });
+
     return res.status(201).json({
       success: true,
-      userId: created.id,                 // signup id
+      userId: created.id,
       resumeToken: makeResumeToken(created.id),
     });
   } catch (err: any) {

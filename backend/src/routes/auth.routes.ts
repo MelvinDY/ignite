@@ -4,13 +4,25 @@ import { RegisterSchema } from '../validation/auth.schemas';
 import { hashPassword } from '../utils/crypto';
 import { makeResumeToken } from '../utils/tokens';
 import { issueSignupOtp } from '../services/otp.service';
+import { rateLimit } from '../middlewares/rateLimit';
 
 const router = Router();
+
+// 10 requests / hour per (IP+email)
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => {
+    const emailLower = (req.body?.email || '').toLowerCase();
+    // If body is empty/malformed, still bucket by IP so it doesn’t bypass
+    return `${req.ip}:${emailLower}`;
+  },
+});
 
 /**
  * User Stories 1.1: User Registration
  */
-router.post('/auth/register', async (req, res) => {
+router.post('/auth/register', registerLimiter, async (req, res) => {
   // 1) validate
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success) {

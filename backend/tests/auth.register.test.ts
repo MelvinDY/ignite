@@ -9,7 +9,6 @@ vi.spyOn(tokens, 'makeResumeToken').mockImplementation((id) => `res_MOCK_${id}`)
 let app: ReturnType<Awaited<typeof import('../src/app')>['createApp']>;
 let scenario: Scenario;
 
-// helper to (re)build app after mocking modules
 async function buildApp() {
   const mod = await import('../src/app');
   return mod.createApp();

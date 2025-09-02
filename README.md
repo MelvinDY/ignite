@@ -34,6 +34,29 @@ When installing with yarn 4, you need to disable experimental fetch with the fol
 NODE_OPTIONS=--no-experimental-fetch yarn add supabase
 ```
 
+or (if u're not on WSL):
+```
+$env:NODE_OPTIONS="--no-experimental-fetch"
+yarn add supabase
+```
+
+if Yarn isn't installed on your system:
+```
+npm install -g yarn
+```
+
+if 'yarn add supabase' error, it might be because of Windows PowerShell execution policy restriction, so run this:
+
+```
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+```
+
+To revert it:
+```
+Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy Restricted
+```
+
+
 > **Note**
 For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
 

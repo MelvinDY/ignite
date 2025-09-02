@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: Ignite Backend (Prototype)
+  version: 0.1.0
+  description: Minimal API docs for Story 1.1 Register
+servers:
+  - url: http://localhost:5000/api
+    description: Local dev
+
+paths:
+  /auth/register:
+    post:
+      summary: Register new account (prototype)
+      description: >
+        Creates or revives a user as PENDING_VERIFICATION.  
+        Prototype: no OTP/email yet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            examples:
+              example1:
+                value:
+                  fullName: Jane Doe
+                  zid: z1234567
+                  level: undergrad
+                  yearIntake: 2024
+                  isIndonesian: true
+                  program: BE
+                  major: Software Engineering
+                  email: jane@gmail.com
+                  password: Abcd1234
+                  confirmPassword: Abcd1234
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterCreated'
+              examples:
+                created:
+                  value:
+                    success: true
+                    userId: usr_abc123
+                    resumeToken: res_eyJhbGciOi...
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                bad_email:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        email:
+                          - Invalid email
+        '409':
+          description: Conflict (email/zid active) or pending exists
+          content:
+            application/json:
+              oneOf:
+                - $ref: '#/components/schemas/Error'
+                - $ref: '#/components/schemas/PendingExists'
+              examples:
+                email_exists:
+                  value: { code: EMAIL_EXISTS }
+                zid_exists:
+                  value: { code: ZID_EXISTS }
+                pending_exists:
+                  value:
+                    code: PENDING_VERIFICATION_EXISTS
+                    resumeToken: res_eyJhbGciOi...
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                internal:
+                  value: { code: INTERNAL }
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - fullName
+        - zid
+        - level
+        - yearIntake
+        - isIndonesian
+        - program
+        - major
+        - email
+        - password
+        - confirmPassword
+      properties:
+        fullName: { type: string, minLength: 1 }
+        zid:
+          type: string
+          pattern: '^z[0-9]{7}$'
+        level:
+          type: string
+          description: academic level (enum in DB)
+        yearIntake:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+        isIndonesian: { type: boolean }
+        program: { type: string }
+        major: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        confirmPassword: { type: string, minLength: 8 }
+
+    RegisterCreated:
+      type: object
+      required: [success, userId, resumeToken]
+      properties:
+        success: { type: boolean, example: true }
+        userId: { type: string, example: "usr_abc123" }
+        resumeToken: { type: string, example: "res_eyJhbGciOi..." }
+
+    PendingExists:
+      type: object
+      required: [code, resumeToken]
+      properties:
+        code:
+          type: string
+          enum: [PENDING_VERIFICATION_EXISTS]
+        resumeToken:
+          type: string
+
+    Error:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_ERROR, EMAIL_EXISTS, ZID_EXISTS, INTERNAL]
+
+    ValidationError:
+      type: object
+      required: [code, details]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_ERROR]
+        details:
+          type: object
+          description: zod-flattened errors (shape may vary)
+          properties:
+            fieldErrors:
+              type: object

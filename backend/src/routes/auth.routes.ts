@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { supabase } from '../lib/supabase';
 import { RegisterSchema } from '../validation/auth.schemas';
 import { hashPassword } from '../utils/crypto';
-import { makeResumeToken } from '../utils/tokens';
+import { hashResumeToken, makeResumeToken, resumeExpiryISO } from '../utils/tokens';
 import { issueSignupOtp } from '../services/otp.service';
 import { rateLimit } from '../middlewares/rateLimit';
 
@@ -64,6 +64,17 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
       .eq('status', 'PENDING_VERIFICATION')
       .maybeSingle();
     if (pendingByEmail) {
+      const resumeToken = makeResumeToken(pendingByEmail.id);
+
+      await supabase
+        .from('user_signups')
+        .update({
+          resume_token_hash: hashResumeToken(resumeToken),
+          resume_token_expires_at: resumeExpiryISO(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pendingByEmail.id);
+
       return res.status(409).json({
         code: 'PENDING_VERIFICATION_EXISTS',
         resumeToken: makeResumeToken(pendingByEmail.id),
@@ -77,6 +88,17 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
       .eq('status', 'PENDING_VERIFICATION')
       .maybeSingle();
     if (pendingByZid) {
+      const resumeToken = makeResumeToken(pendingByZid.id);
+
+      await supabase
+        .from('user_signups')
+        .update({
+          resume_token_hash: hashResumeToken(resumeToken),
+          resume_token_expires_at: resumeExpiryISO(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', pendingByZid.id);
+
       return res.status(409).json({
         code: 'PENDING_VERIFICATION_EXISTS',
         resumeToken: makeResumeToken(pendingByZid.id),
@@ -113,6 +135,16 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
       if (reviveErr) throw reviveErr;
 
       await issueSignupOtp(revived.id, emailLower, fullName);
+
+      const resumeToken = makeResumeToken(revived.id);
+      await supabase
+        .from('user_signups')
+        .update({
+          resume_token_hash: hashResumeToken(resumeToken),
+          resume_token_expires_at: resumeExpiryISO(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', revived.id);
       
       // logging
       console.info('registration.created', { userId: revived.id });
@@ -159,6 +191,16 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
 
     // sending otp
     await issueSignupOtp(created.id, emailLower, fullName);
+
+    const resumeToken = makeResumeToken(created.id);
+      await supabase
+        .from('user_signups')
+        .update({
+          resume_token_hash: hashResumeToken(resumeToken),
+          resume_token_expires_at: resumeExpiryISO(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', created.id);
 
     // logging
     console.info('registration.created', { userId: created.id });

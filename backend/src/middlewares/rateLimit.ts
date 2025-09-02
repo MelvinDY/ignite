@@ -33,7 +33,7 @@ export function rateLimit(opts: Options) {
 
     if (entry.count >= max) {
       setHeaders(res, max, 0, entry.resetAt);
-      return res.status(429).json({ code: 'RATE_LIMIT' });
+      return res.status(429).json({ code: 'TOO_MANY_REQUESTS' });
     }
 
     entry.count += 1;

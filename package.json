@@ -11,7 +11,16 @@
     "frontend:preview": "cd frontend && npm run preview"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/nodemailer": "^7.0.1",
+    "@types/supertest": "^6.0.3",
     "concurrently": "^9.1.0",
-    "supabase": "^2.39.2"
+    "supabase": "^2.39.2",
+    "supertest": "^7.1.4",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.6"
   }
 }

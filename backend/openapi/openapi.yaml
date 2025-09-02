@@ -1,8 +1,12 @@
 openapi: 3.0.3
 info:
   title: Ignite Backend (Prototype)
-  version: 0.1.0
-  description: Minimal API docs for Story 1.1 Register
+  version: 0.2.0
+  description: |
+    This endpoint creates (or revives) a **PENDING_VERIFICATION** signup and
+    **sends a 6-digit OTP email** to the user. It also returns a short-lived
+    **resumeToken (30 minutes)** that the client should carry to the OTP screen.
+
 servers:
   - url: http://localhost:5000/api
     description: Local dev
@@ -10,10 +14,29 @@ servers:
 paths:
   /auth/register:
     post:
-      summary: Register new account (prototype)
-      description: >
-        Creates or revives a user as PENDING_VERIFICATION.  
-        Prototype: no OTP/email yet.
+      summary: Register new account
+      description: |
+        **Flow**
+        1) Validate payload (email format, zID `^z[0-9]{7}$`, password ≥ 8, confirm matches).  
+        2) Reject if email already belongs to an **ACTIVE** user (`EMAIL_EXISTS`).  
+        3) Reject if zID is already used by an **ACTIVE** user (`ZID_EXISTS`).  
+        4) If a **PENDING** signup exists (same email or same zID), return **409 `PENDING_VERIFICATION_EXISTS`**
+           with a **fresh 30-min resumeToken**.
+        5) If an **EXPIRED** signup exists **for the same zID**, **revive** it to `PENDING_VERIFICATION`
+           (updating `signup_email` if different), **send OTP**, and return 201 + resumeToken.  
+        6) Otherwise, create a new `PENDING_VERIFICATION` signup, **send OTP**, and return 201 + resumeToken.
+
+        **Side effects**
+        - Stores a hashed OTP (`otp_hash`) with **TTL +10m**, resets counters (`otp_attempts=0`, `otp_resend_count=0`),
+          and sets `last_otp_sent_at`.
+        - Logs a registration event (no PII beyond `userId`).
+        - Rate limit: **10 requests/hour** per **(IP + email)** → **429** thereafter.
+
+        **Notes**
+        - The **resumeToken** is prefixed with `res_` and **expires in 30 minutes**.
+        - This API follows a **zID-first revival policy**. If an EXPIRED signup exists for the same
+          **email** but **different zID**, the request is rejected with **409 `ZID_MISMATCH`**.
+
       requestBody:
         required: true
         content:
@@ -21,7 +44,7 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
             examples:
-              example1:
+              valid:
                 value:
                   fullName: Jane Doe
                   zid: z1234567
@@ -33,21 +56,30 @@ paths:
                   email: jane@gmail.com
                   password: Abcd1234
                   confirmPassword: Abcd1234
+
       responses:
         '201':
-          description: Created
+          description: Created (new or revived PENDING signup; OTP email sent)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegisterCreated'
               examples:
-                created:
+                created_new:
+                  summary: New signup created
                   value:
                     success: true
-                    userId: usr_abc123
-                    resumeToken: res_eyJhbGciOi...
+                    userId: "a3c5b2c1-7c21-4eaa-bf9e-2a90b6b3a111"
+                    resumeToken: "res_eyJhbGciOi..."
+                revived:
+                  summary: EXPIRED signup revived by zID
+                  value:
+                    success: true
+                    userId: "3f1d6b22-6e22-45f8-8b9d-9bcbe0a1d222"
+                    resumeToken: "res_eyJhbGciOi..."
+
         '400':
-          description: Validation error
+          description: Validation error (zod)
           content:
             application/json:
               schema:
@@ -60,31 +92,70 @@ paths:
                       fieldErrors:
                         email:
                           - Invalid email
+                password_mismatch:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        confirmPassword:
+                          - Passwords do not match
+
         '409':
-          description: Conflict (email/zid active) or pending exists
+          description: Conflict — active user exists or pending already created
           content:
             application/json:
               oneOf:
-                - $ref: '#/components/schemas/Error'
+                - $ref: '#/components/schemas/ErrorSimple'
                 - $ref: '#/components/schemas/PendingExists'
               examples:
                 email_exists:
-                  value: { code: EMAIL_EXISTS }
+                  value:
+                    code: EMAIL_EXISTS
                 zid_exists:
-                  value: { code: ZID_EXISTS }
+                  value:
+                    code: ZID_EXISTS
                 pending_exists:
                   value:
                     code: PENDING_VERIFICATION_EXISTS
-                    resumeToken: res_eyJhbGciOi...
+                    resumeToken: "res_eyJhbGciOi..."
+                zid_mismatch:
+                  value:
+                    code: ZID_MISMATCH
+
+        '429':
+          description: "Too many requests (rate limit hit: 10 req/hour per IP+email)"
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: string
+              description: The request limit for the current window.
+            X-RateLimit-Remaining:
+              schema:
+                type: string
+              description: Requests left in the current window.
+            X-RateLimit-Reset:
+              schema:
+                type: string
+              description: UNIX timestamp when the window resets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                too_many:
+                  value:
+                    code: TOO_MANY_REQUESTS
+
         '500':
           description: Internal error
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/ErrorSimple'
               examples:
                 internal:
-                  value: { code: INTERNAL }
+                  value:
+                    code: INTERNAL
 
 components:
   schemas:
@@ -102,60 +173,98 @@ components:
         - password
         - confirmPassword
       properties:
-        fullName: { type: string, minLength: 1 }
+        fullName:
+          type: string
+          minLength: 1
         zid:
           type: string
           pattern: '^z[0-9]{7}$'
+          description: UNSW zID (lowercase z + 7 digits)
         level:
           type: string
-          description: academic level (enum in DB)
+          description: Academic level (stored as enum in DB)
+          example: undergrad
         yearIntake:
           type: integer
           minimum: 2000
           maximum: 2100
-        isIndonesian: { type: boolean }
-        program: { type: string }
-        major: { type: string }
-        email: { type: string, format: email }
-        password: { type: string, minLength: 8 }
-        confirmPassword: { type: string, minLength: 8 }
+        isIndonesian:
+          type: boolean
+        program:
+          type: string
+        major:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        confirmPassword:
+          type: string
+          minLength: 8
 
     RegisterCreated:
       type: object
-      required: [success, userId, resumeToken]
+      required:
+        - success
+        - userId
+        - resumeToken
       properties:
-        success: { type: boolean, example: true }
-        userId: { type: string, example: "usr_abc123" }
-        resumeToken: { type: string, example: "res_eyJhbGciOi..." }
+        success:
+          type: boolean
+          example: true
+        userId:
+          type: string
+          description: The signup row ID (user_signups.id)
+          example: "a3c5b2c1-7c21-4eaa-bf9e-2a90b6b3a111"
+        resumeToken:
+          type: string
+          description: Short-lived token (30m) prefixed with `res_` used to continue the OTP flow
+          example: "res_eyJhbGciOi..."
 
     PendingExists:
       type: object
-      required: [code, resumeToken]
+      required:
+        - code
+        - resumeToken
       properties:
         code:
           type: string
-          enum: [PENDING_VERIFICATION_EXISTS]
+          enum:
+            - PENDING_VERIFICATION_EXISTS
         resumeToken:
           type: string
+          description: Fresh 30-min token to resume OTP flow
 
-    Error:
+    ErrorSimple:
       type: object
-      required: [code]
+      required:
+        - code
       properties:
         code:
           type: string
-          enum: [VALIDATION_ERROR, EMAIL_EXISTS, ZID_EXISTS, INTERNAL]
+          enum:
+            - VALIDATION_ERROR
+            - EMAIL_EXISTS
+            - ZID_EXISTS
+            - ZID_MISMATCH
+            - TOO_MANY_REQUESTS
+            - INTERNAL
 
     ValidationError:
       type: object
-      required: [code, details]
+      required:
+        - code
+        - details
       properties:
         code:
           type: string
-          enum: [VALIDATION_ERROR]
+          enum:
+            - VALIDATION_ERROR
         details:
           type: object
-          description: zod-flattened errors (shape may vary)
+          description: Zod-flattened errors (shape may vary)
           properties:
             fieldErrors:
               type: object

@@ -1,6 +1,11 @@
 // src/validation/auth.schemas.ts
 import { z } from 'zod';
 
+export const LoginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
 export const RegisterSchema = z.object({
   fullName: z.string().min(1),
   zid: z.string().regex(/^z[0-9]{7}$/),
@@ -17,4 +22,5 @@ export const RegisterSchema = z.object({
   path: ['confirmPassword'],
 });
 
+export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;

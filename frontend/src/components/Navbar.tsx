@@ -36,13 +36,13 @@ const Navbar = () => {
         </button>
         <button
           className="hover:underline"
-          onClick={() => handleNavigation("/login")}
+          onClick={() => handleNavigation("/auth/login")}
         >
           Login
         </button>
         <button
           className="hover:underline"
-          onClick={() => handleNavigation("/register")}
+          onClick={() => handleNavigation("/auth/register")}
         >
           Register
         </button>

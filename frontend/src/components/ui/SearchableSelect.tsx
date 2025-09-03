@@ -41,6 +41,14 @@ export function SearchableSelect({
   // Handle async search
   useEffect(() => {
     const performSearch = async () => {
+      // Don't open dropdown if user has already selected a value and searchTerm matches it
+      const selectedOption = options.find(option => option.value === value);
+      if (selectedOption && searchTerm === selectedOption.label) {
+        setIsOpen(false);
+        setFilteredOptions([]);
+        return;
+      }
+
       if (searchFunction && searchTerm.trim()) {
         setIsOpen(true); // Open dropdown when starting to search
         setIsSearching(true);
@@ -70,7 +78,7 @@ export function SearchableSelect({
 
     const debounceTimer = setTimeout(performSearch, 300);
     return () => clearTimeout(debounceTimer);
-  }, [searchTerm, searchFunction, options, popularOptions]);
+  }, [searchTerm, searchFunction, options, popularOptions, value]);
 
   // Update display value when value prop changes
   useEffect(() => {

@@ -32,8 +32,8 @@ export function validateFullName(fullName: string): string | null {
 // Year intake validation
 export function validateYearIntake(year: number): string | null {
   if (!year) return 'Year intake is required';
-  if (year < 2015 || year > 2035) {
-    return 'Year intake must be between 2015 and 2035';
+  if (year < 2000 || year > 2100) {
+    return 'Year intake must be between 2000 and 2100';
   }
   return null;
 }

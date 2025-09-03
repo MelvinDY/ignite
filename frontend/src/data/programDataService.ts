@@ -6,25 +6,8 @@ import type { Program } from './unswPrograms';
 import { UNSW_MAJORS } from './unswMajors';
 import type { Major } from './unswMajors';
 
-export interface ProgramSearchResult {
-  programs: Program[];
-  majors: Major[];
-  total: number;
-}
-
-export interface EnhancedProgram extends Program {
-  code?: string;
-  duration?: string;
-  faculty: string;
-  description?: string;
-  prerequisites?: string[];
-  careerOutlooks?: string[];
-}
-
 export class ProgramDataService {
   private static instance: ProgramDataService;
-  private programCache: Map<string, EnhancedProgram[]> = new Map();
-  private lastUpdateTime: number = 0;
 
   private constructor() {
     this.initializeData();
@@ -38,14 +21,7 @@ export class ProgramDataService {
   }
 
   private initializeData() {
-    // For now, use our static data with enhanced information
-    // This can be replaced with API calls to CSESoc scraper or UNSW APIs
-    this.lastUpdateTime = Date.now();
-    
-    // Check for stale data and refresh if needed (non-blocking)
-    if (this.isDataStale()) {
-      this.updateFromExternalSource().catch(console.warn);
-    }
+    // Initialize with static UNSW program data
   }
 
   // Enhanced search with better relevance scoring
@@ -201,119 +177,8 @@ export class ProgramDataService {
     return matchCount / searchChars.length > 0.7;
   }
 
-  // Integration with CSESoc GraphQL API for course data
-  public async fetchCoursesFromCSESoc(query: string = ''): Promise<any[]> {
-    try {
-      const graphqlQuery = {
-        query: `
-          query GetCourses($searchTerm: String!) {
-            courses(
-              limit: 20
-              where: {
-                _or: [
-                  { course_code: { _ilike: $searchTerm } }
-                  { course_name: { _ilike: $searchTerm } }
-                ]
-                career: { _eq: "Undergraduate" }
-              }
-            ) {
-              course_code
-              course_name
-              faculty
-              career
-            }
-          }
-        `,
-        variables: {
-          searchTerm: `%${query}%`
-        }
-      };
 
-      const response = await fetch('https://graphql.csesoc.app/v1/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(graphqlQuery),
-      });
 
-      const data = await response.json();
-      return data?.data?.courses || [];
-    } catch (error) {
-      console.warn('Failed to fetch courses from CSESoc API:', error);
-      return [];
-    }
-  }
-
-  // Enhanced method for integrating with CSESoc API
-  public async updateFromExternalSource(): Promise<void> {
-    try {
-      const lastUpdate = localStorage.getItem('programDataLastUpdate');
-      const now = Date.now();
-      
-      // Check if data is older than 24 hours
-      if (!lastUpdate || now - parseInt(lastUpdate) > 24 * 60 * 60 * 1000) {
-        console.log('Refreshing course data from CSESoc API');
-        
-        // Cache some popular courses for faster access
-        const popularCourses = await this.fetchCoursesFromCSESoc('');
-        if (popularCourses.length > 0) {
-          localStorage.setItem('csesocCourseCache', JSON.stringify(popularCourses));
-        }
-        
-        localStorage.setItem('programDataLastUpdate', now.toString());
-        this.lastUpdateTime = now;
-      }
-    } catch (error) {
-      console.warn('Failed to update data from CSESoc API:', error);
-    }
-  }
-
-  // Method to check data freshness
-  public isDataStale(): boolean {
-    const lastUpdate = localStorage.getItem('programDataLastUpdate');
-    if (!lastUpdate) return true;
-    
-    const now = Date.now();
-    return now - parseInt(lastUpdate) > 24 * 60 * 60 * 1000; // 24 hours
-  }
-
-  // Get cached CSESoc course data
-  public getCachedCourses(): any[] {
-    try {
-      const cached = localStorage.getItem('csesocCourseCache');
-      return cached ? JSON.parse(cached) : [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  // Enhanced search that includes CSESoc course data
-  public async searchWithCSESocData(query: string, type: 'programs' | 'majors' = 'programs'): Promise<any[]> {
-    const staticResults = type === 'programs' 
-      ? this.searchPrograms(query, 10)
-      : this.searchMajors(query, 10);
-
-    // For programs, also search CSESoc course data as supplementary
-    if (type === 'programs' && query.trim()) {
-      try {
-        const courseResults = await this.fetchCoursesFromCSESoc(query);
-        const mappedCourseResults = courseResults.map(course => ({
-          value: course.course_code,
-          label: `${course.course_code} - ${course.course_name}`,
-          faculty: course.faculty,
-          type: 'course'
-        }));
-        
-        // Combine static programs with relevant courses
-        return [...staticResults, ...mappedCourseResults.slice(0, 5)];
-      } catch (error) {
-        console.warn('Failed to fetch supplementary course data:', error);
-      }
-    }
-
-    return staticResults;
-  }
 
   // Get faculties list
   public getFaculties(): string[] {

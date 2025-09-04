@@ -4,13 +4,14 @@ create table if not exists profiles (
   handle text unique,
   photo_url text,
 
+  email text not null,
+  zid varchar(8) unique,
   is_indonesian boolean not null,
   program_id integer,
   major_id integer,
   level level not null,
   year_start integer not null,
-  year_grad integer not null,
-  zid varchar(7) unique,
+  year_grad integer,
 
   headline varchar,
   domicile_city varchar,
@@ -27,3 +28,6 @@ drop trigger if exists trg_profiles_updated_at on profiles;
 create trigger trg_profiles_updated_at
 before update on profiles
 for each row execute function update_updated_at_column();
+
+drop index if exists idx_profiles_email_lower;
+create unique index idx_profiles_email_lower on profiles (lower(email));

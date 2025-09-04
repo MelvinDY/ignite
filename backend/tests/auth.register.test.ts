@@ -1,10 +1,7 @@
 // tests/auth.register.test.ts
 import request from 'supertest';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import * as tokens from '../src/utils/tokens';
 import { type Scenario, makeSupabaseMock } from './utils/supabaseMock';
-
-vi.spyOn(tokens, 'makeResumeToken').mockImplementation((id) => `res_MOCK_${id}`);
 
 let app: ReturnType<Awaited<typeof import('../src/app')>['createApp']>;
 let scenario: Scenario;
@@ -15,10 +12,8 @@ async function buildApp() {
 }
 
 beforeEach(async () => {
-  // 1) reset module cache so mocks for this test actually apply
   await vi.resetModules();
 
-  // 2) create a fresh scenario for THIS test
   scenario = {
     adminUserByEmail: null,
     adminListUsers: [],
@@ -31,28 +26,22 @@ beforeEach(async () => {
     revivedSignupId: 'signup-revived-1',
   };
 
-  // 3) mock supabase for this test
+  // 1) mock supabase BEFORE importing app
   vi.doMock('../src/lib/supabase', () => ({ supabase: makeSupabaseMock(scenario) }));
 
-  // 4) mock tokens so resumeToken is deterministic
+  // 2) mock tokens BEFORE importing app (deterministic resumeToken & no real supabase)
   vi.doMock('../src/utils/tokens', () => {
     const crypto = require('crypto');
     return {
-      // Deterministic token for assertions:
       makeResumeToken: (userId: string) => `res_MOCK_${userId}`,
-      // Keep hashing/expiry consistent with app’s expectations:
       hashResumeToken: (t: string) => crypto.createHash('sha256').update(t).digest('hex'),
       resumeExpiryISO: () => new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      // Not used in these tests, but harmless:
       verifyResumeToken: (t: string) => ({ userId: t.replace(/^res_MOCK_/, '') }),
+      // if your register route doesn’t call invalidate, harmless to include/no-op:
+      invalidateResumeToken: async (_: string) => {},
     };
   });
 
-  // (Optional) if you added a rate-limit reset export, call it here:
-  // const rl = await import('../src/middlewares/rateLimit');
-  // rl.__resetRateLimitStore_forTests?.();
-
-  // 5) import the app AFTER mocks
   app = await buildApp();
 });
 
@@ -80,14 +69,15 @@ describe('POST /auth/register (Story 1.1)', () => {
     });
   });
 
-  it.skip('409 EMAIL_EXISTS when auth user is ACTIVE', async () => {
-    scenario.adminUserByEmail = { id: 'auth-1' };
+  it('409 EMAIL_EXISTS when email already used by ACTIVE profile', async () => {
+    scenario.activeProfileByEmail = { id: 'p-email-1' };  // <-- CHANGED
     app = await buildApp();
     const res = await request(app).post(route).send(baseBody).expect(409);
     expect(res.body).toEqual({ code: 'EMAIL_EXISTS' });
   });
 
-  it.skip('409 ZID_EXISTS when profiles has ACTIVE user with same zID', async () => {
+
+  it('409 ZID_EXISTS when profiles has ACTIVE user with same zID', async () => {
     scenario.activeProfileByZid = { id: 'p1' };
     app = await buildApp();
     const res = await request(app).post(route).send(baseBody).expect(409);

@@ -1,0 +1,68 @@
+// src/services/profile.service.ts
+import { supabase } from '../lib/supabase';
+
+type SignupRow = {
+  id: string;
+  full_name: string;
+  zid: string;
+  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  year_intake: number;
+  is_indonesian: boolean;
+  program: string;
+  major: string;
+  signup_email: string;           // <-- add this
+  profile_id: string | null;
+};
+
+export async function ensureProfileForSignup(userId: string): Promise<string> {
+  const { data: s, error: loadErr } = await supabase
+    .from('user_signups')
+    .select('id, full_name, zid, level, year_intake, is_indonesian, program, major, signup_email, profile_id')
+    .eq('id', userId)
+    .single<SignupRow>();
+  if (loadErr || !s) throw loadErr ?? new Error('SIGNUP_NOT_FOUND');
+
+  if (s.profile_id) return s.profile_id;
+
+  // Prefer match by zID (your canonical identifier)
+  const { data: existing, error: findErr } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('zid', s.zid)
+    .maybeSingle<{ id: string }>();
+  if (findErr) throw findErr;
+
+  let profileId = existing?.id;
+
+  if (!profileId) {
+    const insertPayload = {
+      full_name: s.full_name,
+      email: s.signup_email,           // <-- store signup email
+      is_indonesian: s.is_indonesian,
+      level: s.level,
+      year_start: s.year_intake,
+      year_grad: null as number | null, // or s.year_intake (+duration) if NOT NULL
+      zid: s.zid,
+      program_id: null as number | null,
+      major_id: null as number | null,
+      visibility: 'public' as string,
+    };
+
+    const { data: created, error: insErr } = await supabase
+      .from('profiles')
+      .insert(insertPayload)
+      .select('id')
+      .single<{ id: string }>();
+    if (insErr) throw insErr;
+
+    profileId = created.id;
+  }
+
+  const { error: linkErr } = await supabase
+    .from('user_signups')
+    .update({ profile_id: profileId })
+    .eq('id', userId);
+  if (linkErr) throw linkErr;
+
+  return profileId;
+}

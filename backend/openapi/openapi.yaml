@@ -156,6 +156,97 @@ paths:
                 internal:
                   value:
                     code: INTERNAL
+  
+  /auth/verify-otp:
+    post:
+      summary: Verify OTP (Activate account)
+      description: |
+        Verify the 6-digit OTP for a **PENDING_VERIFICATION** signup.
+        On success, the account becomes **ACTIVE**, OTP state is cleared,
+        and the resumeToken is invalidated.
+
+        Rules
+        - `resumeToken` must be valid and map to a pending signup.
+        - OTP must match the stored hash, not be expired, and attempts must be < 5.
+
+        Side effects
+        - On success: `status=ACTIVE`, `email_verified_at=now`, OTP fields cleared, resumeToken invalidated.
+        - On failure: increment `otp_attempts`; when attempts reach 5, the OTP is locked.
+
+        Rate limit
+        - Example: 10 requests / 10 minutes per (IP + resumeToken) → 429 thereafter.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOtpRequest'
+            examples:
+              valid:
+                value:
+                  resumeToken: "res_eyJhbGciOi..."
+                  otp: "123456"
+      responses:
+        '200':
+          description: OTP verified; account activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyOtpOK'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    message: "Account verified successfully"
+        '400':
+          description: Bad/expired OTP or validation error
+          content:
+            application/json:
+              oneOf:
+                - $ref: '#/components/schemas/ErrorSimple'
+                - $ref: '#/components/schemas/ValidationError'
+              examples:
+                otp_invalid: { value: { code: OTP_INVALID } }
+                otp_expired: { value: { code: OTP_EXPIRED } }
+        '401':
+          description: Invalid or expired resume token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorSimple' }
+              examples:
+                bad_token: { value: { code: RESUME_TOKEN_INVALID } }
+        '404':
+          description: Pending signup not found (includes EXPIRED users)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorSimple' }
+              examples:
+                not_found: { value: { code: PENDING_NOT_FOUND } }
+        '409':
+          description: User already verified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorSimple' }
+              examples:
+                already_verified: { value: { code: ALREADY_VERIFIED } }
+        '423':
+          description: OTP locked after too many failed attempts
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorSimple' }
+              examples:
+                locked: { value: { code: OTP_LOCKED } }
+        '429':
+          description: Too many requests (rate limit hit)
+          headers:
+            X-RateLimit-Limit:      { schema: { type: string } }
+            X-RateLimit-Remaining:  { schema: { type: string } }
+            X-RateLimit-Reset:      { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorSimple' }
+              examples:
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
 
 components:
   schemas:
@@ -237,6 +328,27 @@ components:
           type: string
           description: Fresh 30-min token to resume OTP flow
 
+    VerifyOtpRequest:
+      type: object
+      required: [resumeToken, otp]
+      properties:
+        resumeToken:
+          type: string
+          description: Short-lived token (prefixed `res_`) from /auth/register
+          example: "res_eyJhbGciOi..."
+        otp:
+          type: string
+          pattern: '^[0-9]{6}$'
+          description: 6-digit numeric code
+          example: "123456"
+
+    VerifyOtpOK:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string,  example: "Account verified successfully" }
+
     ErrorSimple:
       type: object
       required:
@@ -251,6 +363,12 @@ components:
             - ZID_MISMATCH
             - TOO_MANY_REQUESTS
             - INTERNAL
+            - RESUME_TOKEN_INVALID
+            - PENDING_NOT_FOUND
+            - ALREADY_VERIFIED
+            - OTP_INVALID
+            - OTP_EXPIRED
+            - OTP_LOCKED
 
     ValidationError:
       type: object

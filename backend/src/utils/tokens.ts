@@ -1,6 +1,7 @@
 // src/utils/tokens.ts
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import crypto from 'crypto';
+import { supabase } from '../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const RES_PREFIX = 'res_';
@@ -34,4 +35,15 @@ export function verifyResumeToken(resumeToken: string): { userId: string } {
 
   if (decoded.purpose !== 'SIGNUP' || !decoded.sub) throw new Error('RESUME_TOKEN_INVALID');
   return { userId: decoded.sub };
+}
+
+export async function invalidateResumeToken(userId: string): Promise<void> {
+  await supabase
+    .from('user_signups')
+    .update({
+      resume_token_hash: null,
+      resume_token_expires_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
 }

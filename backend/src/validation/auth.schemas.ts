@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const RegisterSchema = z.object({
   fullName: z.string().min(1),
   zid: z.string().regex(/^z[0-9]{7}$/),
-  level: z.enum(['foundation','diploma','undergrad','postgrad','phd']).optional().or(z.string()),
+  level: z.enum(['foundation', 'diploma', 'undergrad', 'postgrad', 'phd']).optional().or(z.string()),
   yearIntake: z.number().int().min(2000).max(2100),
   isIndonesian: z.boolean(),
   program: z.string().min(1),
@@ -17,4 +17,10 @@ export const RegisterSchema = z.object({
   path: ['confirmPassword'],
 });
 
+export const ChangeEmailPreVerifySchema = z.object({
+  resumeToken: z.string().min(1),
+  newEmail: z.string().email()
+});
+
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type ChangeEmailPreVerifyInput = z.infer<typeof ChangeEmailPreVerifySchema>;

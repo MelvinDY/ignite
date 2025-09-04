@@ -17,10 +17,16 @@ export const RegisterSchema = z.object({
   path: ['confirmPassword'],
 });
 
+export const VerifyOtpSchema = z.object({
+  resumeToken: z.string().min(1),
+  otp: z.string().regex(/^[0-9]{6}$/),
+});
+
 export const ChangeEmailPreVerifySchema = z.object({
   resumeToken: z.string().min(1),
   newEmail: z.string().email()
 });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;
 export type ChangeEmailPreVerifyInput = z.infer<typeof ChangeEmailPreVerifySchema>;

@@ -1,8 +1,8 @@
-// tests/utils/supabaseMock.ts
 export type Scenario = {
   adminUserByEmail?: { id: string } | null;
   adminListUsers?: Array<{ email: string }>;
   activeProfileByZid?: { id: string } | null;
+  activeProfileByEmail?: { id: string } | null; // <-- add this
   pendingByEmail?: { id: string } | null;
   pendingByZid?: { id: string } | null;
   expiredByZid?: { id: string; signup_email?: string } | null;
@@ -41,16 +41,19 @@ export function makeSupabaseMock(s: Scenario) {
       }
     };
     async function single() {
-      if (table === 'profiles' && _filters['zid']) return s.activeProfileByZid ?? null;
+      if (table === 'profiles') {
+        if (_filters['email']) return s.activeProfileByEmail ?? null; // <-- support email check
+        if (_filters['zid'])   return s.activeProfileByZid   ?? null;
+      }
       if (table === 'user_signups') {
         const status = _filters['status'];
         if ('signup_email' in _filters) {
           if (status === 'PENDING_VERIFICATION') return s.pendingByEmail ?? null;
-          if (status === 'EXPIRED') return s.expiredByEmail ?? null;
+          if (status === 'EXPIRED')               return s.expiredByEmail ?? null;
         }
         if ('zid' in _filters) {
           if (status === 'PENDING_VERIFICATION') return s.pendingByZid ?? null;
-          if (status === 'EXPIRED') return s.expiredByZid ?? null;
+          if (status === 'EXPIRED')               return s.expiredByZid ?? null;
         }
       }
       return null;

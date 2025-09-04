@@ -47,3 +47,11 @@ export async function invalidateResumeToken(userId: string): Promise<void> {
     })
     .eq('id', userId);
 }
+
+export function generateAccessToken(userId: string): string {
+  return jwt.sign({ sub: userId }, process.env.JWT_SECRET!, { expiresIn: '15m' });
+}
+
+export function generateRefreshToken(userId: string): string {
+  return jwt.sign({ sub: userId }, process.env.REFRESH_TOKEN_SECRET!, { expiresIn: '7d' });
+}

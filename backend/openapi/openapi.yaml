@@ -247,6 +247,96 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorSimple' }
               examples:
                 too_many: { value: { code: TOO_MANY_REQUESTS } }
+  /auth/pending/email:
+    patch:
+      summary: Change Email (Pre-Verification)
+      description: |
+        Allows unverified users to fix a mistyped email before completing verification.
+        
+        **Flow**
+        
+        1) Validate `resumeToken` and `newEmail` format.
+        2) Ensure no ACTIVE user already owns `newEmail` → **409 `EMAIL_EXISTS`**.
+        3) Ensure user status = `PENDING_VERIFICATION` → **409 `ALREADY_VERIFIED`** if ACTIVE.
+        4) Update user email in database.
+        5) Invalidate all prior OTP + resumeToken.
+        6) Rotate a new resumeToken bound to newEmail.
+        7) Generate new OTP (+10m), reset counters (otp_attempts=0, otp_resend_count=0).
+        8) Send new OTP email to the new address.
+
+        **Side effects**
+        - Updates `signup_email` in `user_signups` table
+        - Clears existing OTP state (hash, expiry, attempts)  
+        - Invalidates the old resume token
+        - Issues fresh resume token with 30min TTL
+        - Sends new 6-digit OTP email with 10min TTL
+
+      requestBody: 
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeEmailPreVerifyRequest'
+            examples:
+              valid:
+                value:
+                  resumeToken: "res_eyJhbGciOi..."
+                  newEmail: "jane.new@gmail.com"
+      responses:
+        '200':
+          description: Email changed; Invalidates existing OTP & token; Sends new OTP & token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeEmailPreVerifyOK'
+              examples:
+                ok:
+                  value:
+                    success: true
+                    resumeToken: "res_def456eyJbg..."
+        '400':
+          description: Validation error (zod)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        '401':
+          description: Invalid or expired resume token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                bad_token:
+                  value:
+                    code: RESUME_TOKEN_INVALID
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                user_not_found:
+                  value:
+                    code: PENDING_NOT_FOUND
+        '409':
+          description: New email already used by active user or user is already verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                email_exists:
+                  value:
+                    code: EMAIL_EXISTS
+                already_verified:
+                  value:
+                    code: ALREADY_VERIFIED
 
 components:
   schemas:
@@ -386,3 +476,29 @@ components:
           properties:
             fieldErrors:
               type: object
+
+    ChangeEmailPreVerifyRequest:
+      type: object
+      required:
+        - resumeToken
+        - newEmail
+      properties:
+        resumeToken:
+          type: string
+          description: Short-lived token (30m) prefixed with `res_` used to continue the OTP flow
+          example: "res_eyJhbGciOi..."
+        newEmail:
+          type: string
+          format: email
+
+    ChangeEmailPreVerifyOK:
+      type: object
+      required:
+        - success
+        - resumeToken
+      properties:
+        success:
+          type: boolean
+        resumeToken:
+          description: The new resume token bound to the new email
+          example: "res_def456..."

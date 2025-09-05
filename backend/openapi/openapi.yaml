@@ -2,10 +2,9 @@ openapi: 3.0.3
 info:
   title: Ignite Backend (Prototype)
   version: 0.2.0
-  description: |
-    This endpoint creates (or revives) a **PENDING_VERIFICATION** signup and
-    **sends a 6-digit OTP email** to the user. It also returns a short-lived
-    **resumeToken (30 minutes)** that the client should carry to the OTP screen.
+  description: >
+    Authentication endpoints for registration with OTP, verification, resend,
+    passwordless resume tokens, login, and token refresh.
 
 servers:
   - url: http://localhost:5000/api
@@ -21,22 +20,23 @@ paths:
         2) Reject if email already belongs to an **ACTIVE** user (`EMAIL_EXISTS`).  
         3) Reject if zID is already used by an **ACTIVE** user (`ZID_EXISTS`).  
         4) If a **PENDING** signup exists (same email or same zID), return **409 `PENDING_VERIFICATION_EXISTS`**
-           with a **fresh 30-min resumeToken**.
+           with a **fresh 30-min resumeToken**.  
         5) If an **EXPIRED** signup exists **for the same zID**, **revive** it to `PENDING_VERIFICATION`
            (updating `signup_email` if different), **send OTP**, and return 201 + resumeToken.  
         6) Otherwise, create a new `PENDING_VERIFICATION` signup, **send OTP**, and return 201 + resumeToken.
 
         **Side effects**
-        - Stores a hashed OTP (`otp_hash`) with **TTL +10m**, resets counters (`otp_attempts=0`, `otp_resend_count=0`),
+        - Stores a hashed OTP (`otp_hash`) with **TTL +10m**, resets counters (`otp_attempts=0`, `resend_count=0`),
           and sets `last_otp_sent_at`.
         - Logs a registration event (no PII beyond `userId`).
-        - Rate limit: **10 requests/hour** per **(IP + email)** → **429** thereafter.
+
+        **Rate limit**
+        - **10 requests/hour** per **(IP + email)** → **429** thereafter.
 
         **Notes**
         - The **resumeToken** is prefixed with `res_` and **expires in 30 minutes**.
-        - This API follows a **zID-first revival policy**. If an EXPIRED signup exists for the same
-          **email** but **different zID**, the request is rejected with **409 `ZID_MISMATCH`**.
-
+        - Follows a **zID-first revival policy**. If an EXPIRED signup exists for the same **email** but **different zID**,
+          return **409 `ZID_MISMATCH`**.
       requestBody:
         required: true
         content:
@@ -56,7 +56,6 @@ paths:
                   email: jane@gmail.com
                   password: Abcd1234
                   confirmPassword: Abcd1234
-
       responses:
         "201":
           description: Created (new or revived PENDING signup; OTP email sent)
@@ -66,40 +65,33 @@ paths:
                 $ref: "#/components/schemas/RegisterCreated"
               examples:
                 created_new:
-                  summary: New signup created
                   value:
                     success: true
                     userId: "a3c5b2c1-7c21-4eaa-bf9e-2a90b6b3a111"
                     resumeToken: "res_eyJhbGciOi..."
                 revived:
-                  summary: EXPIRED signup revived by zID
                   value:
                     success: true
                     userId: "3f1d6b22-6e22-45f8-8b9d-9bcbe0a1d222"
                     resumeToken: "res_eyJhbGciOi..."
-
         "400":
           description: Validation error (zod)
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ValidationError"
+              schema: { $ref: "#/components/schemas/ValidationError" }
               examples:
                 bad_email:
                   value:
                     code: VALIDATION_ERROR
                     details:
                       fieldErrors:
-                        email:
-                          - Invalid email
+                        email: [Invalid email]
                 password_mismatch:
                   value:
                     code: VALIDATION_ERROR
                     details:
                       fieldErrors:
-                        confirmPassword:
-                          - Passwords do not match
-
+                        confirmPassword: [Passwords do not match]
         "409":
           description: Conflict — active user exists or pending already created
           content:
@@ -108,96 +100,60 @@ paths:
                 - $ref: "#/components/schemas/ErrorSimple"
                 - $ref: "#/components/schemas/PendingExists"
               examples:
-                email_exists:
-                  value:
-                    code: EMAIL_EXISTS
-                zid_exists:
-                  value:
-                    code: ZID_EXISTS
+                email_exists: { value: { code: EMAIL_EXISTS } }
+                zid_exists:   { value: { code: ZID_EXISTS } }
                 pending_exists:
                   value:
                     code: PENDING_VERIFICATION_EXISTS
                     resumeToken: "res_eyJhbGciOi..."
-                zid_mismatch:
-                  value:
-                    code: ZID_MISMATCH
-
+                zid_mismatch: { value: { code: ZID_MISMATCH } }
         "429":
-          description: "Too many requests (rate limit hit: 10 req/hour per IP+email)"
+          description: "Too many requests (10 req/hour per IP+email)"
           headers:
-            X-RateLimit-Limit:
-              schema:
-                type: string
-              description: The request limit for the current window.
-            X-RateLimit-Remaining:
-              schema:
-                type: string
-              description: Requests left in the current window.
-            X-RateLimit-Reset:
-              schema:
-                type: string
-              description: UNIX timestamp when the window resets.
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                too_many:
-                  value:
-                    code: TOO_MANY_REQUESTS
-
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
         "500":
-          description: Internal error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
-              examples:
-                internal:
-                  value:
-                    code: INTERNAL
+          $ref: "#/components/responses/InternalError"
 
   /auth/verify-otp:
     post:
       summary: Verify OTP (Activate account)
       description: |
         Verify the 6-digit OTP for a **PENDING_VERIFICATION** signup.
-        On success, the account becomes **ACTIVE**, OTP state is cleared,
-        and the resumeToken is invalidated.
+        On success, the account becomes **ACTIVE**, OTP row is deleted, and the resumeToken is invalidated.
 
-        Rules
+        **Rules**
         - `resumeToken` must be valid and map to a pending signup.
         - OTP must match the stored hash, not be expired, and attempts must be < 5.
 
-        Side effects
-        - On success: `status=ACTIVE`, `email_verified_at=now`, OTP fields cleared, resumeToken invalidated.
-        - On failure: increment `otp_attempts`; when attempts reach 5, the OTP is locked.
+        **Side effects**
+        - On success: `status=ACTIVE`, `email_verified_at=now`, delete OTP row, invalidate resume token.
+        - On failure: increment attempts; at 5 attempts the OTP is locked.
 
-        Rate limit
-        - Example: 10 requests / 10 minutes per (IP + resumeToken) → 429 thereafter.
+        **Rate limit**
+        - **10 requests / 10 minutes** per (IP + resumeToken) → 429 thereafter.
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: "#/components/schemas/VerifyOtpRequest"
+            schema: { $ref: "#/components/schemas/VerifyOtpRequest" }
             examples:
               valid:
-                value:
-                  resumeToken: "res_eyJhbGciOi..."
-                  otp: "123456"
+                value: { resumeToken: "res_eyJhbGciOi...", otp: "123456" }
       responses:
         "200":
           description: OTP verified; account activated
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/VerifyOtpOK"
+              schema: { $ref: "#/components/schemas/VerifyOtpOK" }
               examples:
-                ok:
-                  value:
-                    success: true
-                    message: "Account verified successfully"
+                ok: { value: { success: true, message: "Account verified successfully" } }
         "400":
           description: Bad/expired OTP or validation error
           content:
@@ -216,7 +172,7 @@ paths:
               examples:
                 bad_token: { value: { code: RESUME_TOKEN_INVALID } }
         "404":
-          description: Pending signup not found (includes EXPIRED users)
+          description: Pending signup or OTP not found
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorSimple" }
@@ -239,14 +195,92 @@ paths:
         "429":
           description: Too many requests (rate limit hit)
           headers:
-            X-RateLimit-Limit: { schema: { type: string } }
+            X-RateLimit-Limit:     { schema: { type: string } }
             X-RateLimit-Remaining: { schema: { type: string } }
-            X-RateLimit-Reset: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
                 too_many: { value: { code: TOO_MANY_REQUESTS } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/resend-otp:
+    post:
+      summary: Resend OTP for a pending signup
+      description: |
+        Issues a **new 6-digit OTP** (overwriting the previous one), resets attempts, and updates
+        `last_otp_sent_at` + `resend_count`.
+
+        **Rules**
+        - Requires a valid `resumeToken`.
+        - Signup must be `PENDING_VERIFICATION` (not ACTIVE/EXPIRED).
+        - Enforces per-user cooldown and daily cap **before** sending:
+          - Cooldown: **60s** between sends → `OTP_COOLDOWN` (429)
+          - Daily cap: **5/day** → `OTP_RESEND_LIMIT` (429)
+
+        **Rate limit**
+        - Endpoint itself: **3 requests / minute** per (IP + resumeToken).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResendOtpRequest" }
+            examples:
+              ok:
+                value: { resumeToken: "res_eyJhbGciOi..." }
+      responses:
+        "200":
+          description: OTP reissued and email sent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResendOtpOK" }
+              examples:
+                success: { value: { success: true } }
+        "400":
+          description: Validation error (missing resumeToken)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_body: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Invalid or expired resume token
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_token: { value: { code: RESUME_TOKEN_INVALID } }
+        "404":
+          description: Pending signup not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: PENDING_NOT_FOUND } }
+        "409":
+          description: Already verified
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                already_verified: { value: { code: ALREADY_VERIFIED } }
+        "429":
+          description: Cooldown/cap hit or per-endpoint rate limit
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                cooldown: { value: { code: OTP_COOLDOWN } }
+                daily_cap: { value: { code: OTP_RESEND_LIMIT } }
+                too_many:  { value: { code: TOO_MANY_REQUESTS } }
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /auth/login:
     post:
@@ -254,24 +288,22 @@ paths:
       description: |
         Authenticates an **ACTIVE** user with their email and password.
 
-        On success, it returns a short-lived **accessToken** (~15 min) for API calls
-        and sets a long-lived **refreshToken** (~7 days) in a `Secure`, `HttpOnly` cookie
-        to maintain the user's session.
+        On success, returns a short-lived **accessToken** (~15 min) and sets a long-lived
+        **refreshToken** (~7 days) in a `Secure`, `HttpOnly` cookie.
       requestBody:
         $ref: "#/components/requestBodies/LoginBody"
       responses:
         "200":
-          description: Login successful.
+          description: Login successful
           headers:
             Set-Cookie:
-              description: The refresh token cookie for maintaining sessions
+              description: The refresh token cookie for maintaining sessions.
               schema:
                 type: string
                 example: refreshToken=rft_eyJhbGciOi...; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/LoginSuccess"
+              schema: { $ref: "#/components/schemas/LoginSuccess" }
               examples:
                 success:
                   value:
@@ -283,54 +315,44 @@ paths:
           description: Validation error for missing or invalid fields.
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                missing_fields:
-                  value: { code: VALIDATION_ERROR }
+                missing_fields: { value: { code: VALIDATION_ERROR } }
         "401":
           description: Invalid credentials (unknown email or wrong password).
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                invalid:
-                  value: { code: INVALID_CREDENTIALS }
+                invalid: { value: { code: INVALID_CREDENTIALS } }
         "403":
           description: The user's account is not in an ACTIVE state.
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                not_active:
-                  value: { code: ACCOUNT_NOT_VERIFIED }
+                not_active: { value: { code: ACCOUNT_NOT_VERIFIED } }
         "429":
           description: Too many failed login attempts (rate limit hit).
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                too_many:
-                  value: { code: TOO_MANY_REQUESTS }
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
         "500":
           $ref: "#/components/responses/InternalError"
 
   /auth/refresh:
     post:
       summary: Refresh access token
-      description: |
+      description: >
         Issues a new `accessToken` using the `refreshToken` stored in the `HttpOnly` cookie.
-        No request body is required as the cookie is sent automatically by the browser.
       responses:
         "200":
           description: Token refreshed successfully.
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/RefreshSuccess"
+              schema: { $ref: "#/components/schemas/RefreshSuccess" }
               examples:
                 success:
                   value:
@@ -341,17 +363,39 @@ paths:
           description: Refresh token is missing, invalid, or expired.
           content:
             application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
-                no_token:
-                  value: { code: NO_REFRESH_TOKEN }
-                invalid_token:
-                  value: { code: INVALID_REFRESH_TOKEN }
+                no_token:      { value: { code: NO_REFRESH_TOKEN } }
+                invalid_token: { value: { code: INVALID_REFRESH_TOKEN } }
         "500":
           $ref: "#/components/responses/InternalError"
 
 components:
+  requestBodies:
+    LoginBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                minLength: 1
+
+  responses:
+    InternalError:
+      description: Internal error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorSimple" }
+          examples:
+            internal: { value: { code: INTERNAL } }
+
   schemas:
     RegisterRequest:
       type: object
@@ -367,50 +411,28 @@ components:
         - password
         - confirmPassword
       properties:
-        fullName:
-          type: string
-          minLength: 1
+        fullName:       { type: string, minLength: 1 }
         zid:
           type: string
           pattern: "^z[0-9]{7}$"
           description: UNSW zID (lowercase z + 7 digits)
-        level:
-          type: string
-          description: Academic level (stored as enum in DB)
-          example: undergrad
-        yearIntake:
-          type: integer
-          minimum: 2000
-          maximum: 2100
-        isIndonesian:
-          type: boolean
-        program:
-          type: string
-        major:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 8
-        confirmPassword:
-          type: string
-          minLength: 8
+        level:          { type: string, example: undergrad }
+        yearIntake:     { type: integer, minimum: 2000, maximum: 2100 }
+        isIndonesian:   { type: boolean }
+        program:        { type: string }
+        major:          { type: string }
+        email:          { type: string, format: email }
+        password:       { type: string, minLength: 8 }
+        confirmPassword: { type: string, minLength: 8 }
 
     RegisterCreated:
       type: object
-      required:
-        - success
-        - userId
-        - resumeToken
+      required: [success, userId, resumeToken]
       properties:
-        success:
-          type: boolean
-          example: true
+        success:     { type: boolean, example: true }
         userId:
           type: string
-          description: The signup row ID (user_signups.id)
+          description: The signup row ID (`user_signups.id`)
           example: "a3c5b2c1-7c21-4eaa-bf9e-2a90b6b3a111"
         resumeToken:
           type: string
@@ -419,14 +441,11 @@ components:
 
     PendingExists:
       type: object
-      required:
-        - code
-        - resumeToken
+      required: [code, resumeToken]
       properties:
         code:
           type: string
-          enum:
-            - PENDING_VERIFICATION_EXISTS
+          enum: [PENDING_VERIFICATION_EXISTS]
         resumeToken:
           type: string
           description: Fresh 30-min token to resume OTP flow
@@ -452,10 +471,41 @@ components:
         success: { type: boolean, example: true }
         message: { type: string, example: "Account verified successfully" }
 
+    ResendOtpRequest:
+      type: object
+      required: [resumeToken]
+      properties:
+        resumeToken:
+          type: string
+          description: Short-lived token (prefixed `res_`) from /auth/register
+          example: "res_eyJhbGciOi..."
+
+    ResendOtpOK:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, example: true }
+
+    LoginSuccess:
+      type: object
+      required: [success, userId, accessToken, expiresIn]
+      properties:
+        success:     { type: boolean, example: true }
+        userId:      { type: string, example: "usr_abc123" }
+        accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
+        expiresIn:   { type: integer, example: 900 }
+
+    RefreshSuccess:
+      type: object
+      required: [success, accessToken, expiresIn]
+      properties:
+        success:     { type: boolean, example: true }
+        accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
+        expiresIn:   { type: integer, example: 900 }
+
     ErrorSimple:
       type: object
-      required:
-        - code
+      required: [code]
       properties:
         code:
           type: string
@@ -464,25 +514,29 @@ components:
             - EMAIL_EXISTS
             - ZID_EXISTS
             - ZID_MISMATCH
-            - TOO_MANY_REQUESTS
-            - INTERNAL
-            - RESUME_TOKEN_INVALID
+            - PENDING_VERIFICATION_EXISTS
             - PENDING_NOT_FOUND
             - ALREADY_VERIFIED
+            - RESUME_TOKEN_INVALID
             - OTP_INVALID
             - OTP_EXPIRED
             - OTP_LOCKED
+            - OTP_COOLDOWN
+            - OTP_RESEND_LIMIT
+            - INVALID_CREDENTIALS
+            - ACCOUNT_NOT_VERIFIED
+            - NO_REFRESH_TOKEN
+            - INVALID_REFRESH_TOKEN
+            - TOO_MANY_REQUESTS
+            - INTERNAL
 
     ValidationError:
       type: object
-      required:
-        - code
-        - details
+      required: [code, details]
       properties:
         code:
           type: string
-          enum:
-            - VALIDATION_ERROR
+          enum: [VALIDATION_ERROR]
         details:
           type: object
           description: Zod-flattened errors (shape may vary)

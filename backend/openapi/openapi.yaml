@@ -434,14 +434,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorSimple"
               examples:
-                no_token:
-                  value: { code: NO_REFRESH_TOKEN }
-                invalid_token:
-                  value: { code: INVALID_REFRESH_TOKEN }
+                invalid_credentials:
+                  value: { code: INVALID_CREDENTIALS }
         "500":
           $ref: "#/components/responses/InternalError"
 
 components:
+  responses:
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorSimple'
+          examples:
+            internal:
+              value: { code: INTERNAL }
+  requestBodies:
+    LoginBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                format: email
+                example: jane@gmail.com
+              password:
+                type: string
+                example: Abcd1234
   schemas:
     RegisterRequest:
       type: object
@@ -555,6 +579,7 @@ components:
             - ZID_EXISTS
             - ZID_MISMATCH
             - TOO_MANY_REQUESTS
+            - INVALID_CREDENTIALS
             - INTERNAL
             - RESUME_TOKEN_INVALID
             - PENDING_NOT_FOUND
@@ -579,6 +604,23 @@ components:
           properties:
             fieldErrors:
               type: object
+
+    LoginSuccess:
+      type: object
+      required: [success, userId, accessToken, expiresIn]
+      properties:
+        success: { type: boolean, example: true }
+        userId: { type: string, example: "usr_abc123" }
+        accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
+        expiresIn: { type: integer, example: 900 }
+
+    RefreshSuccess:
+      type: object
+      required: [success, accessToken, expiresIn]
+      properties:
+        success: { type: boolean, example: true }
+        accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
+        expiresIn: { type: integer, example: 900 }
 
     ChangeEmailPreVerifyRequest:
       type: object

@@ -30,6 +30,11 @@ export async function issueSignupOtp(userId: string, toEmail: string, fullName: 
   const hashed = hashOtp(otp);
   const now = new Date();
 
+  // Dev convenience: log OTP to console when not in production
+  if ((process.env.NODE_ENV || 'development') !== 'production') {
+    console.info('otp.dev', { userId, toEmail, otp });
+  }
+
   const { error } = await supabase
     .from('user_signups')
     .update({
@@ -87,13 +92,24 @@ export async function clearOtpState(userId: string) {
     .eq('id', userId);
 }
 
-export async function activateUser(userId: string) {
-  await supabase
+export async function activateUser(signupId: string) {
+  const now = new Date().toISOString();
+
+  // activate signup
+  await supabase.from('user_signups')
+    .update({ status: 'ACTIVE', email_verified_at: now, updated_at: now })
+    .eq('id', signupId);
+
+  // fetch its profile_id
+  const { data, error } = await supabase
     .from('user_signups')
-    .update({
-      status: 'ACTIVE',
-      email_verified_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
+    .select('profile_id')
+    .eq('id', signupId)
+    .single();
+
+  if (!error && data?.profile_id) {
+    await supabase.from('profiles')
+      .update({ status: 'ACTIVE', updated_at: now })
+      .eq('id', data.profile_id);
+  }
 }

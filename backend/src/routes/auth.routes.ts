@@ -1,20 +1,31 @@
 // src/routes/auth.routes.ts
 
-import { Router } from 'express';
-import { supabase } from '../lib/supabase';
-import { RegisterSchema } from '../validation/auth.schemas';
-import { hashPassword } from '../utils/crypto';
-import { hashResumeToken, makeResumeToken, resumeExpiryISO } from '../utils/tokens';
-import { issueSignupOtp } from '../services/otp.service';
-import { rateLimit } from '../middlewares/rateLimit';
-
-import { VerifyOtpSchema } from '../validation/auth.schemas';
-import { verifyResumeToken, invalidateResumeToken } from '../utils/tokens';
+import { Router } from "express";
+import { supabase } from "../lib/supabase";
+import { RegisterSchema } from "../validation/auth.schemas";
+import { hashPassword } from "../utils/crypto";
 import {
-  loadPendingSignup, hashOtp, incrementOtpAttempts, clearOtpState, activateUser,
-} from '../services/otp.service';
-import { ensureProfileForSignup } from '../services/profile.service';
+  hashResumeToken,
+  makeResumeToken,
+  resumeExpiryISO,
+} from "../utils/tokens";
+import { issueSignupOtp } from "../services/otp.service";
+import { rateLimit } from "../middlewares/rateLimit";
 
+import { VerifyOtpSchema } from "../validation/auth.schemas";
+import { verifyResumeToken, invalidateResumeToken } from "../utils/tokens";
+import {
+  loadPendingSignup,
+  hashOtp,
+  incrementOtpAttempts,
+  clearOtpState,
+  activateUser,
+} from "../services/otp.service";
+import { ensureProfileForSignup } from "../services/profile.service";
+
+import * as jwt from "jsonwebtoken";
+import { validateUserCredentials } from "../services/auth.service";
+import { generateAccessToken, generateRefreshToken } from "../utils/tokens";
 
 const router = Router();
 
@@ -287,12 +298,107 @@ router.post('/auth/verify-otp', verifyLimiter, async (req, res) => {
     await clearOtpState(userId);
     await invalidateResumeToken(userId);
 
-
-    console.info('registration.verified', { userId });
-    return res.status(200).json({ success: true, message: 'Account verified successfully' });
+    console.info("registration.verified", { userId });
+    return res
+      .status(200)
+      .json({ success: true, message: "Account verified successfully" });
   } catch (err: any) {
-    console.error('verify-otp.error', err?.message || err);
-    return res.status(500).json({ code: 'INTERNAL' });
+    console.error("verify-otp.error", err?.message || err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 failed attempts per window
+  keyGenerator: (req) => `${req.ip}:${(req.body?.email || "").toLowerCase()}`,
+});
+
+/**
+ * User Story: User Login
+ */
+router.post("/auth/login", loginLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Call the service to handle business logic
+    const userId = await validateUserCredentials(email, password);
+
+    // 2. Call the utils to generate tokens
+    const accessToken = generateAccessToken(userId);
+    const refreshToken = generateRefreshToken(userId);
+
+    // 3. Handle the HTTP response (set cookie, send JSON)
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      success: true,
+      userId,
+      accessToken,
+      expiresIn: 900,
+    });
+  } catch (err: any) {
+    // Check the specific error message thrown from the service
+    if (err.message === "INVALID_CREDENTIALS") {
+      return res.status(401).json({ code: "INVALID_CREDENTIALS" });
+    }
+    if (err.message === "ACCOUNT_NOT_VERIFIED") {
+      return res.status(403).json({ code: "ACCOUNT_NOT_VERIFIED" });
+    }
+
+    // Handle all other unexpected errors
+    console.error("login.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+router.post("/auth/refresh", async (req, res) => {
+  // 1. Get the refresh token from the HttpOnly cookie
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) {
+    return res.status(401).json({ code: "NO_REFRESH_TOKEN" });
+  }
+
+  try {
+    // 2. Verify the token is valid and not expired
+    const payload = jwt.verify(
+      refreshToken,
+      process.env.REFRESH_TOKEN_SECRET!,
+    ) as { sub: string };
+    const userId = payload.sub;
+
+    // 3. Check if the user still exists and is active in our database
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", userId)
+      .eq("status", "ACTIVE")
+      .single();
+
+    if (error || !profile) {
+      // If user is gone or not active, the token is invalid.
+      res.clearCookie("refreshToken", { path: "/" });
+      return res.status(401).json({ code: "INVALID_REFRESH_TOKEN" });
+    }
+
+    // 4. Issue a new, short-lived access token
+    const accessToken = generateAccessToken(userId);
+
+    // 5. Send the new access token to the client
+    return res.json({
+      success: true,
+      accessToken,
+      expiresIn: 900,
+    });
+  } catch (err) {
+    res.clearCookie("refreshToken", { path: "/" });
+    return res.status(401).json({ code: "INVALID_REFRESH_TOKEN" });
   }
 });
 

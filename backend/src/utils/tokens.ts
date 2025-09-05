@@ -48,10 +48,49 @@ export async function invalidateResumeToken(userId: string): Promise<void> {
     .eq('id', userId);
 }
 
-export function generateAccessToken(userId: string): string {
-  return jwt.sign({ sub: userId }, process.env.JWT_SECRET!, { expiresIn: '15m' });
+export async function invalidateRefreshToken(userId: string): Promise<void> {
+  // Increment token version to invalidate all existing tokens
+  await supabase.rpc('increment_token_version', { user_id: userId });
 }
 
-export function generateRefreshToken(userId: string): string {
-  return jwt.sign({ sub: userId }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+export async function verifyTokenVersion(userId: string, tokenVersion: number): Promise<boolean> {
+  const { data: user } = await supabase
+    .from('user_signups')
+    .select('token_version')
+    .eq('id', userId)
+    .single();
+  
+  return user?.token_version === tokenVersion;
+}
+
+export async function generateAccessToken(userId: string): Promise<string> {
+  // Get current token version from database
+  const { data: user } = await supabase
+    .from('user_signups')
+    .select('token_version')
+    .eq('id', userId)
+    .single();
+  
+  const tokenVersion = user?.token_version || 1;
+  
+  return jwt.sign({ 
+    sub: userId, 
+    tokenVersion 
+  }, process.env.JWT_SECRET!, { expiresIn: '15m' });
+}
+
+export async function generateRefreshToken(userId: string): Promise<string> {
+  // Get current token version from database
+  const { data: user } = await supabase
+    .from('user_signups')
+    .select('token_version')
+    .eq('id', userId)
+    .single();
+  
+  const tokenVersion = user?.token_version || 1;
+  
+  return jwt.sign({ 
+    sub: userId, 
+    tokenVersion 
+  }, process.env.JWT_SECRET!, { expiresIn: '7d' });
 }

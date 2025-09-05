@@ -17,7 +17,9 @@ import {
   generateAccessToken,
   generateRefreshToken,
   verifyResumeToken,
-  invalidateResumeToken
+  invalidateResumeToken,
+  invalidateRefreshToken,
+  verifyTokenVersion
 } from "../utils/tokens";
 import { issueSignupOtp } from "../services/otp.service";
 import { rateLimit } from "../middlewares/rateLimit";
@@ -29,6 +31,7 @@ import {
   activateUser,
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
+import * as jwt from 'jsonwebtoken';
 
 const router = Router();
 
@@ -358,8 +361,8 @@ router.post('/auth/login', loginLimiter, async (req, res) => {
       return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
     }
 
-    const accessToken = generateAccessToken(row.id);
-    const refreshToken = generateRefreshToken(row.id);
+    const accessToken = await generateAccessToken(row.id);
+    const refreshToken = await generateRefreshToken(row.id);
 
     // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
     res.cookie('refreshToken', refreshToken, {
@@ -391,21 +394,97 @@ router.post('/auth/refresh', async (req, res) => {
     const refreshToken = req.cookies?.refreshToken as string | undefined;
     if (!refreshToken) return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
 
-    const jwt = await import('jsonwebtoken');
+    let payload: any;
+    try {
+      // If this is not working, possible issues:
+      // 1. process.env.JWT_SECRET is undefined or not set correctly.
+      // 2. The refreshToken is malformed or not a valid JWT.
+      // 3. The jwt.verify function is not being called correctly (e.g., wrong import).
+      // 4. The code is being run in a test environment where jwt.verify is mocked or behaves differently.
+      // For debugging, log the secret and token (do not do this in production!):
+      console.log('JWT_SECRET:', process.env.JWT_SECRET);
+      console.log('refreshToken:', refreshToken);
+      payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
+    } catch (err) {
+      console.error('decode error:', err);
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+    }
+    
+    const userId = payload?.sub as string | undefined;
+    const tokenVersion = payload?.tokenVersion as number | undefined;
+    console.log('userId', userId);
+    console.log('tokenVersion', tokenVersion);
+    if (!userId || !tokenVersion) return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+
+    // Verify token version is still valid
+    const isTokenValid = await verifyTokenVersion(userId, tokenVersion);
+    if (!isTokenValid) {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+    }
+
+    const accessToken = await generateAccessToken(userId);
+    return res.status(200).json({ success: true, accessToken, expiresIn: 60 * 15 });
+  } catch (err: any) {
+    console.error('refresh.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+/**
+ * User Story: User Logout
+ */
+router.post('/auth/logout', async (req, res) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken as string | undefined;
+    
+    // If no refresh token, return 401
+    if (!refreshToken) {
+      return res.status(401).json({ code: 'NOT_AUTHENTICATED' });
+    }
+
+    // Verify the refresh token to get userId
     let payload: any;
     try {
       payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
     } catch {
-      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+      return res.status(401).json({ code: 'NOT_AUTHENTICATED' });
     }
 
     const userId = payload?.sub as string | undefined;
-    if (!userId) return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+    const tokenVersion = payload?.tokenVersion as number | undefined;
+    
+    if (!userId || !tokenVersion) {
+      return res.status(401).json({ code: 'NOT_AUTHENTICATED' });
+    }
 
-    const accessToken = generateAccessToken(userId);
-    return res.status(200).json({ success: true, accessToken, expiresIn: 60 * 15 });
+    // Verify token version is still valid (not already invalidated)
+    const isTokenValid = await verifyTokenVersion(userId, tokenVersion);
+    if (!isTokenValid) {
+      // Token already invalidated, but we still clear the cookie and return success (idempotent)
+      res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+      });
+      return res.status(200).json({ success: true });
+    }
+
+    // Invalidate the refresh token by incrementing token version
+    await invalidateRefreshToken(userId);
+
+    // Clear the refresh token cookie
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    console.info('logout.success', { userId });
+    return res.status(200).json({ success: true });
   } catch (err: any) {
-    console.error('refresh.error', err?.message || err);
+    console.error('logout.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
   }
 });

@@ -394,7 +394,7 @@ router.post('/auth/refresh', async (req, res) => {
     const jwt = await import('jsonwebtoken');
     let payload: any;
     try {
-      payload = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!);
+      payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
     } catch {
       return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
     }

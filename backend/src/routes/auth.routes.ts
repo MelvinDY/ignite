@@ -434,7 +434,7 @@ router.patch('/auth/pending/email', async (req, res) => {
       .maybeSingle();
 
     if (emailErr) {
-      console.error('change-email.email_check.error', emailErr);
+      console.error('change-email-pre-verify.email_check.error', emailErr);
     }
     if (byEmailActive) {
       return res.status(409).json({ code: 'EMAIL_EXISTS' });
@@ -482,13 +482,13 @@ router.patch('/auth/pending/email', async (req, res) => {
     // 8. Generate & send new OTP
     await issueSignupOtp(userId, newEmailLower, userSignup.full_name);
     
-    console.info('change-email.success', { userId, newEmail: newEmailLower });
+    console.info('change-email-pre-verify.success', { userId, newEmail: newEmailLower });
     return res.status(200).json({
       success: true,
       resumeToken: newResumeToken,
     });
    } catch (err: any) {
-    console.error('change-email.error', err?.message || err);
+    console.error('change-email-pre-verify.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
    }
 });

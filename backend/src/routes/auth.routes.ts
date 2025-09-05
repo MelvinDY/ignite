@@ -2,18 +2,23 @@
 
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
-import { RegisterSchema } from "../validation/auth.schemas";
+import {
+  ChangeEmailPreVerifySchema,
+  RegisterSchema,
+  VerifyOtpSchema
+} from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
   hashResumeToken,
   makeResumeToken,
   resumeExpiryISO,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyResumeToken,
+  invalidateResumeToken
 } from "../utils/tokens";
 import { issueSignupOtp } from "../services/otp.service";
 import { rateLimit } from "../middlewares/rateLimit";
-
-import { VerifyOtpSchema } from "../validation/auth.schemas";
-import { verifyResumeToken, invalidateResumeToken } from "../utils/tokens";
 import {
   loadPendingSignup,
   hashOtp,
@@ -25,7 +30,6 @@ import { ensureProfileForSignup } from "../services/profile.service";
 
 import * as jwt from "jsonwebtoken";
 import { validateUserCredentials } from "../services/auth.service";
-import { generateAccessToken, generateRefreshToken } from "../utils/tokens";
 
 const router = Router();
 
@@ -400,6 +404,93 @@ router.post("/auth/refresh", async (req, res) => {
     res.clearCookie("refreshToken", { path: "/" });
     return res.status(401).json({ code: "INVALID_REFRESH_TOKEN" });
   }
+});
+
+/**
+ * User Stories 1.4: Change Email (Pre-Verification)
+ */
+router.patch('/auth/pending/email', async (req, res) => {
+  // 1. Validate input
+  const parsed = ChangeEmailPreVerifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+  }
+  const { resumeToken, newEmail } = parsed.data;
+  const newEmailLower = newEmail.toLowerCase();
+
+  try {
+    // 2. Verify resumeToken and extract userId
+    let userId: string;
+    try {
+      ({ userId } = verifyResumeToken(resumeToken));
+    } catch {
+      return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
+    }
+    // 3. Ensures newEmail is not used by an active user
+    const { data: byEmailActive, error: emailErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', newEmailLower)
+      .maybeSingle();
+
+    if (emailErr) {
+      console.error('change-email-pre-verify.email_check.error', emailErr);
+    }
+    if (byEmailActive) {
+      return res.status(409).json({ code: 'EMAIL_EXISTS' });
+    }
+    // 4. Load pending signup & status of user is PENDING_VERIFICATION
+    const { data: userSignup, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, status, full_name')
+      .eq('id', userId)
+      .maybeSingle();
+
+    // User not found
+    if (signupErr || !userSignup) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+    // Rejects active user
+    if (userSignup.status === 'ACTIVE') {
+      return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    }
+    // Rejects expired user
+    if (userSignup.status === 'EXPIRED') {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+    // 5. Update user email
+    await supabase
+      .from('user_signups')
+      .update({
+        signup_email: newEmailLower,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    // 6. Invalidate all prior OTP + resumeToken
+    await invalidateResumeToken(userId);
+    await clearOtpState(userId);
+    // 7. Rotate a new resumeToken for new email
+    const newResumeToken = makeResumeToken(userId);
+    await supabase
+      .from('user_signups')
+      .update({
+        resume_token_hash: hashResumeToken(newResumeToken),
+        resume_token_expires_at: resumeExpiryISO(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    // 8. Generate & send new OTP
+    await issueSignupOtp(userId, newEmailLower, userSignup.full_name);
+    
+    console.info('change-email-pre-verify.success', { userId, newEmail: newEmailLower });
+    return res.status(200).json({
+      success: true,
+      resumeToken: newResumeToken,
+    });
+   } catch (err: any) {
+    console.error('change-email-pre-verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+   }
 });
 
 export default router;

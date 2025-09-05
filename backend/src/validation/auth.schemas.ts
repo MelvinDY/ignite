@@ -27,6 +27,12 @@ export const ChangeEmailPreVerifySchema = z.object({
   newEmail: z.string().email()
 });
 
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;
+export type LoginInput = z.infer<typeof loginSchema>;
 export type ChangeEmailPreVerifyInput = z.infer<typeof ChangeEmailPreVerifySchema>;

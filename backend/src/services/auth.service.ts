@@ -1,3 +1,5 @@
+// src/services/auth.service.ts
+
 import * as bcrypt from "bcryptjs";
 import { supabase } from "../lib/supabase";
 

@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import YAML from 'yaml';
 import swaggerUi from 'swagger-ui-express';
+import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes';
 
@@ -12,6 +13,7 @@ export const createApp = () => {
   const app = express();
   app.use(cors());
   app.use(express.json());
+  app.use(cookieParser());
 
   app.get('/api/health', (_req, res) => res.json({ status: 'OK' }));
 

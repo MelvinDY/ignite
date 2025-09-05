@@ -57,16 +57,19 @@ beforeEach(async () => {
     supabase: {
       from: (table: string) => {
         if (table === 'profiles') {
-          return {
-            select: () => ({
-              eq: () => ({
-                maybeSingle: () => ({ 
-                  data: scenario.existingProfile, 
-                  error: null 
-                })
-              })
-            })
+          const state: { filters: Record<string, any> } = { filters: {} };
+          const api = {
+            select: (_cols?: string) => api,
+            eq: (col: string, val: any) => {
+              state.filters[col] = val; // we ignore them for simplicity
+              return api;               // <-- chainable
+            },
+            maybeSingle: () => ({
+              data: scenario.existingProfile, // return whatever you set in the scenario
+              error: null,
+            }),
           };
+          return api;
         }
         if (table === 'user_signups') {
           return {
@@ -107,7 +110,18 @@ beforeEach(async () => {
       if (!t?.startsWith('res_MOCK_')) throw new Error('RESUME_TOKEN_INVALID');
       return { userId: t.replace(/^res_MOCK_/, '') };
     },
+
+    verifyResumeTokenStrict: async (t: string) => {
+      if (!t?.startsWith('res_MOCK_')) throw new Error('RESUME_TOKEN_INVALID');
+      return { userId: t.replace(/^res_MOCK_/, '') };
+    },
+
     makeResumeToken: (userId: string) => `res_MOCK_NEW_${userId}`,
+    rotateResumeToken: async (userId: string) => {
+      scenario.newResumeTokenCreated = true;
+      return `res_MOCK_NEW_${userId}`;
+    },
+
     hashResumeToken: (t: string) => `hashed_${t}`,
     resumeExpiryISO: () => new Date(Date.now() + 30 * 60 * 1000).toISOString(),
     invalidateResumeToken: async (_userId: string) => {
@@ -115,12 +129,20 @@ beforeEach(async () => {
     },
   }));
 
+
   // ---- mock otp.service.ts ----
   vi.doMock('../src/services/otp.service', () => ({
     issueSignupOtp: async (_userId: string, _email: string, _fullName: string) => {
       scenario.otpIssued = true;
     },
+
+    // older branch
     clearOtpState: async (_userId: string) => {
+      scenario.otpCleared = true;
+    },
+
+    // newer branch
+    deleteSignupOtp: async (_userId: string) => {
       scenario.otpCleared = true;
     },
   }));

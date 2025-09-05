@@ -9,7 +9,7 @@ import {
   makeResumeToken,
   resumeExpiryISO,
 } from "../utils/tokens";
-import { issueSignupOtp } from "../services/otp.service";
+import { bumpAttemptsOrLock, deleteSignupOtp, getSignupOtp, issueSignupOtp } from "../services/otp.service";
 import { rateLimit } from "../middlewares/rateLimit";
 
 import { VerifyOtpSchema } from "../validation/auth.schemas";
@@ -17,8 +17,6 @@ import { verifyResumeToken, invalidateResumeToken } from "../utils/tokens";
 import {
   loadPendingSignup,
   hashOtp,
-  incrementOtpAttempts,
-  clearOtpState,
   activateUser,
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
@@ -26,7 +24,7 @@ import { ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
 import { validateUserCredentials } from "../services/auth.service";
 import { generateAccessToken, generateRefreshToken } from "../utils/tokens";
-
+import { verifyResumeTokenStrict, rotateResumeToken } from '../utils/tokens';
 const router = Router();
 
 // 10 requests / hour per (IP+email)
@@ -65,24 +63,17 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
 
   try {
     // 2) reject if email already belongs to an ACTIVE user in profiles
-    const { data: byEmailActive, error: emailErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('email', emailLower)
+    const { data: byEmailActive } = await supabase
+      .from('profiles').select('id')
+      .eq('status', 'ACTIVE')
+      .eq('email', emailLower)  // emails stored in lowercase
       .maybeSingle();
-
-    if (emailErr) {
-      // log but don't explode the request
-      console.error('register.email_check.error', emailErr);
-    }
-    if (byEmailActive) {
-      return res.status(409).json({ code: 'EMAIL_EXISTS' });
-    }
+    if (byEmailActive) return res.status(409).json({ code: 'EMAIL_EXISTS' });
 
     // 3) zID already ACTIVE? (profiles = ACTIVE only)
     const { data: activeByZid } = await supabase
-      .from('profiles')
-      .select('id')
+      .from('profiles').select('id')
+      .eq('status', 'ACTIVE')
       .eq('zid', zid)
       .maybeSingle();
     if (activeByZid) return res.status(409).json({ code: 'ZID_EXISTS' });
@@ -90,50 +81,32 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
     // 4) pending exists (email or zid) in user_signups
     const { data: pendingByEmail } = await supabase
       .from('user_signups')
-      .select('id')
+      .select('id, zid')
       .eq('signup_email', emailLower)
       .eq('status', 'PENDING_VERIFICATION')
       .maybeSingle();
+
     if (pendingByEmail) {
-      const resumeToken = makeResumeToken(pendingByEmail.id);
-
-      await supabase
-        .from('user_signups')
-        .update({
-          resume_token_hash: hashResumeToken(resumeToken),
-          resume_token_expires_at: resumeExpiryISO(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', pendingByEmail.id);
-
-      return res.status(409).json({
-        code: 'PENDING_VERIFICATION_EXISTS',
-        resumeToken: makeResumeToken(pendingByEmail.id),
-      });
+      // If email is already bound to a different zID, block with ZID_MISMATCH
+      if (pendingByEmail.zid !== zid) {
+        return res.status(409).json({ code: 'ZID_MISMATCH' });
+      }
+      // Same person resuming signup
+      const resumeToken = await rotateResumeToken(pendingByEmail.id);
+      return res.status(409).json({ code: 'PENDING_VERIFICATION_EXISTS', resumeToken });
     }
 
+    // No pending-by-email → try pending-by-zid (normal resume path)
     const { data: pendingByZid } = await supabase
       .from('user_signups')
       .select('id')
       .eq('zid', zid)
       .eq('status', 'PENDING_VERIFICATION')
       .maybeSingle();
+
     if (pendingByZid) {
-      const resumeToken = makeResumeToken(pendingByZid.id);
-
-      await supabase
-        .from('user_signups')
-        .update({
-          resume_token_hash: hashResumeToken(resumeToken),
-          resume_token_expires_at: resumeExpiryISO(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', pendingByZid.id);
-
-      return res.status(409).json({
-        code: 'PENDING_VERIFICATION_EXISTS',
-        resumeToken: makeResumeToken(pendingByZid.id),
-      });
+      const resumeToken = await rotateResumeToken(pendingByZid.id);
+      return res.status(409).json({ code: 'PENDING_VERIFICATION_EXISTS', resumeToken });
     }
 
     // 5) revival: EXPIRED by zID (zID is the true identifier)
@@ -148,7 +121,7 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
       const { data: revived, error: reviveErr } = await supabase
         .from('user_signups')
         .update({
-          signup_email: emailLower,   // update email if different
+          signup_email: emailLower,
           full_name: fullName,
           level,
           year_intake: yearIntake,
@@ -166,36 +139,18 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
       if (reviveErr) throw reviveErr;
 
       await issueSignupOtp(revived.id, emailLower, fullName);
-
-      const resumeToken = makeResumeToken(revived.id);
-      await supabase
-        .from('user_signups')
-        .update({
-          resume_token_hash: hashResumeToken(resumeToken),
-          resume_token_expires_at: resumeExpiryISO(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', revived.id);
-      
-      // logging
+      const resumeToken = await rotateResumeToken(revived.id);
       console.info('registration.created', { userId: revived.id });
-
-
-      return res.status(201).json({
-        success: true,
-        userId: revived.id,
-        resumeToken: makeResumeToken(revived.id),
-      });
+      return res.status(201).json({ success: true, userId: revived.id, resumeToken });
     }
 
-    // guard against same email tied to another expired zID
+    // 5b) Guard: EXPIRED row with same email but different zID
     const { data: expiredByEmail } = await supabase
       .from('user_signups')
       .select('id, zid')
       .eq('signup_email', emailLower)
       .eq('status', 'EXPIRED')
       .maybeSingle();
-
     if (expiredByEmail && expiredByEmail.zid !== zid) {
       return res.status(409).json({ code: 'ZID_MISMATCH' });
     }
@@ -239,7 +194,7 @@ router.post('/auth/register', registerLimiter, async (req, res) => {
     return res.status(201).json({
       success: true,
       userId: created.id,
-      resumeToken: makeResumeToken(created.id),
+      resumeToken: resumeToken,
     });
   } catch (err: any) {
     console.error('register.error', err?.message || err);
@@ -262,51 +217,117 @@ router.post('/auth/verify-otp', verifyLimiter, async (req, res) => {
     // 1) Verify resumeToken signature/claims (JWT) and extract userId
     let userId: string;
     try {
-      ({ userId } = verifyResumeToken(resumeToken));
+      ({ userId } = await verifyResumeTokenStrict(resumeToken));
     } catch {
       return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
     }
 
-    // 2) Load pending signup row
-    const { data: row, error } = await loadPendingSignup(userId);
-    if (error || !row) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    // 2) Load pending signup (status gate)
+const { data: row, error } = await loadPendingSignup(userId);
+if (error || !row) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+if (row.status === 'ACTIVE') return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+if (row.status !== 'PENDING_VERIFICATION') return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
 
-    if (row.status === 'ACTIVE') return res.status(409).json({ code: 'ALREADY_VERIFIED' });
-    if (row.status !== 'PENDING_VERIFICATION') return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+// 3) Load OTP from user_otps
+const { data: otpRow } = await getSignupOtp(userId);
+if (!otpRow) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+if (otpRow.locked_at) return res.status(423).json({ code: 'OTP_LOCKED' });
 
-    // 3) Attempts lock
-    if ((row.otp_attempts ?? 0) >= 5) return res.status(423).json({ code: 'OTP_LOCKED' });
+// 4) Expiry
+if (!otpRow.expires_at || new Date(otpRow.expires_at) < new Date()) {
+  await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
+  return res.status(400).json({ code: 'OTP_EXPIRED' });
+}
 
-    // 4) Expiry
-    if (!row.otp_expires_at || new Date(row.otp_expires_at) < new Date()) {
-      await incrementOtpAttempts(userId);
-      return res.status(400).json({ code: 'OTP_EXPIRED' });
-    }
+// 5) Compare hashes
+const ok = otpRow.otp_hash && hashOtp(otp) === otpRow.otp_hash;
+if (!ok) {
+  const after = await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
+  if (after >= 5) return res.status(423).json({ code: 'OTP_LOCKED' });
+  return res.status(400).json({ code: 'OTP_INVALID' });
+}
 
-    // 5) Compare hashes
-    const ok = row.otp_hash && hashOtp(otp) === row.otp_hash;
-    if (!ok) {
-      await incrementOtpAttempts(userId);
-      const after = (row.otp_attempts ?? 0) + 1;
-      if (after >= 5) return res.status(423).json({ code: 'OTP_LOCKED' });
-      return res.status(400).json({ code: 'OTP_INVALID' });
-    }
+// 6) Success → activate, delete OTP, invalidate resume token
+const profileId = await ensureProfileForSignup(userId);
+await activateUser(userId);
+await deleteSignupOtp(userId);
+await invalidateResumeToken(userId);
 
-    // 6) Success → activate, clear OTP, invalidate resume token
-    const profileId = await ensureProfileForSignup(userId);
-    await activateUser(userId);
-    await clearOtpState(userId);
-    await invalidateResumeToken(userId);
-
-    console.info("registration.verified", { userId });
-    return res
-      .status(200)
-      .json({ success: true, message: "Account verified successfully" });
+console.info('registration.verified', { userId });
+return res.status(200).json({ success: true, message: 'Account verified successfully' });
   } catch (err: any) {
     console.error("verify-otp.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
+
+const resendLimiter = rateLimit({
+  windowMs: 60 * 1000, // soft outer throttle
+  max: 3,
+  keyGenerator: (req) => `${req.ip}:${req.body?.resumeToken || ''}`,
+});
+
+router.post('/auth/resend-otp', resendLimiter, async (req, res) => {
+  const { resumeToken } = req.body || {};
+  if (!resumeToken) return res.status(400).json({ code: 'VALIDATION_ERROR' });
+
+  try {
+    let userId: string;
+    try {
+      ({ userId } = await verifyResumeTokenStrict(resumeToken));
+    } catch {
+      return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
+    }
+
+    // must be pending
+    const { data: row } = await loadPendingSignup(userId);
+    if (!row) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    if (row.status === 'ACTIVE') return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    if (row.status !== 'PENDING_VERIFICATION') return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+
+    // get current OTP row for cooldown + cap
+    const { data: otpRow } = await getSignupOtp(userId);
+    const now = new Date();
+    const COOLDOWN_MS = 60 * 1000;
+    const DAILY_CAP = 5;
+
+    if (otpRow?.last_sent_at) {
+      const last = new Date(otpRow.last_sent_at).getTime();
+      if (now.getTime() - last < COOLDOWN_MS) {
+        return res.status(429).json({ code: 'OTP_COOLDOWN' });
+      }
+      if ((otpRow.resend_count ?? 0) >= DAILY_CAP) {
+        return res.status(429).json({ code: 'OTP_RESEND_LIMIT' });
+      }
+    }
+
+    // fetch email+name for sending
+    type SignupRow = { signup_email: string; full_name: string };
+
+    const { data: signup, error: sErr } = await supabase
+      .from('user_signups')
+      .select('signup_email, full_name')
+      .eq('id', userId)
+      .maybeSingle<SignupRow>(); // <- maybeSingle so TS knows null is possible
+
+    if (sErr) {
+      console.error('resend-otp.lookup.error', sErr);
+      return res.status(500).json({ code: 'INTERNAL' });
+    }
+    if (!signup) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // issue fresh code (overwrites row; resets attempts)
+    await issueSignupOtp(userId, signup.signup_email, signup.full_name);
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('resend-otp.error', err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

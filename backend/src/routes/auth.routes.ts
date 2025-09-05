@@ -2,18 +2,23 @@
 
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
-import { RegisterSchema } from "../validation/auth.schemas";
+import {
+  ChangeEmailPreVerifySchema,
+  RegisterSchema,
+  VerifyOtpSchema
+} from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
   hashResumeToken,
   makeResumeToken,
   resumeExpiryISO,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyResumeToken,
+  invalidateResumeToken
 } from "../utils/tokens";
 import { issueSignupOtp } from "../services/otp.service";
 import { rateLimit } from "../middlewares/rateLimit";
-
-import { VerifyOtpSchema } from "../validation/auth.schemas";
-import { verifyResumeToken, invalidateResumeToken } from "../utils/tokens";
 import {
   loadPendingSignup,
   hashOtp,
@@ -25,7 +30,6 @@ import { ensureProfileForSignup } from "../services/profile.service";
 
 import * as jwt from "jsonwebtoken";
 import { validateUserCredentials } from "../services/auth.service";
-import { generateAccessToken, generateRefreshToken } from "../utils/tokens";
 
 const router = Router();
 

@@ -47,6 +47,12 @@ const verifyLimiter = rateLimit({
   keyGenerator: (req) => `${req.ip}:${req.body?.resumeToken || ''}`,
 });
 
+// 5 attempts / 10 min per
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 failed attempts per window
+  keyGenerator: (req) => `${req.ip}:${(req.body?.email || "").toLowerCase()}`,
+});
 
 /**
  * User Stories 1.1: User Registration
@@ -308,14 +314,8 @@ router.post('/auth/verify-otp', verifyLimiter, async (req, res) => {
   }
 });
 
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 failed attempts per window
-  keyGenerator: (req) => `${req.ip}:${(req.body?.email || "").toLowerCase()}`,
-});
-
 /**
- * User Story: User Login
+ * User Story 1.8: User Login
  */
 router.post("/auth/login", loginLimiter, async (req, res) => {
   try {
@@ -358,6 +358,9 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
   }
 });
 
+/**
+ * User Story 1.8: User Login
+ */
 router.post("/auth/refresh", async (req, res) => {
   // 1. Get the refresh token from the HttpOnly cookie
   const refreshToken = req.cookies.refreshToken;

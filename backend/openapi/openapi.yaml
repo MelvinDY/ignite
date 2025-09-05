@@ -2,10 +2,6 @@ openapi: 3.0.3
 info:
   title: Ignite Backend (Prototype)
   version: 0.2.0
-  description: |
-    This endpoint creates (or revives) a **PENDING_VERIFICATION** signup and
-    **sends a 6-digit OTP email** to the user. It also returns a short-lived
-    **resumeToken (30 minutes)** that the client should carry to the OTP screen.
 
 servers:
   - url: http://localhost:5000/api
@@ -475,17 +471,83 @@ components:
 
     ValidationError:
       type: object
-      required:
-        - code
-        - details
+      required: [code, details]
       properties:
         code:
           type: string
-          enum:
-            - VALIDATION_ERROR
+          enum: [VALIDATION_ERROR]
         details:
           type: object
-          description: Zod-flattened errors (shape may vary)
+          description: Zod-flattened errors
           properties:
             fieldErrors:
               type: object
+              additionalProperties:
+                type: array
+                items: { type: string }
+            formErrors:
+              type: array
+              items: { type: string }
+
+    LoginSuccess:
+      type: object
+      required: [success, userId, accessToken, expiresIn]
+      properties:
+        success:
+          type: boolean
+          example: true
+        userId:
+          type: string
+          example: usr_abc123
+        accessToken:
+          type: string
+          description: Short-lived JWT for API calls (~15 min)
+          example: jwt_eyJhbGciOi...
+        expiresIn:
+          type: integer
+          format: int32
+          description: Access token TTL in seconds
+          example: 900
+
+    RefreshSuccess:
+      type: object
+      required: [success, accessToken, expiresIn]
+      properties:
+        success:
+          type: boolean
+          example: true
+        accessToken:
+          type: string
+          description: New short-lived JWT for API calls
+          example: jwt_eyJhbGciOi...
+        expiresIn:
+          type: integer
+          format: int32
+          example: 900
+
+  requestBodies:
+    LoginBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                minLength: 8
+
+  responses:
+    InternalError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorSimple'
+          examples:
+            internal:
+              value: { code: INTERNAL }

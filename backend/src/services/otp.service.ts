@@ -31,6 +31,12 @@ export async function issueSignupOtp(signupId: string, toEmail: string, fullName
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString(); // 10 min
 
+  
+  // Dev convenience: log OTP to console when not in production
+  if ((process.env.NODE_ENV || 'development') !== 'production') {
+    console.info('otp.dev', { signupId, toEmail, otp });
+  }
+
   // single active OTP per (owner_table, owner_id, purpose)
   const { error } = await supabase
     .from('user_otps')

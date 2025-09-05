@@ -281,6 +281,7 @@ paths:
                 too_many:  { value: { code: TOO_MANY_REQUESTS } }
         "500":
           $ref: "#/components/responses/InternalError"
+
   /auth/pending/email:
     patch:
       summary: Change Email (Pre-Verification)
@@ -304,7 +305,6 @@ paths:
         - Invalidates the old resume token
         - Issues fresh resume token with 30min TTL
         - Sends new 6-digit OTP email with 10min TTL
-
       requestBody:
         required: true
         content:
@@ -461,6 +461,15 @@ paths:
           $ref: "#/components/responses/InternalError"
 
 components:
+  responses:
+    InternalError:
+      description: Internal error
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorSimple" }
+          examples:
+            internal: { value: { code: INTERNAL } }
+
   requestBodies:
     LoginBody:
       required: true
@@ -473,18 +482,11 @@ components:
               email:
                 type: string
                 format: email
+                example: jane@gmail.com
               password:
                 type: string
                 minLength: 1
-
-  responses:
-    InternalError:
-      description: Internal error
-      content:
-        application/json:
-          schema: { $ref: "#/components/schemas/ErrorSimple" }
-          examples:
-            internal: { value: { code: INTERNAL } }
+                example: Abcd1234
 
   schemas:
     RegisterRequest:
@@ -501,25 +503,25 @@ components:
         - password
         - confirmPassword
       properties:
-        fullName:       { type: string, minLength: 1 }
+        fullName: { type: string, minLength: 1 }
         zid:
           type: string
           pattern: "^z[0-9]{7}$"
           description: UNSW zID (lowercase z + 7 digits)
-        level:          { type: string, example: undergrad }
-        yearIntake:     { type: integer, minimum: 2000, maximum: 2100 }
-        isIndonesian:   { type: boolean }
-        program:        { type: string }
-        major:          { type: string }
-        email:          { type: string, format: email }
-        password:       { type: string, minLength: 8 }
+        level: { type: string, example: undergrad }
+        yearIntake: { type: integer, minimum: 2000, maximum: 2100 }
+        isIndonesian: { type: boolean }
+        program: { type: string }
+        major: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
         confirmPassword: { type: string, minLength: 8 }
 
     RegisterCreated:
       type: object
       required: [success, userId, resumeToken]
       properties:
-        success:     { type: boolean, example: true }
+        success: { type: boolean, example: true }
         userId:
           type: string
           description: The signup row ID (`user_signups.id`)
@@ -580,18 +582,18 @@ components:
       type: object
       required: [success, userId, accessToken, expiresIn]
       properties:
-        success:     { type: boolean, example: true }
-        userId:      { type: string, example: "usr_abc123" }
+        success: { type: boolean, example: true }
+        userId: { type: string, example: "usr_abc123" }
         accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
-        expiresIn:   { type: integer, example: 900 }
+        expiresIn: { type: integer, example: 900 }
 
     RefreshSuccess:
       type: object
       required: [success, accessToken, expiresIn]
       properties:
-        success:     { type: boolean, example: true }
+        success: { type: boolean, example: true }
         accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
-        expiresIn:   { type: integer, example: 900 }
+        expiresIn: { type: integer, example: 900 }
 
     ErrorSimple:
       type: object

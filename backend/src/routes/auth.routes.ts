@@ -1,11 +1,13 @@
 // src/routes/auth.routes.ts
 
 import { Router } from "express";
+import { compare as bcryptCompare } from 'bcryptjs';
 import { supabase } from "../lib/supabase";
 import {
   ChangeEmailPreVerifySchema,
   RegisterSchema,
-  VerifyOtpSchema
+  VerifyOtpSchema,
+  loginSchema,
 } from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
@@ -30,8 +32,6 @@ import {
   issueSignupOtp,
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
-import * as jwt from "jsonwebtoken";
-import { validateUserCredentials } from "../services/auth.service";
 
 const router = Router();
 
@@ -344,90 +344,95 @@ const loginLimiter = rateLimit({
 });
 
 /**
- * User Story: User Login
+ * User Story 1.8: User Login 
  */
-router.post("/auth/login", loginLimiter, async (req, res) => {
+router.post('/auth/login', loginLimiter, async (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+  }
+
+  const { email, password } = parsed.data;
+  const emailLower = email.toLowerCase();
+
   try {
-    const { email, password } = req.body;
+    console.info('login.attempt', { email: emailLower, ip: req.ip });
+    const { data: row } = await supabase
+      .from('user_signups')
+      .select('id, status, password_hash')
+      .eq('signup_email', emailLower)
+      .maybeSingle();
 
-    // 1. Call the service to handle business logic
-    const userId = await validateUserCredentials(email, password);
+    if (!row) {
+      console.warn('login.no_user', { email: emailLower });
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+    }
 
-    // 2. Call the utils to generate tokens
-    const accessToken = generateAccessToken(userId);
-    const refreshToken = generateRefreshToken(userId);
+    if (row.status === 'PENDING_VERIFICATION' || row.status === 'EXPIRED') {
+      console.warn('login.not_active', { userId: row.id, status: row.status });
+      return res.status(403).json({ code: 'ACCOUNT_NOT_VERIFIED' });
+    }
 
-    // 3. Handle the HTTP response (set cookie, send JSON)
-    res.cookie("refreshToken", refreshToken, {
+    const hashed = ((row as any)?.password_hash as string | undefined) || ((row as any)?.user?.encrypted_password as string | undefined);
+    const hashSource = (row as any)?.password_hash
+      ? 'user_signups.password_hash'
+      : ((row as any)?.user?.encrypted_password ? 'auth.users.encrypted_password' : 'none');
+    console.info('login.hash_source', { userId: row.id, source: hashSource, hasHash: Boolean(hashed) });
+    const ok = hashed ? await bcryptCompare(password, hashed) : false;
+    if (!ok) {
+      console.warn('login.bad_password', { userId: row.id });
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
+    }
+
+    const accessToken = generateAccessToken(row.id);
+    const refreshToken = generateRefreshToken(row.id);
+
+    // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
+    res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    return res.json({
+    console.info('login.success', { userId: row.id });
+    return res.status(200).json({
       success: true,
-      userId,
+      userId: row.id,
       accessToken,
-      expiresIn: 900,
+      expiresIn: 60 * 15,
     });
   } catch (err: any) {
-    // Check the specific error message thrown from the service
-    if (err.message === "INVALID_CREDENTIALS") {
-      return res.status(401).json({ code: "INVALID_CREDENTIALS" });
-    }
-    if (err.message === "ACCOUNT_NOT_VERIFIED") {
-      return res.status(403).json({ code: "ACCOUNT_NOT_VERIFIED" });
-    }
-
-    // Handle all other unexpected errors
-    console.error("login.error", err);
-    return res.status(500).json({ code: "INTERNAL" });
+    console.error('login.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
   }
 });
 
-router.post("/auth/refresh", async (req, res) => {
-  // 1. Get the refresh token from the HttpOnly cookie
-  const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) {
-    return res.status(401).json({ code: "NO_REFRESH_TOKEN" });
-  }
-
+/**
+ * Token refresh: issues new access token using HttpOnly refresh cookie
+ */
+router.post('/auth/refresh', async (req, res) => {
   try {
-    // 2. Verify the token is valid and not expired
-    const payload = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET!,
-    ) as { sub: string };
-    const userId = payload.sub;
+    const refreshToken = req.cookies?.refreshToken as string | undefined;
+    if (!refreshToken) return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
 
-    // 3. Check if the user still exists and is active in our database
-    const { data: profile, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("id", userId)
-      .eq("status", "ACTIVE")
-      .single();
-
-    if (error || !profile) {
-      // If user is gone or not active, the token is invalid.
-      res.clearCookie("refreshToken", { path: "/" });
-      return res.status(401).json({ code: "INVALID_REFRESH_TOKEN" });
+    const jwt = await import('jsonwebtoken');
+    let payload: any;
+    try {
+      payload = jwt.verify(refreshToken, process.env.JWT_SECRET!);
+    } catch {
+      return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
     }
 
-    // 4. Issue a new, short-lived access token
-    const accessToken = generateAccessToken(userId);
+    const userId = payload?.sub as string | undefined;
+    if (!userId) return res.status(401).json({ code: 'INVALID_CREDENTIALS' });
 
-    // 5. Send the new access token to the client
-    return res.json({
-      success: true,
-      accessToken,
-      expiresIn: 900,
-    });
-  } catch (err) {
-    res.clearCookie("refreshToken", { path: "/" });
-    return res.status(401).json({ code: "INVALID_REFRESH_TOKEN" });
+    const accessToken = generateAccessToken(userId);
+    return res.status(200).json({ success: true, accessToken, expiresIn: 60 * 15 });
+  } catch (err: any) {
+    console.error('refresh.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
   }
 });
 

@@ -25,71 +25,46 @@ export function hashOtp(otp: string): string {
  * - store in user_signups
  * - send via email
  */
-export async function issueSignupOtp(userId: string, toEmail: string, fullName: string) {
+export async function issueSignupOtp(signupId: string, toEmail: string, fullName: string) {
   const otp = generateOtp();
   const hashed = hashOtp(otp);
   const now = new Date();
+  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString(); // 10 min
 
+  
   // Dev convenience: log OTP to console when not in production
   if ((process.env.NODE_ENV || 'development') !== 'production') {
-    console.info('otp.dev', { userId, toEmail, otp });
+    console.info('otp.dev', { signupId, toEmail, otp });
   }
 
+  // single active OTP per (owner_table, owner_id, purpose)
   const { error } = await supabase
-    .from('user_signups')
-    .update({
+    .from('user_otps')
+    .upsert({
+      owner_table: 'user_signups',
+      owner_id: signupId,
+      purpose: 'SIGNUP',
       otp_hash: hashed,
-      otp_expires_at: new Date(now.getTime() + 10 * 60 * 1000).toISOString(), // 10 min TTL
-      otp_attempts: 0,
-      otp_resend_count: 0,
-      last_otp_sent_at: now.toISOString(),
-    })
-    .eq('id', userId);
+      expires_at: expiresAt,
+      attempts: 0,
+      resend_count: 0,
+      last_sent_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    }, { onConflict: 'owner_table,owner_id,purpose' });
 
   if (error) throw error;
 
-  // Build the email HTML
   const html = renderSignupOtpEmail(fullName, otp);
-
-  // Send the email
   await sendEmail(toEmail, 'Your Ignite verification code', html);
 }
+
 
 export async function loadPendingSignup(userId: string) {
   return supabase
     .from('user_signups')
-    .select('id, status, otp_hash, otp_expires_at, otp_attempts')
+    .select('id, status')
     .eq('id', userId)
     .maybeSingle();
-}
-
-export async function incrementOtpAttempts(userId: string) {
-  const { data } = await supabase
-    .from('user_signups')
-    .select('otp_attempts')
-    .eq('id', userId)
-    .single();
-  await supabase
-    .from('user_signups')
-    .update({
-      otp_attempts: (data?.otp_attempts ?? 0) + 1,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
-}
-
-export async function clearOtpState(userId: string) {
-  await supabase
-    .from('user_signups')
-    .update({
-      otp_hash: null,
-      otp_expires_at: null,
-      otp_attempts: 0,
-      otp_resend_count: 0,
-      last_otp_sent_at: null,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId);
 }
 
 export async function activateUser(signupId: string) {
@@ -100,16 +75,43 @@ export async function activateUser(signupId: string) {
     .update({ status: 'ACTIVE', email_verified_at: now, updated_at: now })
     .eq('id', signupId);
 
-  // fetch its profile_id
-  const { data, error } = await supabase
+  // flip linked profile status if present
+  const { data } = await supabase
     .from('user_signups')
     .select('profile_id')
     .eq('id', signupId)
     .single();
 
-  if (!error && data?.profile_id) {
+  if (data?.profile_id) {
     await supabase.from('profiles')
       .update({ status: 'ACTIVE', updated_at: now })
       .eq('id', data.profile_id);
   }
+}
+
+export async function getSignupOtp(signupId: string) {
+  return supabase
+    .from('user_otps')
+    .select('id, otp_hash, expires_at, attempts, last_sent_at, resend_count, locked_at')
+    .eq('owner_table', 'user_signups')
+    .eq('owner_id', signupId)
+    .eq('purpose', 'SIGNUP')
+    .maybeSingle();
+}
+
+export async function bumpAttemptsOrLock(otpRowId: string, currentAttempts: number) {
+  const attempts = (currentAttempts ?? 0) + 1;
+  const updates: any = { attempts, updated_at: new Date().toISOString() };
+  if (attempts >= 5) updates.locked_at = new Date().toISOString();
+  await supabase.from('user_otps').update(updates).eq('id', otpRowId);
+  return attempts;
+}
+
+export async function deleteSignupOtp(signupId: string) {
+  await supabase
+    .from('user_otps')
+    .delete()
+    .eq('owner_table', 'user_signups')
+    .eq('owner_id', signupId)
+    .eq('purpose', 'SIGNUP');
 }

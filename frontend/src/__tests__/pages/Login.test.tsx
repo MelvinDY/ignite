@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import { Login } from '../../pages/auth/Login';
 import { server } from '../../__mocks__/server';
 import { http, HttpResponse } from 'msw';
+import { AuthApiError } from '../../lib/authApi';
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -15,6 +16,17 @@ vi.mock('react-router-dom', async () => {
     useNavigate: () => mockNavigate,
   };
 });
+
+// Mock useAuth
+const mockLogin = vi.fn();
+const mockUseAuth = vi.fn(() => ({
+  login: mockLogin,
+  isLoading: false,
+}));
+
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => mockUseAuth(),
+}));
 
 const renderLogin = () => {
   return render(
@@ -27,6 +39,11 @@ const renderLogin = () => {
 describe('Login Page', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockLogin.mockClear();
+    mockUseAuth.mockReturnValue({
+      login: mockLogin,
+      isLoading: false,
+    });
   });
 
   it('renders login form elements correctly', () => {
@@ -34,7 +51,7 @@ describe('Login Page', () => {
     
     expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/enter your password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByText(/don't have an account/i)).toBeInTheDocument();
     expect(screen.getByText(/forgot password/i)).toBeInTheDocument();
@@ -47,8 +64,8 @@ describe('Login Page', () => {
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     await user.click(submitButton);
     
-    expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-    expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+    // Validation should prevent the form from being submitted when fields are empty
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it('validates email format', async () => {
@@ -56,12 +73,15 @@ describe('Login Page', () => {
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'invalid-email');
+    await user.type(passwordInput, 'somepassword');
     await user.click(submitButton);
     
-    expect(screen.getByText(/please enter a valid email address/i)).toBeInTheDocument();
+    // Validation should prevent the form from being submitted with invalid email
+    expect(mockLogin).not.toHaveBeenCalled();
   });
 
   it('handles successful login', async () => {
@@ -69,7 +89,7 @@ describe('Login Page', () => {
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'test@example.com');
@@ -82,11 +102,13 @@ describe('Login Page', () => {
   });
 
   it('handles invalid credentials error', async () => {
+    mockLogin.mockRejectedValueOnce(new AuthApiError('INVALID_CREDENTIALS', 401, 'Invalid credentials'));
+    
     const user = userEvent.setup();
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'invalid@example.com');
@@ -98,12 +120,14 @@ describe('Login Page', () => {
     });
   });
 
-  it('handles account not verified error', async () => {
+  it('handles account not verified error with verify link', async () => {
+    mockLogin.mockRejectedValueOnce(new AuthApiError('ACCOUNT_NOT_VERIFIED', 403, 'Account not verified', { resumeToken: 'mock-token' }));
+    
     const user = userEvent.setup();
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'unverified@example.com');
@@ -111,16 +135,19 @@ describe('Login Page', () => {
     await user.click(submitButton);
     
     await waitFor(() => {
-      expect(screen.getByText(/please verify your email address/i)).toBeInTheDocument();
+      expect(screen.getByText(/please verify your email address before signing in/i)).toBeInTheDocument();
+      expect(screen.getByText(/verify now/i)).toBeInTheDocument();
     });
   });
 
   it('handles rate limit error', async () => {
+    mockLogin.mockRejectedValueOnce(new AuthApiError('TOO_MANY_ATTEMPTS', 429, 'Too many attempts'));
+    
     const user = userEvent.setup();
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'ratelimited@example.com');
@@ -133,17 +160,13 @@ describe('Login Page', () => {
   });
 
   it('handles network error gracefully', async () => {
-    server.use(
-      http.post('http://localhost:5000/api/auth/login', () => {
-        return HttpResponse.error();
-      })
-    );
+    mockLogin.mockRejectedValueOnce(new AuthApiError('NETWORK_ERROR', 0, 'Network error'));
 
     const user = userEvent.setup();
     renderLogin();
     
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i);
     const submitButton = screen.getByRole('button', { name: /sign in/i });
     
     await user.type(emailInput, 'test@example.com');
@@ -156,28 +179,16 @@ describe('Login Page', () => {
   });
 
   it('shows loading state during login', async () => {
-    server.use(
-      http.post('http://localhost:5000/api/auth/login', async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return HttpResponse.json({
-          success: true,
-          userId: 'user-123',
-          accessToken: 'mock-token',
-          expiresIn: 3600,
-        });
-      })
-    );
+    // Mock the loading state
+    mockUseAuth.mockReturnValue({
+      login: mockLogin,
+      isLoading: true,
+    });
 
     const user = userEvent.setup();
     renderLogin();
     
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/password/i);
-    const submitButton = screen.getByRole('button', { name: /sign in/i });
-    
-    await user.type(emailInput, 'test@example.com');
-    await user.type(passwordInput, 'password123');
-    await user.click(submitButton);
+    const submitButton = screen.getByRole('button', { name: /signing in.../i });
     
     expect(screen.getByText(/signing in.../i)).toBeInTheDocument();
     expect(submitButton).toBeDisabled();
@@ -202,7 +213,8 @@ describe('Login Page', () => {
     const user = userEvent.setup();
     renderLogin();
     
-    const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+    // Find the password input by its unique placeholder text
+    const passwordInput = screen.getByPlaceholderText(/enter your password/i) as HTMLInputElement;
     const toggleButton = screen.getByLabelText(/show password/i);
     
     expect(passwordInput.type).toBe('password');

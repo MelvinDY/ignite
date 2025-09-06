@@ -21,9 +21,10 @@ export function hashResumeToken(token: string) {
 }
 
 export function resumeExpiryISO() {
-  return new Date(Date.now() + 30 * 60 * 1000).toISOString(); // +30m
+  return new Date(Date.now() + 30 * 60 * 1000).toISOString();
 }
 
+// (keep this if other places rely on sync verification)
 export function verifyResumeToken(resumeToken: string): { userId: string } {
   if (!resumeToken || !resumeToken.startsWith(RES_PREFIX)) throw new Error('RESUME_TOKEN_INVALID');
   const raw = resumeToken.slice(RES_PREFIX.length);
@@ -32,9 +33,56 @@ export function verifyResumeToken(resumeToken: string): { userId: string } {
     audience: AUDIENCE,
     clockTolerance: 5,
   }) as JwtPayload & { purpose: 'SIGNUP'; sub: string };
-
   if (decoded.purpose !== 'SIGNUP' || !decoded.sub) throw new Error('RESUME_TOKEN_INVALID');
   return { userId: decoded.sub };
+}
+
+/**
+ * NEW: strict verifier — checks JWT AND matches the DB-stored hash + DB TTL.
+ * Use this in your /auth/verify-otp, /auth/resend-otp, etc.
+ */
+export async function verifyResumeTokenStrict(resumeToken: string): Promise<{ userId: string }> {
+  // 1) Basic prefix + JWT checks
+  const { userId } = verifyResumeToken(resumeToken);
+
+  // 2) DB check against current hash+expiry (prevents reuse after rotation/invalidations)
+  const { data: row, error } = await supabase
+    .from('user_signups')
+    .select('id, resume_token_hash, resume_token_expires_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !row || !row.resume_token_hash || !row.resume_token_expires_at) {
+    throw new Error('RESUME_TOKEN_INVALID');
+  }
+  if (new Date(row.resume_token_expires_at).getTime() < Date.now()) {
+    throw new Error('RESUME_TOKEN_INVALID');
+  }
+
+  // IMPORTANT: constant-time compare
+  const presented = Buffer.from(hashResumeToken(resumeToken));
+  const stored = Buffer.from(row.resume_token_hash);
+  if (presented.length !== stored.length || !crypto.timingSafeEqual(presented, stored)) {
+    throw new Error('RESUME_TOKEN_INVALID');
+  }
+
+  return { userId };
+}
+
+/**
+ * NEW: rotate helper (centralise DB writes)
+ */
+export async function rotateResumeToken(signupId: string): Promise<string> {
+  const resumeToken = makeResumeToken(signupId);
+  await supabase
+    .from('user_signups')
+    .update({
+      resume_token_hash: hashResumeToken(resumeToken),
+      resume_token_expires_at: resumeExpiryISO(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', signupId);
+  return resumeToken;
 }
 
 export async function invalidateResumeToken(userId: string): Promise<void> {

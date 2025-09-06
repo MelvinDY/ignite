@@ -17,6 +17,7 @@ beforeEach(async () => {
   scenario = {
     adminUserByEmail: null,
     adminListUsers: [],
+    activeProfileByEmail: null,        // <-- needed for EMAIL_EXISTS test
     activeProfileByZid: null,
     pendingByEmail: null,
     pendingByZid: null,
@@ -26,19 +27,52 @@ beforeEach(async () => {
     revivedSignupId: 'signup-revived-1',
   };
 
-  // 1) mock supabase BEFORE importing app
-  vi.doMock('../src/lib/supabase', () => ({ supabase: makeSupabaseMock(scenario) }));
+  // 1) Mock Supabase BEFORE importing app
+  vi.doMock('../src/lib/supabase', () => ({
+    supabase: makeSupabaseMock(scenario),
+  }));
 
-  // 2) mock tokens BEFORE importing app (deterministic resumeToken & no real supabase)
+  // 2) Mock tokens BEFORE importing app (must export everything router imports)
   vi.doMock('../src/utils/tokens', () => {
     const crypto = require('crypto');
     return {
+      // used by /auth/register
       makeResumeToken: (userId: string) => `res_MOCK_${userId}`,
-      hashResumeToken: (t: string) => crypto.createHash('sha256').update(t).digest('hex'),
-      resumeExpiryISO: () => new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      verifyResumeToken: (t: string) => ({ userId: t.replace(/^res_MOCK_/, '') }),
-      // if your register route doesn’t call invalidate, harmless to include/no-op:
+      hashResumeToken: (t: string) =>
+        crypto.createHash('sha256').update(t).digest('hex'),
+      resumeExpiryISO: () =>
+        new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+      rotateResumeToken: async (userId: string) => `res_MOCK_${userId}`,
       invalidateResumeToken: async (_: string) => {},
+
+      // used by verify/resend; keep simple
+      verifyResumeToken: (t: string) => ({ userId: t.replace(/^res_MOCK_/, '') }),
+      verifyResumeTokenStrict: async (t: string) => ({
+        userId: t.replace(/^res_MOCK_/, ''),
+      }),
+
+      // router also imports these for /auth/login & /auth/refresh
+      generateAccessToken: (userId: string) => `acc_MOCK_${userId}`,
+      generateRefreshToken: (userId: string) => `ref_MOCK_${userId}`,
+    };
+  });
+
+  // 3) Mock OTP service (router imports multiple symbols)
+  // Keep no-ops except issueSignupOtp which we track for assertions if needed.
+  vi.doMock('../src/services/otp.service', () => {
+    const _sentOtps: Array<{ userId: string; email: string; name?: string }> = [];
+    return {
+      _sentOtps,
+      issueSignupOtp: async (userId: string, email: string, name?: string) => {
+        _sentOtps.push({ userId, email, name });
+      },
+      // The rest are imported by the router but unused in these tests
+      bumpAttemptsOrLock: async () => 0,
+      deleteSignupOtp: async () => {},
+      getSignupOtp: async () => ({ data: null }),
+      loadPendingSignup: async () => ({ data: null, error: null }),
+      hashOtp: (s: string) => s,
+      activateUser: async () => {},
     };
   });
 
@@ -70,47 +104,48 @@ describe('POST /auth/register (Story 1.1)', () => {
   });
 
   it('409 EMAIL_EXISTS when email already used by ACTIVE profile', async () => {
-    scenario.activeProfileByEmail = { id: 'p-email-1' };  // <-- CHANGED
-    app = await buildApp();
+    scenario.activeProfileByEmail = { id: 'p-email-1' }; // set before (re)building app
+    app = await (async () => await buildApp())();
     const res = await request(app).post(route).send(baseBody).expect(409);
     expect(res.body).toEqual({ code: 'EMAIL_EXISTS' });
   });
 
-
   it('409 ZID_EXISTS when profiles has ACTIVE user with same zID', async () => {
     scenario.activeProfileByZid = { id: 'p1' };
-    app = await buildApp();
+    app = await (async () => await buildApp())();
     const res = await request(app).post(route).send(baseBody).expect(409);
     expect(res.body).toEqual({ code: 'ZID_EXISTS' });
   });
 
   it('409 PENDING_VERIFICATION_EXISTS (email) returns fresh resumeToken', async () => {
-    scenario.pendingByEmail = { id: 'pending-123' };
-    app = await buildApp();
+    scenario.pendingByEmail = { id: 'pending-123', zid: 'z1234567' }; // ensure zid matches body.zid
+    app = await (async () => await buildApp())();
     const res = await request(app).post(route).send(baseBody).expect(409);
     expect(res.body).toEqual({
       code: 'PENDING_VERIFICATION_EXISTS',
-      resumeToken: 'res_MOCK_pending-123'
+      resumeToken: 'res_MOCK_pending-123',
     });
   });
 
   it.skip('201 revive EXPIRED by zID, OTP sent, returns resumeToken', async () => {
     scenario.expiredByZid = { id: 'exp-9', signup_email: 'old@mail.com' };
-    app = await buildApp();
+    app = await (async () => await buildApp())();
     const res = await request(app).post(route).send(baseBody).expect(201);
     expect(res.body).toMatchObject({
       success: true,
       userId: 'signup-revived-1',
-      resumeToken: 'res_MOCK_signup-revived-1'
+      resumeToken: 'res_MOCK_signup-revived-1',
     });
-
     const { _sentOtps } = await import('../src/services/otp.service' as any);
-    expect(_sentOtps[0]).toEqual({ userId: 'signup-revived-1', email: baseBody.email.toLowerCase() });
+    expect(_sentOtps[0]).toEqual({
+      userId: 'signup-revived-1',
+      email: baseBody.email.toLowerCase(),
+    });
   });
 
   it.skip('409 ZID_MISMATCH when EXPIRED exists for same email but different zID', async () => {
     scenario.expiredByEmail = { id: 'exp-5', zid: 'z9999999' }; // different from body.zid
-    app = await buildApp();
+    app = await (async () => await buildApp())();
     const res = await request(app).post(route).send(baseBody).expect(409);
     expect(res.body).toEqual({ code: 'ZID_MISMATCH' });
   });
@@ -123,7 +158,6 @@ describe('POST /auth/register (Story 1.1)', () => {
   });
 
   it('429 TOO_MANY_REQUESTS after 10 req/hour per IP+email', async () => {
-    // Hit the same email 10 times (same limiter key), then the 11th should be 429.
     for (let i = 0; i < 10; i++) {
       await request(app).post(route).send(baseBody);
     }
@@ -133,9 +167,4 @@ describe('POST /auth/register (Story 1.1)', () => {
     expect(res.headers['x-ratelimit-remaining']).toBeDefined();
     expect(res.headers['x-ratelimit-reset']).toBeDefined();
   });
-
-  // Soft-delete / auto-expire (Story 1.6) — placeholder for later
-  // it('auto-expires PENDING > 7 days (job) — to be implemented', async () => {
-  //   // When your cron/job exists, simulate now > 7 days and assert rows flip to EXPIRED.
-  // });
 });

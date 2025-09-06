@@ -5,6 +5,7 @@ import { compare as bcryptCompare } from 'bcryptjs';
 import { supabase } from "../lib/supabase";
 import {
   ChangeEmailPreVerifySchema,
+  ChangeEmailRequestSchema,
   RegisterSchema,
   VerifyOtpSchema,
   loginSchema,
@@ -32,9 +33,11 @@ import {
   deleteSignupOtp,
   getSignupOtp,
   issueSignupOtp,
+  generateOtp,
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from 'jsonwebtoken';
+import { createPendingEmailChange, sendEmailChangeOtp } from "./tmp";
 
 const router = Router();
 
@@ -600,6 +603,86 @@ router.patch('/auth/pending/email', async (req, res) => {
     console.error('change-email-pre-verify.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
    }
+});
+
+/**
+ * User Story 1.10: Change Email (Start)
+ */
+router.patch('/user/email/change-request', async (req, res) => {
+  const parsed = ChangeEmailRequestSchema.safeParse(req.body);
+  
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+  
+  const { newEmail, currentPassword } = parsed.data;
+  const newEmailLowered = newEmail.toLowerCase();
+
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED", details: "Invalid or expired token" });
+  }
+  
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+    const tokenIat = decoded.iat;
+
+    const { data: userRow } = await supabase
+      .from("user_signups")
+      .select("password_hash, full_name")
+      .eq("id", userId)
+      .single();
+
+    if (!userRow) {
+      return res.status(404).json({ code: "USER_NOT_FOUND", details: "User not found" });
+    }
+
+    const checkPassword = await bcryptCompare(currentPassword, userRow.password_hash);
+
+    if (!checkPassword) {
+      return res.status(400).json({ code: "VALIDATION_ERROR", details: "Incorrect password" });
+    }
+
+    const { data: existingUser } = await supabase
+      .from("user_signups")
+      .select("id")
+      .eq("email", newEmailLowered)
+      .eq("status", "ACTIVE")
+      .maybeSingle();
+
+    if (existingUser) {
+      return res.status(409).json({ code: "EMAIL_EXISTS", details: "Given email is already used" });
+    }
+
+    const otp = generateOtp();
+    await createPendingEmailChange(userId, newEmailLowered, otp);
+
+    if (!userRow.full_name) {
+      return res.status(404).json({ code: "USER_NOT_FOUND", details: "User has no full name" });
+    }
+
+    await sendEmailChangeOtp(newEmailLowered, userRow.full_name, otp);
+
+    const emailParts = newEmailLowered.split('@');
+    const localPart = emailParts[0];
+    const domain = emailParts[1];
+    const maskedLocal = localPart[0] + '*'.repeat(Math.max(0, localPart.length - 2)) + localPart.slice(-1);
+    const maskedDomain = domain[0] + '*'.repeat(Math.max(0, domain.length - 4)) + domain.slice(-3);
+    const emailMasked = `${maskedLocal}@${maskedDomain}`;
+
+    console.info('email-change.requested', { userId, newEmail: newEmailLowered });
+    
+    return res.status(200).json({
+      success: true,
+      emailMasked,
+      expiresInSeconds: 600
+    });
+  } catch (err: any) {
+    console.error('email-change-request.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
 });
 
 export default router;

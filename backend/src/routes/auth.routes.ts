@@ -707,7 +707,7 @@ router.post("/user/email/change-request", async (req, res) => {
     }
 
     const { data: existingUser } = await supabase
-      .from("user_signups")
+      .from("profiles")
       .select("id")
       .eq("email", newEmailLowered)
       .eq("status", "ACTIVE")
@@ -759,7 +759,7 @@ router.post("/user/email/change-request", async (req, res) => {
 /**
  * User Story 1.11: Verify email change (Complete)
  */
-router.post("user/email/verify-change", async (req, res) => {
+router.post("/user/email/verify-change", async (req, res) => {
   const parsed = VerifyEmailChangeSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -798,11 +798,10 @@ router.post("user/email/verify-change", async (req, res) => {
 
     if (!(hashOtp(otp) === pendingChange.otp_hash)) {
       const newAttempts = pendingChange.otp_attempts + 1;
-      const shouldLock = pendingChange.otp_attempts >= 5;
 
-      await updateEmailChangeAttempts(userId, newAttempts, shouldLock);
+      await updateEmailChangeAttempts(userId, newAttempts, newAttempts >= 5);
 
-      if (shouldLock) {
+      if (newAttempts >= 5) {
         return res.status(423).json({ code: "OTP_LOCKED" });
       }
 
@@ -907,5 +906,28 @@ router.post(
     }
   }
 );
+
+router.delete("/user/email/cancel-change", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+  const userId = decoded.sub;
+
+  try {
+    // Delete the pending instance from the database
+    await supabase
+      .from("pending_email_changes")
+      .delete()
+      .eq("user_id", userId);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    console.error("resend-email-change-otp.error", err?.message || err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+}); 
 
 export default router;

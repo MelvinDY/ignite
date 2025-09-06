@@ -7,6 +7,7 @@ import {
   ChangeEmailPreVerifySchema,
   ChangeEmailRequestSchema,
   RegisterSchema,
+  VerifyEmailChangeSchema,
   VerifyOtpSchema,
   loginSchema,
 } from "../validation/auth.schemas";
@@ -37,7 +38,7 @@ import {
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from 'jsonwebtoken';
-import { createPendingEmailChange, sendEmailChangeOtp } from "./tmp";
+import { completePendingEmailChange, createPendingEmailChange, getPendingEmailChange, sendEmailChangeOtp, updateEmailChangeAttempts } from "./tmp";
 
 const router = Router();
 
@@ -627,7 +628,6 @@ router.patch('/user/email/change-request', async (req, res) => {
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
     const userId = decoded.sub;
-    const tokenIat = decoded.iat;
 
     const { data: userRow } = await supabase
       .from("user_signups")
@@ -673,7 +673,7 @@ router.patch('/user/email/change-request', async (req, res) => {
     const emailMasked = `${maskedLocal}@${maskedDomain}`;
 
     console.info('email-change.requested', { userId, newEmail: newEmailLowered });
-    
+
     return res.status(200).json({
       success: true,
       emailMasked,
@@ -681,6 +681,81 @@ router.patch('/user/email/change-request', async (req, res) => {
     });
   } catch (err: any) {
     console.error('email-change-request.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+/**
+ * User Story 1.11: Verify email change (Complete)
+ */
+router.post("user/email/verify-change", async (req, res) => {
+  const parsed = VerifyEmailChangeSchema.safeParse(req.body);
+
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const { otp } = parsed.data;
+
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED", details: "Invalid or expired token" });
+  }
+
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+
+    const pendingChange = await getPendingEmailChange(userId);
+    
+    if (!pendingChange) {
+      return res.status(404).json({ code: "NO_PENDING_EMAIL_CHANGE"});
+    }
+
+    if (pendingChange.locked_at) {
+      return res.status(423).json({ code: "OTP_LOCKED" });
+    }
+
+    if (new Date(pendingChange.otp_expires_at) < new Date()) {
+      return res.status(400).json({ code: "OTP_EXPIRED" });
+    }
+    
+    if (!(hashOtp(otp) === pendingChange.otp_hash)) {
+      const newAttempts = pendingChange.otp_attempts + 1;
+      const shouldLock = pendingChange.otp_attempts >= 5;
+
+      await updateEmailChangeAttempts(userId, newAttempts, shouldLock);
+
+      if (shouldLock) {
+        return res.status(423).json({ code: 'OTP_LOCKED' });
+      }
+
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    const newEmail = await completePendingEmailChange(userId);
+    await invalidateRefreshToken(userId);
+
+    const newAccessToken = await generateAccessToken(userId);
+    const newRefreshToken = await generateRefreshToken(userId);
+
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    console.info("email-change.completed", { userId, newEmail });
+    return res.status(200).json({
+      success: true,
+      message: "Email updated successfully",
+      newAccessToken
+    });
+  } catch (err: any) {
+    console.error('verify-email-change.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
   }
 });

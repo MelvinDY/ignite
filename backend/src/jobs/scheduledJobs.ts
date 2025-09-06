@@ -8,7 +8,7 @@ import { expireStaleSignups } from '../services/expiredSignups.service';
 export function startScheduledJobs() {
   console.info('scheduled-jobs.initializing');
 
-  // Run daily at 2:00 AM - Story 1.6: Auto-expire stale signups
+  // Run daily at 2:00 AM 
   cron.schedule('0 2 * * *', async () => {
     console.info('scheduled-job.expire-stale-signups.triggered');
     try {

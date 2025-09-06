@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
@@ -125,6 +125,7 @@ describe('Register Page', () => {
     expect(screen.getByText(/major.*required/i)).toBeInTheDocument();
   });
 
+  // TODO: SearchableSelect program field not accepting input in test environment
   it('progresses to step 3 with valid step 2 data', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -136,9 +137,18 @@ describe('Register Page', () => {
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     // Fill step 2
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     // Should be on step 3
@@ -150,6 +160,7 @@ describe('Register Page', () => {
     expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument();
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('validates step 3 fields', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -160,9 +171,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     // Try to submit without filling step 3
@@ -172,6 +192,7 @@ describe('Register Page', () => {
     expect(screen.getByText(/password is required/i)).toBeInTheDocument();
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('validates password confirmation match', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -182,9 +203,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     // Fill step 3 with mismatched passwords
@@ -196,6 +226,7 @@ describe('Register Page', () => {
     expect(screen.getByText(/passwords do not match/i)).toBeInTheDocument();
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('handles successful registration', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -206,9 +237,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'new@example.com');
@@ -217,13 +257,11 @@ describe('Register Page', () => {
     await user.click(screen.getByRole('button', { name: /create account/i }));
     
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
-        expect.stringContaining('Registration successful!')
-      );
-      expect(mockNavigate).toHaveBeenCalledWith('/auth/login');
+      expect(mockNavigate).toHaveBeenCalledWith('/auth/verify?resumeToken=mock-resume-token');
     });
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('handles email already exists error', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -234,9 +272,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'existing@example.com');
@@ -249,6 +296,7 @@ describe('Register Page', () => {
     });
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('handles zID already exists error', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -259,9 +307,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -274,6 +331,7 @@ describe('Register Page', () => {
     });
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('handles pending verification exists error', async () => {
     const user = userEvent.setup();
     renderRegister();
@@ -284,9 +342,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'pending@example.com');
@@ -299,9 +366,10 @@ describe('Register Page', () => {
     });
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('handles network error gracefully', async () => {
     server.use(
-      http.post('http://localhost:5000/api/auth/register', () => {
+      http.post('http://localhost:3000/auth/register', () => {
         return HttpResponse.error();
       })
     );
@@ -315,9 +383,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');
@@ -330,9 +407,10 @@ describe('Register Page', () => {
     });
   });
 
+  // TODO: Depends on SearchableSelect working in tests
   it('shows loading state during registration', async () => {
     server.use(
-      http.post('http://localhost:5000/api/auth/register', async () => {
+      http.post('http://localhost:3000/auth/register', async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return HttpResponse.json({
           success: true,
@@ -351,9 +429,18 @@ describe('Register Page', () => {
     await user.click(screen.getByLabelText(/yes/i));
     await user.click(screen.getByRole('button', { name: /next/i }));
     
-    await user.selectOptions(screen.getByLabelText(/year intake/i), '2024');
-    await user.selectOptions(screen.getByLabelText(/program/i), 'BE');
-    await user.selectOptions(screen.getByLabelText(/major/i), 'SE');
+    await user.type(screen.getByLabelText(/year intake/i), '2024');
+    
+    // Select level from dropdown
+    const levelSelect = screen.getByLabelText(/level/i);
+    await user.selectOptions(levelSelect, 'undergrad');
+    
+    // For SearchableSelect components, we'll just type to trigger minimal validation
+    const programInput = screen.getByLabelText(/program/i);
+    await user.type(programInput, 'Computer Engineering');
+    
+    const majorInput = screen.getByLabelText(/major/i);
+    await user.type(majorInput, 'Software Engineering');
     await user.click(screen.getByRole('button', { name: /next/i }));
     
     await user.type(screen.getByLabelText(/email/i), 'test@example.com');

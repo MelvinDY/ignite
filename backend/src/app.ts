@@ -10,7 +10,16 @@ import authRoutes from './routes/auth.routes';
 
 export const createApp = () => {
   const app = express();
-  app.use(cors());
+  
+  // Configure CORS to allow frontend origin with credentials
+  app.use(cors({
+    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie']
+  }));
+  
   app.use(express.json());
 
   app.get('/api/health', (_req, res) => res.json({ status: 'OK' }));

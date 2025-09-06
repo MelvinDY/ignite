@@ -9,7 +9,8 @@ import { Select } from '../../components/ui/Select';
 import { SearchableSelect } from '../../components/ui/SearchableSelect';
 import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
-import { apiClient, ApiError } from '../../lib/api';
+import { AuthApiError } from '../../lib/authApi';
+import { useAuth } from '../../hooks/useAuth';
 import {
   validateFullName,
   validateZid,
@@ -58,9 +59,9 @@ const MAJOR_OPTIONS = programDataService.searchMajors('').map(major => ({
 
 export function Register() {
   const navigate = useNavigate();
+  const { register, isLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string>('');
+  const [apiError, setApiError] = useState<React.ReactNode>('');
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Step data
@@ -191,7 +192,6 @@ export function Register() {
   const handleSubmit = async () => {
     if (!validateStep3()) return;
 
-    setIsLoading(true);
     setApiError('');
 
     try {
@@ -208,24 +208,49 @@ export function Register() {
         confirmPassword: step3Data.confirmPassword,
       };
 
-      const response = await apiClient.register(registerData);
+      const response = await register(registerData);
       
-      // Show success message - for now just a placeholder modal
-      alert(`Registration successful! Verification page coming soon.\nUser ID: ${response.userId}`);
-      
-      // Navigate to login or dashboard
-      navigate('/auth/login');
+      // Navigate to verify page with resume token
+      navigate(`/auth/verify?resumeToken=${response.resumeToken}`);
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof AuthApiError) {
         switch (error.code) {
           case 'EMAIL_EXISTS':
-            setApiError('An account with this email already exists. Do you want to sign in instead?');
+            setApiError(
+              <>
+                An account with this email already exists.{' '}
+                <Link to="/auth/login" className="underline hover:text-white/80">
+                  Sign in instead
+                </Link>
+              </>
+            );
             break;
           case 'ZID_EXISTS':
-            setApiError('This zID is already registered. Please sign in instead.');
+            setApiError(
+              <>
+                This zID is already registered.{' '}
+                <Link to="/auth/login" className="underline hover:text-white/80">
+                  Sign in instead
+                </Link>
+              </>
+            );
             break;
           case 'PENDING_VERIFICATION_EXISTS':
-            setApiError('A verification email has already been sent. Please check your inbox.');
+            if (error.details?.resumeToken) {
+              setApiError(
+                <>
+                  A verification email has already been sent.{' '}
+                  <Link 
+                    to={`/auth/verify?resumeToken=${error.details.resumeToken}`} 
+                    className="underline hover:text-white/80"
+                  >
+                    Continue verification
+                  </Link>
+                </>
+              );
+            } else {
+              setApiError('A verification email has already been sent. Please check your inbox.');
+            }
             break;
           case 'VALIDATION_ERROR':
             setApiError('Please check your information and try again.');
@@ -242,8 +267,6 @@ export function Register() {
       } else {
         setApiError('An unexpected error occurred. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 

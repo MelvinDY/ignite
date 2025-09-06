@@ -33,7 +33,7 @@ import {
   getSignupOtp,
   issueSignupOtp,
 } from "../services/otp.service";
-import { ensureProfileForSignup } from "../services/profile.service";
+import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -234,38 +234,40 @@ router.post('/auth/verify-otp', verifyLimiter, async (req, res) => {
     }
 
     // 2) Load pending signup (status gate)
-const { data: row, error } = await loadPendingSignup(userId);
-if (error || !row) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
-if (row.status === 'ACTIVE') return res.status(409).json({ code: 'ALREADY_VERIFIED' });
-if (row.status !== 'PENDING_VERIFICATION') return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    const { data: row, error } = await loadPendingSignup(userId);
+    if (error || !row) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    if (row.status === 'ACTIVE') return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    if (row.status !== 'PENDING_VERIFICATION') return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
 
-// 3) Load OTP from user_otps
-const { data: otpRow } = await getSignupOtp(userId);
-if (!otpRow) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
-if (otpRow.locked_at) return res.status(423).json({ code: 'OTP_LOCKED' });
+    // 3) Load OTP from user_otps
+    const { data: otpRow } = await getSignupOtp(userId);
+    if (!otpRow) return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    if (otpRow.locked_at) return res.status(423).json({ code: 'OTP_LOCKED' });
 
-// 4) Expiry
-if (!otpRow.expires_at || new Date(otpRow.expires_at) < new Date()) {
-  await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
-  return res.status(400).json({ code: 'OTP_EXPIRED' });
-}
+    // 4) Expiry
+    if (!otpRow.expires_at || new Date(otpRow.expires_at) < new Date()) {
+      await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
+      return res.status(400).json({ code: 'OTP_EXPIRED' });
+    }
 
-// 5) Compare hashes
-const ok = otpRow.otp_hash && hashOtp(otp) === otpRow.otp_hash;
-if (!ok) {
-  const after = await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
-  if (after >= 5) return res.status(423).json({ code: 'OTP_LOCKED' });
-  return res.status(400).json({ code: 'OTP_INVALID' });
-}
+    // 5) Compare hashes
+    const ok = otpRow.otp_hash && hashOtp(otp) === otpRow.otp_hash;
+    if (!ok) {
+      const after = await bumpAttemptsOrLock(otpRow.id, otpRow.attempts ?? 0);
+      if (after >= 5) return res.status(423).json({ code: 'OTP_LOCKED' });
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
 
-// 6) Success → activate, delete OTP, invalidate resume token
-const profileId = await ensureProfileForSignup(userId);
-await activateUser(userId);
-await deleteSignupOtp(userId);
-await invalidateResumeToken(userId);
+    // 6) Success → activate, delete OTP, invalidate resume token
+    const profileId = await ensureProfileForSignup(userId);
 
-console.info('registration.verified', { userId });
-return res.status(200).json({ success: true, message: 'Account verified successfully' });
+    await applyProgramAndMajorFromSignupToProfile(userId, profileId);
+    await activateUser(userId);
+    await deleteSignupOtp(userId);
+    await invalidateResumeToken(userId);
+
+    console.info('registration.verified', { userId });
+    return res.status(200).json({ success: true, message: 'Account verified successfully' });
   } catch (err: any) {
     console.error("verify-otp.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });

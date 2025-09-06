@@ -130,7 +130,12 @@ beforeEach(async () => {
       scenario.ensuredProfile = true;
       return 'profile-1';
     },
+    applyProgramAndMajorFromSignupToProfile: async (_signupId: string, _profileId?: string) => {
+      // just mark that it ran; real lookups are tested elsewhere
+      (scenario as any).appliedProgramMajor = true;
+    },
   }));
+
 
   app = await buildApp();
 });

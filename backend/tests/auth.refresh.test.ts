@@ -18,14 +18,18 @@ describe('POST /api/auth/refresh', () => {
     vi.doMock('jsonwebtoken', () => ({
       verify: (token: string, secret: string) => {
         if (!token || token === 'bad') throw new Error('invalid');
-        return { sub: 'user-123' };
+        return { sub: 'user-123', tokenVersion: 1 };
       },
       sign: vi.fn(),
     }));
-    // Mock tokens to produce deterministic access token
+    // Mock tokens to produce deterministic access token and verify token version
     vi.doMock('../src/utils/tokens', async (importOriginal) => {
       const original = await importOriginal<typeof import('../src/utils/tokens')>();
-      return { ...original, generateAccessToken: () => 'new_access_token' };
+      return { 
+        ...original, 
+        generateAccessToken: () => 'new_access_token',
+        verifyTokenVersion: () => true // Mock token version verification to always return true
+      };
     });
     app = await buildApp();
   });

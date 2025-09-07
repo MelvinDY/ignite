@@ -35,6 +35,7 @@ import {
 } from "../services/otp.service";
 import { ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from 'jsonwebtoken';
+import { maskEmail } from "../utils/email";
 
 const router = Router();
 
@@ -600,6 +601,78 @@ router.patch('/auth/pending/email', async (req, res) => {
     console.error('change-email-pre-verify.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
    }
+});
+
+/**
+ * User Story 1.5: Get pending registration context
+ */
+router.get('/auth/pending/context', async (req, res) => {
+  const resumeToken = req.query.resumeToken as string;
+
+  try {
+    // 1. Validate resumeToken, get user id
+    let userId: string;
+    try {
+      ({ userId } = await verifyResumeTokenStrict(resumeToken));
+    } catch {
+      return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
+    }
+
+    // 2. Get sign up data from id
+    const { data: userSignup, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, signup_email, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const { data: userOtp } = await supabase
+      .from('user_otps')
+      .select('last_sent_at, resend_count')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (!userSignup || signupErr) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    if (!userOtp) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 3. Ensures status = PENDING_VERIFICATION
+    if (userSignup.status === 'ACTIVE') {
+      return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    }
+
+    if (userSignup.status === 'EXPIRED') {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 4. Calculate resend states (assume OTP row always exists for pending users)
+    const now = new Date();
+    const lastSentAt = new Date(userOtp.last_sent_at);
+    const resendCount = userOtp.resend_count;
+    
+    // Calculates time since last sent OTP in seconds
+    const timeSinceLastSent = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
+    const cooldownSeconds = Math.max(0, 60 - timeSinceLastSent);
+    // Calculates the remaining OTP attempts for today (5 OTP attempts a day)
+    const remainingToday = Math.max(5 - resendCount, 0);
+    // 5. Mask email for privacy
+    const emailMasked = maskEmail(userSignup.signup_email);
+    // 6. Return the context
+    return res.status(200).json({
+      emailMasked,
+      status: userSignup.status,
+      resend: {
+        cooldownSeconds,
+        remainingToday
+      }
+    });
+  } catch (err: any) {
+    console.error('pending-context.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }     
 });
 
 export default router;

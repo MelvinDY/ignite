@@ -25,6 +25,7 @@ function App() {
       <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/forgot-password" element={<ForgotPassword />} />
       <Route path="/auth/verify" element={<Verify />} />
+      <Route path="/profile/edit" element={<ProfileEdit />} />
 
       {/* App routes - with navbar/footer */}
       <Route
@@ -36,7 +37,6 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile/edit" element={<ProfileEdit />} />
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}

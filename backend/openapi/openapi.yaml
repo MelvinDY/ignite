@@ -372,6 +372,66 @@ paths:
                   value:
                     code: ALREADY_VERIFIED
 
+  /auth/pending/context?resumeToken=RES_xxx:
+    get:
+      summary: Get pending registration context
+      description: |
+        description
+      parameters:
+        - name: resumeToken
+          in: query
+          required: true
+          description: Resume token issued during registration
+          schema:
+            type: string
+            example: 'res_xxxxx...'
+      responses:
+        '200':
+          description: Pending context retrieved success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingContextOK'
+              examples:
+                success:
+                  value:
+                    emailMasked: "j***@u***.edu"
+                    status: "PENDING_VERIFICATION"
+                    resend:
+                      cooldownSeconds: 37
+                      remainingToday: 3
+        '401':
+          description: Invalid token or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                bad_token:
+                  value:
+                    code: RESUME_TOKEN_INVALID
+        '404':
+          description: User expired/cleaned up or missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                expired_user:
+                  value:
+                    code: PENDING_NOT_FOUND
+        '409':
+          description: User already active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                active_user:
+                  value:
+                    code: ALREADY_VERIFIED
+
+
   /auth/login:
     post:
       summary: Log in a user
@@ -711,3 +771,32 @@ components:
         resumeToken:
           description: The new resume token bound to the new email
           example: "res_def456..."
+
+    PendingContextOK:
+      type: object
+      required:
+        - emailMasked
+        - status
+        - resend
+      properties:
+        emailMasked:
+          type: string
+          description: Masked email address for privacy
+          example: "j***@u***.edu"
+        status:
+          type: string
+          description: Current signup status
+          example: "PENDING_VERIFICATION"
+        resend:
+          type: object
+          required:
+            - cooldownSeconds
+            - remainingToday
+          properties:
+            cooldownSeconds:
+              type: integer
+              description: Seconds remaining before next OTP can be requested
+            remainingToday:
+              type: integer
+              description: Number of OTP resends remaining today (daily limit is 5)
+  

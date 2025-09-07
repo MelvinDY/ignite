@@ -376,7 +376,16 @@ paths:
     get:
       summary: Get pending registration context
       description: |
-        description
+        Return lightweight context for a pending signup using a secure resumeToken (issued by Story 1.1). 
+        The Verify screen calls this to decide what to show (email mask, resend state), or to fail fast 
+        if the signup is already verified/expired.
+
+        **Validation & Logic**
+        - Validate resumeToken (signature/TTL); locate user.
+        - Only return context when status = PENDING_VERIFICATION.
+        - Compute resend state from last_otp_sent_at, otp_resend_count (cooldown = 60s; daily cap = 5).
+        - Do not leak PII: return masked email only (never raw email).
+        - No OTP or sensitive fields should be returned.
       parameters:
         - name: resumeToken
           in: query
@@ -430,7 +439,6 @@ paths:
                 active_user:
                   value:
                     code: ALREADY_VERIFIED
-
 
   /auth/login:
     post:

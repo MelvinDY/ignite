@@ -5,7 +5,8 @@ import { TextInput } from '../../components/ui/TextInput';
 import { PasswordInput } from '../../components/ui/PasswordInput';
 import { Button } from '../../components/ui/Button';
 import { Alert } from '../../components/ui/Alert';
-import { apiClient, ApiError } from '../../lib/api';
+import { AuthApiError } from '../../lib/authApi';
+import { useAuth } from '../../hooks/useAuth';
 import { validateEmail, validatePassword } from '../../lib/validation';
 
 interface FormErrors {
@@ -14,13 +15,13 @@ interface FormErrors {
 
 export function Login() {
   const navigate = useNavigate();
+  const { login, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [apiError, setApiError] = useState<string>('');
+  const [apiError, setApiError] = useState<React.ReactNode>('');
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -54,27 +55,39 @@ export function Login() {
     
     if (!validateForm()) return;
 
-    setIsLoading(true);
     setApiError('');
 
     try {
-      const response = await apiClient.login({
+      await login({
         email: formData.email,
         password: formData.password,
       });
 
-      // Store access token in memory (you might want to use a context/state management)
-      // For now, we'll just navigate to dashboard
-      console.log('Login successful:', response);
+      // Navigate to dashboard on successful login
       navigate('/dashboard');
     } catch (error) {
-      if (error instanceof ApiError) {
+      if (error instanceof AuthApiError) {
         switch (error.code) {
           case 'INVALID_CREDENTIALS':
             setApiError('Invalid email or password. Please try again.');
             break;
           case 'ACCOUNT_NOT_VERIFIED':
-            setApiError('Please verify your email address before signing in.');
+            // Check if we have a resume token in the error details to offer verify option
+            if (error.details?.resumeToken) {
+              setApiError(
+                <>
+                  Please verify your email address before signing in.{' '}
+                  <Link
+                    to={`/auth/verify?resumeToken=${error.details.resumeToken}`}
+                    className="underline hover:text-white/80"
+                  >
+                    Verify now
+                  </Link>
+                </>
+              );
+            } else {
+              setApiError('Please verify your email address before signing in.');
+            }
             break;
           case 'TOO_MANY_ATTEMPTS':
             setApiError('Too many login attempts. Please try again later.');
@@ -88,8 +101,6 @@ export function Login() {
       } else {
         setApiError('An unexpected error occurred. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 

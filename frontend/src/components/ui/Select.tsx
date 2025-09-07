@@ -11,6 +11,7 @@ interface SelectProps {
   value: string;
   onChange: (value: string) => void;
   options: SelectOption[];
+  placeholder?: string;
   error?: string;
   required?: boolean;
 }
@@ -21,6 +22,7 @@ export function Select({
   value, 
   onChange, 
   options, 
+  placeholder = "Select an option",
   error, 
   required = false 
 }: SelectProps) {
@@ -38,7 +40,7 @@ export function Select({
           error ? 'border-red-400' : 'border-white/30'
         }`}
       >
-        <option value="" className="bg-gray-800">Select an option</option>
+        <option value="" className="bg-gray-800">{placeholder}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value} className="bg-gray-800">
             {option.label}

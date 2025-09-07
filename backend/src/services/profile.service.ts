@@ -1,5 +1,6 @@
 // src/services/profile.service.ts
 import { supabase } from '../lib/supabase';
+import { ensureProgramId, ensureMajorId } from './lookups.service';
 
 type SignupRow = {
   id: string;
@@ -10,7 +11,7 @@ type SignupRow = {
   is_indonesian: boolean;
   program: string;
   major: string;
-  signup_email: string;           // <-- add this
+  signup_email: string;
   profile_id: string | null;
 };
 
@@ -65,4 +66,48 @@ export async function ensureProfileForSignup(userId: string): Promise<string> {
   if (linkErr) throw linkErr;
 
   return profileId;
+}
+
+/**
+ * After a user is verified (signup still available), resolve program/major text
+ * from user_signups into IDs and set them on profiles.
+ * - Does NOT overwrite non-null program_id/major_id on profiles.
+ */
+export async function applyProgramAndMajorFromSignupToProfile(
+  signupId: string,
+  profileId?: string
+): Promise<void> {
+  // Load staged values + (optional) profile id
+  const { data: s, error: sErr } = await supabase
+    .from('user_signups')
+    .select('program, major, profile_id')
+    .eq('id', signupId)
+    .single<{ program: string | null; major: string | null; profile_id: string | null }>();
+  if (sErr || !s) throw sErr ?? new Error('SIGNUP_NOT_FOUND');
+
+  const pid = profileId ?? s.profile_id;
+  if (!pid) throw new Error('PROFILE_ID_MISSING');
+
+  // Resolve lookup IDs (lazy Approach A)
+  const [programId, majorId] = await Promise.all([
+    ensureProgramId(s.program),
+    ensureMajorId(s.major),
+  ]);
+
+  // Load current values to avoid overwriting existing non-nulls
+  const { data: prof, error: pErr } = await supabase
+    .from('profiles')
+    .select('program_id, major_id')
+    .eq('id', pid)
+    .single<{ program_id: number | null; major_id: number | null }>();
+  if (pErr || !prof) throw pErr ?? new Error('PROFILE_NOT_FOUND');
+
+  const patch: Record<string, any> = {};
+  if (programId !== null && prof.program_id == null) patch.program_id = programId;
+  if (majorId !== null && prof.major_id == null) patch.major_id = majorId;
+
+  if (Object.keys(patch).length) {
+    const { error: uErr } = await supabase.from('profiles').update(patch).eq('id', pid);
+    if (uErr) throw uErr;
+  }
 }

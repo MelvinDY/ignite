@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { apiClient, ApiError } from '../../lib/api';
+import { authApi as apiClient, AuthApiError as ApiError } from '../../lib/authApi';
 import { server } from '../../__mocks__/server';
 import { http, HttpResponse } from 'msw';
 
@@ -46,7 +46,7 @@ describe('API Client', () => {
 
     it('handles network errors', async () => {
       server.use(
-        http.post('http://localhost:5000/api/auth/login', () => {
+        http.post('http://localhost:3001/api/auth/login', () => {
           return HttpResponse.error();
         })
       );
@@ -76,6 +76,7 @@ describe('API Client', () => {
         fullName: 'John Doe',
         zid: 'z1234567',
         yearIntake: 2024,
+        level: 'undergrad',
         isIndonesian: true,
         program: 'BE',
         major: 'SE',
@@ -97,6 +98,7 @@ describe('API Client', () => {
           fullName: 'John Doe',
           zid: 'z1234567',
           yearIntake: 2024,
+          level: 'undergrad',
           isIndonesian: true,
           program: 'BE',
           major: 'SE',
@@ -111,6 +113,7 @@ describe('API Client', () => {
           fullName: 'John Doe',
           zid: 'z1234567',
           yearIntake: 2024,
+          level: 'undergrad',
           isIndonesian: true,
           program: 'BE',
           major: 'SE',
@@ -131,6 +134,7 @@ describe('API Client', () => {
           fullName: 'John Doe',
           zid: 'z9999999',
           yearIntake: 2024,
+          level: 'undergrad',
           isIndonesian: true,
           program: 'BE',
           major: 'SE',
@@ -147,6 +151,7 @@ describe('API Client', () => {
           fullName: '',
           zid: '',
           yearIntake: 2024,
+          level: 'undergrad',
           isIndonesian: true,
           program: 'BE',
           major: 'SE',
@@ -161,6 +166,7 @@ describe('API Client', () => {
           fullName: '',
           zid: '',
           yearIntake: 2024,
+          level: 'undergrad',
           isIndonesian: true,
           program: 'BE',
           major: 'SE',

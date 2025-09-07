@@ -36,7 +36,7 @@ import {
   issueSignupOtp,
   generateOtp,
 } from "../services/otp.service";
-import { ensureProfileForSignup } from "../services/profile.service";
+import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
 import {
   completePendingEmailChange,

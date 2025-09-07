@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:3001/api';
 
 export const handlers = [
   // Login success
@@ -29,7 +29,12 @@ export const handlers = [
     // Mock unverified account
     if (email === 'unverified@example.com') {
       return HttpResponse.json(
-        { code: 'ACCOUNT_NOT_VERIFIED' },
+        { 
+          success: false,
+          code: 'ACCOUNT_NOT_VERIFIED',
+          message: 'Account not verified',
+          details: { resumeToken: 'mock-unverified-token' }
+        },
         { status: 403 }
       );
     }
@@ -107,6 +112,166 @@ export const handlers = [
       userId: 'user-new',
       resumeToken: 'mock-resume-token',
     }, { status: 201 });
+  }),
+
+  // Refresh token
+  http.post(`${API_BASE_URL}/auth/refresh`, () => {
+    return HttpResponse.json({
+      success: true,
+      accessToken: 'refreshed-access-token',
+      expiresIn: 3600,
+    });
+  }),
+
+  // Get pending context
+  http.get(`${API_BASE_URL}/auth/pending/context`, ({ request }) => {
+    const url = new URL(request.url);
+    const resumeToken = url.searchParams.get('resumeToken');
+
+    if (resumeToken === 'mock-resume-token') {
+      return HttpResponse.json({
+        success: true,
+        emailMasked: 'n***@example.com',
+        resend: {
+          cooldownSeconds: 30,
+          remainingToday: 5,
+        },
+      });
+    }
+
+    if (resumeToken === 'expired-token') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'RESUME_TOKEN_INVALID',
+          message: 'Invalid resume token'
+        },
+        { status: 401 }
+      );
+    }
+
+    if (resumeToken === 'verified-token') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'ALREADY_VERIFIED',
+          message: 'Account already verified'
+        },
+        { status: 409 }
+      );
+    }
+
+    return HttpResponse.json(
+      { 
+        success: false,
+        code: 'PENDING_NOT_FOUND',
+        message: 'Pending verification not found'
+      },
+      { status: 404 }
+    );
+  }),
+
+  // Verify OTP
+  http.post(`${API_BASE_URL}/auth/verify-otp`, async ({ request }) => {
+    const body = await request.json() as any;
+    const { resumeToken, otp } = body;
+
+    if (resumeToken === 'mock-resume-token' && otp === '123456') {
+      return HttpResponse.json({
+        success: true,
+        message: 'Account verified successfully',
+      });
+    }
+
+    if (otp === '000000') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'OTP_INVALID',
+          message: 'Invalid OTP'
+        },
+        { status: 400 }
+      );
+    }
+
+    if (otp === '999999') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'OTP_EXPIRED',
+          message: 'OTP has expired'
+        },
+        { status: 400 }
+      );
+    }
+
+    if (otp === '888888') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'OTP_LOCKED',
+          message: 'Too many attempts'
+        },
+        { status: 429 }
+      );
+    }
+
+    return HttpResponse.json(
+      { 
+        success: false,
+        code: 'OTP_INVALID',
+        message: 'Invalid OTP'
+      },
+      { status: 400 }
+    );
+  }),
+
+  // Resend OTP
+  http.post(`${API_BASE_URL}/auth/resend-otp`, async ({ request }) => {
+    const body = await request.json() as any;
+    const { resumeToken } = body;
+
+    if (resumeToken === 'mock-resume-token') {
+      return HttpResponse.json({
+        success: true,
+        message: 'Verification code sent',
+        resend: {
+          cooldownSeconds: 60,
+          remainingToday: 4,
+        },
+      });
+    }
+
+    if (resumeToken === 'cooldown-token') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'OTP_COOLDOWN',
+          message: 'Please wait before requesting another code'
+        },
+        { status: 429 }
+      );
+    }
+
+    if (resumeToken === 'limit-reached-token') {
+      return HttpResponse.json(
+        { 
+          success: false,
+          code: 'OTP_RESEND_LIMIT',
+          message: 'Daily resend limit reached'
+        },
+        { status: 429 }
+      );
+    }
+
+    return HttpResponse.json(
+      { 
+        success: false,
+        code: 'RESUME_TOKEN_INVALID',
+        message: 'Invalid resume token'
+      },
+      { status: 401 }
+    );
   }),
 ];
 

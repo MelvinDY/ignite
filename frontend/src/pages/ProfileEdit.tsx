@@ -4,13 +4,22 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { RadioGroup } from "../components/ui/RadioGroup";
 import { TextInput } from "../components/ui/TextInput";
 import { Button } from "../components/ui/Button";
+import { twMerge } from "tailwind-merge";
+
+const initialFormData = {
+  fullName: "Andrew Garfield",
+  zid: "z1234567",
+  isIndonesian: false,
+};
 
 const ProfileEdit = () => {
-  const [formData, setFormData] = useState({
-    fullName: "Andrew Garfield",
-    zid: "z1234567",
-    isIndonesian: false,
-  });
+  const [showSaveButton, setShowSaveButton] = useState(false);
+  const [formData, setFormData] = useState(initialFormData);
+
+  const changeFormData = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setShowSaveButton(true);
+  };
 
   return (
     <div className="w-full flex flex-col justify-center items-center min-h-screen">
@@ -44,9 +53,7 @@ const ProfileEdit = () => {
                     id="fullName"
                     label="Full Name"
                     value={formData.fullName}
-                    onChange={(value) =>
-                      setFormData((prev) => ({ ...prev, fullName: value }))
-                    }
+                    onChange={(value) => changeFormData("fullName", value)}
                     // error={errors.fullName}
                     placeholder="Your full name"
                     required
@@ -56,9 +63,7 @@ const ProfileEdit = () => {
                     id="zid"
                     label="zID"
                     value={formData.zid}
-                    onChange={(value) =>
-                      setFormData((prev) => ({ ...prev, zid: value }))
-                    }
+                    onChange={(value) => changeFormData("zid", value)}
                     placeholder="z1234567"
                     required
                   />
@@ -68,10 +73,7 @@ const ProfileEdit = () => {
                     label="Are you Indonesian?"
                     value={formData.isIndonesian.toString()}
                     onChange={(value) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        isIndonesian: value === "true",
-                      }))
+                      changeFormData("isIndonesian", value === "true")
                     }
                     options={[
                       { value: "true", label: "Yes" },
@@ -79,12 +81,23 @@ const ProfileEdit = () => {
                     ]}
                     required
                   />
-                  <div className="flex justify-end gap-4 mt-2">
+
+                  {/* Save and Cancel Button group, hidden when no changes */}
+                  <div
+                    className={twMerge(
+                      "flex justify-end gap-4 mt-2",
+                      !showSaveButton && "hidden"
+                    )}
+                  >
                     <Button
                       type="button"
                       variant="secondary"
                       children="Cancel"
                       className="w-24"
+                      onClick={() => {
+                        setFormData(initialFormData);
+                        setShowSaveButton(false);
+                      }}
                     />
                     <Button type="submit" children="Save" className="w-24" />
                   </div>

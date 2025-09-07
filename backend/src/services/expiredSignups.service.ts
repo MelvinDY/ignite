@@ -1,10 +1,6 @@
 // src/services/signup.service.ts
 import { supabase } from '../lib/supabase';
-
-export interface ExpireStaleSignupsResult {
-  expiredCount: number;
-  userIds: string[];
-}
+import type { ExpireStaleSignupsResult } from '../types/ExpiredStaleSignups';
 
 export async function expireStaleSignups(): Promise<ExpireStaleSignupsResult> {
   const EXPIRATION_DAYS = 7;

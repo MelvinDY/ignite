@@ -36,11 +36,6 @@ import {
   issueSignupOtp,
   generateOtp,
 } from "../services/otp.service";
-<<<<<<< HEAD
-import { ensureProfileForSignup } from "../services/profile.service";
-import * as jwt from 'jsonwebtoken';
-import { maskEmail } from "../utils/email";
-=======
 import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
 import {
@@ -50,7 +45,7 @@ import {
   updateEmailChangeAttempts,
   resendEmailChangeOtp,
 } from "../services/email.service";
->>>>>>> main
+import { maskEmail } from "../utils/email";
 
 const router = Router();
 
@@ -656,14 +651,13 @@ router.patch("/auth/pending/email", async (req, res) => {
       success: true,
       resumeToken: newResumeToken,
     });
-  } catch (err: any) {
-    console.error("change-email-pre-verify.error", err?.message || err);
-    return res.status(500).json({ code: "INTERNAL" });
-  }
+   } catch (err: any) {
+    console.error('change-email-pre-verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+   }
 });
 
 /**
-<<<<<<< HEAD
  * User Story 1.5: Get pending registration context
  */
 router.get('/auth/pending/context', async (req, res) => {
@@ -695,10 +689,6 @@ router.get('/auth/pending/context', async (req, res) => {
       return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
     }
 
-    if (!userOtp) {
-      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
-    }
-
     // 3. Ensures status = PENDING_VERIFICATION
     if (userSignup.status === 'ACTIVE') {
       return res.status(409).json({ code: 'ALREADY_VERIFIED' });
@@ -708,16 +698,22 @@ router.get('/auth/pending/context', async (req, res) => {
       return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
     }
 
-    // 4. Calculate resend states (assume OTP row always exists for pending users)
+    // 4. Calculate resend states
     const now = new Date();
-    const lastSentAt = new Date(userOtp.last_sent_at);
-    const resendCount = userOtp.resend_count;
-    
-    // Calculates time since last sent OTP in seconds
-    const timeSinceLastSent = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
-    const cooldownSeconds = Math.max(0, 60 - timeSinceLastSent);
-    // Calculates the remaining OTP attempts for today (5 OTP attempts a day)
-    const remainingToday = Math.max(5 - resendCount, 0);
+    let cooldownSeconds = 0;
+    let remainingToday = 5;
+
+    if (userOtp?.last_sent_at) {
+      const lastSentAt = new Date(userOtp.last_sent_at);
+      // Calculates time since last sent OTP in seconds
+      const timeSinceLastSent = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
+      cooldownSeconds = Math.max(0, 60 - timeSinceLastSent);
+    }
+
+    if (userOtp?.resend_count !== undefined) {
+      // Calculates the remaining OTP attempts for today (5 OTP attempts a day)
+      remainingToday = Math.max(5 - userOtp.resend_count, 0);
+    }
     // 5. Mask email for privacy
     const emailMasked = maskEmail(userSignup.signup_email);
     // 6. Return the context
@@ -735,7 +731,7 @@ router.get('/auth/pending/context', async (req, res) => {
   }     
 });
 
-=======
+/**
  * User Story 1.10: Change Email (Start)
  */
 router.post("/user/email/change-request", async (req, res) => {
@@ -1009,5 +1005,4 @@ router.delete("/user/email/cancel-change", async (req, res) => {
   }
 }); 
 
->>>>>>> main
 export default router;

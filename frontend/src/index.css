@@ -3,7 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --dark-red-bg: #3e000c;
+  --dark-red: #3e000c;
+  --darker-red: #2a0007;
   --secondary-red: #7c0a2a;
   --primary-text: white;
   --secondary-text: #ffbe32;

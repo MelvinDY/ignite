@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface AlertProps {
-  message: string;
+  message: React.ReactNode;
   type?: 'error' | 'success' | 'info';
   className?: string;
 }

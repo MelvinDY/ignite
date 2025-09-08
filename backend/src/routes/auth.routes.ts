@@ -10,6 +10,7 @@ import {
   VerifyEmailChangeSchema,
   VerifyOtpSchema,
   loginSchema,
+  RequestPasswordResetSchema
 } from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
@@ -34,7 +35,9 @@ import {
   deleteSignupOtp,
   getSignupOtp,
   issueSignupOtp,
+  issueResetPasswordOtp,
   generateOtp,
+  getResetPasswordOtp
 } from "../services/otp.service";
 import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
@@ -419,8 +422,8 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     const hashSource = (row as any)?.password_hash
       ? "user_signups.password_hash"
       : (row as any)?.user?.encrypted_password
-      ? "auth.users.encrypted_password"
-      : "none";
+        ? "auth.users.encrypted_password"
+        : "none";
     console.info("login.hash_source", {
       userId: row.id,
       source: hashSource,
@@ -928,6 +931,111 @@ router.delete("/user/email/cancel-change", async (req, res) => {
     console.error("resend-email-change-otp.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });
   }
-}); 
+});
+
+// request reset password limiter to reduce spam (still returns 200 on pass/fail)
+// 5 attempts every 10 minutes
+const requestResetLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => `${req.ip}:${(req.body?.email || '').toLowerCase()}`,
+});
+
+/**
+ * User Stories 1.14: Request Password Reset (Start)
+ */
+router.post('/auth/password/request-reset', requestResetLimiter, async (req, res) => {
+  // 1) validate email
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const emailLower = parsed.data.email.toLowerCase();
+
+  // Generic 200 Response
+  const generic = { success: true, message: 'If this email exists, a code has been sent.' };
+
+  try {
+    // 2) find ACTIVE profile by email
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id, status, full_name, email')
+      .eq('email', emailLower)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    if (profileErr) {
+      console.error('password-reset.request.profile_lookup.error', profileErr);
+      return res.status(200).json(generic);
+    }
+
+    // 3) If no profile or not ACTIVE → return generic (no OTP)
+    if (!profile || profile.status !== 'ACTIVE') {
+      return res.status(200).json(generic);
+    }
+
+    // 4) Enforce cooldown (≥60s) and daily cap (≤5/day) using user_otps record
+    const { data: otpRow, error: otpLookupErr } = await getResetPasswordOtp(profile.id);
+    if (otpLookupErr) {
+      console.error('password-reset.request.otp_lookup.error', otpLookupErr);
+      return res.status(200).json(generic);
+    }
+
+    const now = new Date();
+    let canSend = true;
+
+    if (otpRow) {
+      // Cooldown: ≥60s since last_sent_at
+      if (otpRow.last_sent_at) {
+        const last = new Date(otpRow.last_sent_at);
+        const diffSec = Math.floor((now.getTime() - last.getTime()) / 1000);
+        if (diffSec < 60) {
+          canSend = false;
+        }
+      }
+
+      // Daily cap: ≤5/day (based on last_sent_at's date vs today)
+      if (canSend) {
+        const lastDate = otpRow.last_sent_at ? new Date(otpRow.last_sent_at) : null;
+        const isSameDay = lastDate
+          ? lastDate.toDateString() === now.toDateString()
+          : false;
+        const resendCountToday = isSameDay ? (otpRow.resend_count || 0) : 0;
+        if (resendCountToday >= 5) {
+          canSend = false;
+        }
+      }
+
+      // If locked, do not send OTP
+      if (otpRow.locked_at) {
+        canSend = false;
+      }
+    }
+
+    // 5) If can send, issue/reset OTP row and email it
+    if (canSend) {
+      try {
+        await issueResetPasswordOtp(profile.id, emailLower, profile.full_name);
+        console.info('password-reset.request.issued', { profileId: profile.id });
+      } catch (issueErr: any) {
+        console.error('password-reset.request.issue.error', issueErr?.message || issueErr);
+      }
+    } else {
+      console.info('password-reset.request.rate_limited', {
+        profileId: profile.id,
+        reason: 'cooldown_or_daily_cap',
+      });
+    }
+
+    return res.status(200).json(generic);
+  } catch (err: any) {
+    console.error('password-reset.request.error', err?.message || err);
+    return res.status(200).json({
+      success: true,
+      message: 'If this email exists, a code has been sent.',
+    });
+  }
+});
 
 export default router;

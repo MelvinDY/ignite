@@ -31,7 +31,6 @@ export async function issueSignupOtp(signupId: string, toEmail: string, fullName
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString(); // 10 min
 
-  
   // Dev convenience: log OTP to console when not in production
   if ((process.env.NODE_ENV || 'development') !== 'production') {
     console.info('otp.dev', { signupId, toEmail, otp });
@@ -58,6 +57,42 @@ export async function issueSignupOtp(signupId: string, toEmail: string, fullName
   await sendEmail(toEmail, 'Your Ignite verification code', html);
 }
 
+/**
+ * Issue RESET_PASSWORD OTP:
+ * - generate
+ * - upsert into user_otps (owner_table='profiles', purpose='RESET_PASSWORD')
+ * - send via email
+ */
+export async function issueResetPasswordOtp(profileId: string, toEmail: string, fullName: string) {
+  const otp = generateOtp();
+  const hashed = hashOtp(otp);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString(); // 10 min
+
+  if ((process.env.NODE_ENV || 'development') !== 'production') {
+    console.info('otp.dev.reset_password', { profileId, toEmail, otp });
+  }
+
+  const { error } = await supabase
+    .from('user_otps')
+    .upsert({
+      owner_table: 'profiles',
+      owner_id: profileId,
+      purpose: 'RESET_PASSWORD',
+      otp_hash: hashed,
+      expires_at: expiresAt,
+      attempts: 0,
+      resend_count: 0,
+      last_sent_at: now.toISOString(),
+      updated_at: now.toISOString(),
+      locked_at: null,
+    }, { onConflict: 'owner_table,owner_id,purpose' });
+
+  if (error) throw error;
+
+  const html = renderSignupOtpEmail(fullName, otp);
+  await sendEmail(toEmail, 'Your Ignite password reset code', html);
+}
 
 export async function loadPendingSignup(userId: string) {
   return supabase
@@ -96,6 +131,16 @@ export async function getSignupOtp(signupId: string) {
     .eq('owner_table', 'user_signups')
     .eq('owner_id', signupId)
     .eq('purpose', 'SIGNUP')
+    .maybeSingle();
+}
+
+export async function getResetPasswordOtp(profileId: string) {
+  return supabase
+    .from('user_otps')
+    .select('id, otp_hash, expires_at, attempts, last_sent_at, resend_count, locked_at')
+    .eq('owner_table', 'profiles')
+    .eq('owner_id', profileId)
+    .eq('purpose', 'RESET_PASSWORD')
     .maybeSingle();
 }
 

@@ -11,7 +11,8 @@ import {
   VerifyOtpSchema,
   loginSchema,
   RequestPasswordResetSchema,
-  VerifyPasswordResetOtpSchema
+  VerifyPasswordResetOtpSchema,
+  ResetPasswordSchema
 } from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
@@ -26,7 +27,8 @@ import {
   rotateResumeToken,
   invalidateRefreshToken,
   verifyTokenVersion,
-  makeResetSessionToken
+  makeResetSessionToken,
+  verifyResetSessionToken
 } from "../utils/tokens";
 import { rateLimit } from "../middlewares/rateLimit";
 import {
@@ -37,9 +39,8 @@ import {
   deleteSignupOtp,
   getSignupOtp,
   issueSignupOtp,
-  issueResetPasswordOtp,
   generateOtp,
-  getResetPasswordOtp
+  getResetPasswordOtp,
 } from "../services/otp.service";
 import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
@@ -51,6 +52,7 @@ import {
   updateEmailChangeAttempts,
   resendEmailChangeOtp,
 } from "../services/email.service";
+import { processResetOtpRequest, processCancelResetOtp } from "../services/passwordReset.service";
 
 const router = Router();
 
@@ -849,6 +851,9 @@ const emailChangeResendLimiter = rateLimit({
   },
 });
 
+/**
+ * User Stories 1.12: Resend OTP (Email Change)
+ */
 router.post(
   "/user/email/resend-otp",
   emailChangeResendLimiter,
@@ -913,6 +918,9 @@ router.post(
   }
 );
 
+/**
+ * User Stories 1.13: Cancel Email Change
+ */
 router.delete("/user/email/cancel-change", async (req, res) => {
   const accessToken = req.headers.authorization?.split(" ")[1];
 
@@ -937,7 +945,7 @@ router.delete("/user/email/cancel-change", async (req, res) => {
 });
 
 // request reset password limiter to reduce spam (still returns 200 on pass/fail)
-// 5 attempts every 10 minutes
+// (5 attempts / 10 min per IP+email)
 const requestResetLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
   max: 5,
@@ -955,90 +963,13 @@ router.post('/auth/password/request-reset', requestResetLimiter, async (req, res
   }
 
   const emailLower = parsed.data.email.toLowerCase();
+  const result = await processResetOtpRequest(
+    emailLower,
+    'If this email exists, a code has been sent.',
+    'password-reset.request'
+  );
 
-  // Generic 200 Response
-  const generic = { success: true, message: 'If this email exists, a code has been sent.' };
-
-  try {
-    // 2) find ACTIVE profile by email
-    const { data: profile, error: profileErr } = await supabase
-      .from('profiles')
-      .select('id, status, full_name, email')
-      .eq('email', emailLower)
-      .eq('status', 'ACTIVE')
-      .maybeSingle();
-
-    if (profileErr) {
-      console.error('password-reset.request.profile_lookup.error', profileErr);
-      return res.status(200).json(generic);
-    }
-
-    // 3) If no profile or not ACTIVE → return generic (no OTP)
-    if (!profile || profile.status !== 'ACTIVE') {
-      return res.status(200).json(generic);
-    }
-
-    // 4) Enforce cooldown (≥60s) and daily cap (≤5/day) using user_otps record
-    const { data: otpRow, error: otpLookupErr } = await getResetPasswordOtp(profile.id);
-    if (otpLookupErr) {
-      console.error('password-reset.request.otp_lookup.error', otpLookupErr);
-      return res.status(200).json(generic);
-    }
-
-    const now = new Date();
-    let canSend = true;
-
-    if (otpRow) {
-      // Cooldown: ≥60s since last_sent_at
-      if (otpRow.last_sent_at) {
-        const last = new Date(otpRow.last_sent_at);
-        const diffSec = Math.floor((now.getTime() - last.getTime()) / 1000);
-        if (diffSec < 60) {
-          canSend = false;
-        }
-      }
-
-      // Daily cap: ≤5/day (based on last_sent_at's date vs today)
-      if (canSend) {
-        const lastDate = otpRow.last_sent_at ? new Date(otpRow.last_sent_at) : null;
-        const isSameDay = lastDate
-          ? lastDate.toDateString() === now.toDateString()
-          : false;
-        const resendCountToday = isSameDay ? (otpRow.resend_count || 0) : 0;
-        if (resendCountToday >= 5) {
-          canSend = false;
-        }
-      }
-
-      // If locked, do not send OTP
-      if (otpRow.locked_at) {
-        canSend = false;
-      }
-    }
-
-    // 5) If can send, issue/reset OTP row and email it
-    if (canSend) {
-      try {
-        await issueResetPasswordOtp(profile.id, emailLower, profile.full_name);
-        console.info('password-reset.request.issued', { profileId: profile.id });
-      } catch (issueErr: any) {
-        console.error('password-reset.request.issue.error', issueErr?.message || issueErr);
-      }
-    } else {
-      console.info('password-reset.request.rate_limited', {
-        profileId: profile.id,
-        reason: 'cooldown_or_daily_cap',
-      });
-    }
-
-    return res.status(200).json(generic);
-  } catch (err: any) {
-    console.error('password-reset.request.error', err?.message || err);
-    return res.status(200).json({
-      success: true,
-      message: 'If this email exists, a code has been sent.',
-    });
-  }
+  return res.status(200).json(result);
 });
 
 /**
@@ -1125,6 +1056,107 @@ router.post('/auth/password/verify-otp', async (req, res) => {
     console.error('password-reset.verify.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
   }
+});
+
+/**
+ * Story 1.16 – Set New Password (Complete)
+ */
+router.post('/auth/password/reset', async (req, res) => {
+  // 1) Validate input shape & password policy
+  const parsed = ResetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const { resetSessionToken, newPassword } = parsed.data;
+
+  try {
+    // 2) Verify resetSessionToken (JWT signature/TTL/purpose)
+    let profileId: string;
+    try {
+      ({ profileId } = verifyResetSessionToken(resetSessionToken));
+    } catch {
+      return res.status(401).json({ code: 'RESET_SESSION_INVALID' });
+    }
+
+    // 3) Find the ACTIVE signup row that maps to this profile
+    const { data: signupRow, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, status')
+      .eq('profile_id', profileId)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    // If mapping is missing or not ACTIVE, treat as invalid session
+    if (signupErr || !signupRow) {
+      return res.status(401).json({ code: 'RESET_SESSION_INVALID' });
+    }
+
+    const signupId = signupRow.id;
+    const nowISO = new Date().toISOString();
+
+    // 4) Hash and update the new password
+    const pwHash = await hashPassword(newPassword);
+    const { error: updateErr } = await supabase
+      .from('user_signups')
+      .update({ password_hash: pwHash, updated_at: nowISO })
+      .eq('id', signupId);
+
+    if (updateErr) {
+      console.error('password-reset.complete.update_password.error', updateErr);
+      return res.status(500).json({ code: 'INTERNAL' });
+    }
+
+    // 5) Revoke all existing refresh tokens (logout other devices/sessions)
+    try {
+      await invalidateRefreshToken(signupId);
+    } catch (e: any) {
+      console.error('password-reset.complete.invalidate_refresh.error', e?.message || e);
+    }
+
+    console.info('password-reset.complete.success', { profileId, signupId });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password has been reset',
+    });
+  } catch (err: any) {
+    console.error('password-reset.complete.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+/**
+ * Story 1.17 – Resend Password Reset OTP
+ */
+router.post('/auth/password/resend-otp', requestResetLimiter, async (req, res) => {
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+  }
+  const emailLower = parsed.data.email.toLowerCase();
+
+  const result = await processResetOtpRequest(
+    emailLower,
+    'If this email exists, a new code has been sent.',
+    'password-reset.resend'
+  );
+
+  return res.status(200).json(result);
+});
+
+/**
+ * Story 1.18 – Cancel Password Reset
+ */
+router.post('/auth/password/cancel', requestResetLimiter, async (req, res) => {
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const emailLower = parsed.data.email.toLowerCase();
+  const result = await processCancelResetOtp(emailLower);
+  return res.status(200).json(result);
 });
 
 export default router;

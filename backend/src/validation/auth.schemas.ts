@@ -50,6 +50,15 @@ export const VerifyPasswordResetOtpSchema = z.object({
   otp: z.string().regex(/^[0-9]{6}$/),
 });
 
+export const ResetPasswordSchema = z.object({
+  resetSessionToken: z.string().min(1),
+  newPassword: z.string().min(8),
+  confirmPassword: z.string().min(8),
+}).refine(v => v.newPassword === v.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type VerifyOtpInput = z.infer<typeof VerifyOtpSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -58,3 +67,4 @@ export type ChangeEmailRequestInput = z.infer<typeof ChangeEmailRequestSchema>;
 export type VerifyEmailChangeInput = z.infer<typeof VerifyEmailChangeSchema>;
 export type RequestPasswordResetInput = z.infer<typeof RequestPasswordResetSchema>;
 export type VerifyPasswordResetOtpInput = z.infer<typeof VerifyPasswordResetOtpSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

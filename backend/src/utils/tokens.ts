@@ -165,7 +165,7 @@ export function verifyResetSessionToken(resetSessionToken: string): { profileId:
     audience: AUDIENCE,
     clockTolerance: 5,
   }) as JwtPayload & { purpose: 'RESET_PASSWORD'; sub: string };
-  
+
   if (decoded.purpose !== 'RESET_PASSWORD' || !decoded.sub) {
     throw new Error('RESET_SESSION_TOKEN_INVALID');
   }

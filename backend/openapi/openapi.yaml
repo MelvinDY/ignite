@@ -620,6 +620,65 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+    post:
+      summary: Add a skill to the authenticated user's profile
+      description: |
+        Adds a skill to the user's profile. The skill is normalized and ensured to exist in the skills lookup table. Association is idempotent.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill]
+              properties:
+                skill:
+                  type: string
+                  example: Python
+      responses:
+        "201":
+          description: Skill added to profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  id:
+                    type: integer
+                    example: 12
+                  name:
+                    type: string
+                    example: Python
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      skill: Skill is required
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
 components:
   securitySchemes:
     bearerAuth:

@@ -161,7 +161,6 @@ export async function resendEmailChangeOtp(
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // First, get current resend_count
   const { data: currentData, error: fetchError } = await supabase
     .from("pending_email_changes")
     .select("resend_count")
@@ -172,7 +171,6 @@ export async function resendEmailChangeOtp(
 
   const newResendCount = (currentData?.resend_count || 0) + 1;
 
-  // Then update with incremented value
   const { error } = await supabase
     .from("pending_email_changes")
     .update({
@@ -180,7 +178,7 @@ export async function resendEmailChangeOtp(
       otp_expires_at: expiresAt,
       otp_attempts: 0,
       last_otp_sent_at: now,
-      resend_count: newResendCount, // Use calculated value
+      resend_count: newResendCount,
       locked_at: null,
       updated_at: now,
     })

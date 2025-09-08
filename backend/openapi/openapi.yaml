@@ -10,6 +10,9 @@ servers:
   - url: http://localhost:5000/api
     description: Local dev
 
+security:
+  - bearerAuth: []
+
 paths:
   /auth/register:
     post:
@@ -578,7 +581,52 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /profile/skills:
+    get:
+      summary: List all skills for the authenticated user
+      description: |
+        Returns all skills linked to the authenticated user's profile via `profile_skills`.
+        Names are deduped and sorted alphabetically.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of skills for the user (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+              examples:
+                some_skills:
+                  value:
+                    - id: 12
+                      name: Python
+                    - id: 34
+                      name: SQL
+                no_skills:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
   responses:
     InternalError:
       description: Internal error
@@ -808,3 +856,14 @@ components:
               type: integer
               description: Number of OTP resends remaining today (daily limit is 5)
   
+
+    Skill:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string

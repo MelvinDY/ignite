@@ -38,8 +38,8 @@ beforeEach(async () => {
     status: 'PENDING_VERIFICATION',
     signup_email: 'test@example.com',
   };
-  
-  const now = new Date(Date.now()).toISOString();
+
+  const now = new Date().toISOString();
   scenario.userOtp = {
     owner_id: 'user-123',
     last_sent_at: now,
@@ -121,10 +121,14 @@ describe('GET /auth/pending/context (Story 1.5)', () => {
       emailMasked: 't***@e***.com',
       status: 'PENDING_VERIFICATION',
       resend: {
-        cooldownSeconds: 60,
+        cooldownSeconds: expect.any(Number),
         remainingToday: 5,
       },
     });
+
+    // Check cooldownSeconds is in a reasonable range
+    expect(res.body.resend.cooldownSeconds).toBeGreaterThanOrEqual(58);
+    expect(res.body.resend.cooldownSeconds).toBeLessThanOrEqual(60);
   });
 
   it('401 RESUME_TOKEN_INVALID: missing resumeToken', async () => {

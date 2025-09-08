@@ -1019,8 +1019,8 @@ router.post('/auth/password/verify-otp', async (req, res) => {
 
     // 6. Verify OTP
     const hashedInput = hashOtp(otp);
-    const presented = Buffer.from(hashedInput);
-    const stored = Buffer.from(otpRow.otp_hash);
+    const presented = Buffer.from(hashedInput, 'hex');
+    const stored = Buffer.from(otpRow.otp_hash, 'hex');
     const isMatch =
       presented.length === stored.length &&
       crypto.timingSafeEqual(presented, stored);

@@ -10,6 +10,9 @@ servers:
   - url: http://localhost:5000/api
     description: Local dev
 
+security:
+  - bearerAuth: []
+
 paths:
   /auth/register:
     post:
@@ -550,6 +553,12 @@ paths:
                     code: NOT_AUTHENTICATED
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
   responses:
     InternalError:
       description: Internal error

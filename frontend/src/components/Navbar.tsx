@@ -1,8 +1,11 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
 
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated, logout } = useAuth();
+
   const handleNavigation = (path: string) => {
     if (location.pathname === path) {
       // smooth scroll to top
@@ -11,6 +14,11 @@ const Navbar = () => {
     }
     // go to the path
     navigate(path);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/auth/login");
   };
 
   return (
@@ -34,18 +42,30 @@ const Navbar = () => {
         >
           Events
         </button>
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/auth/login")}
-        >
-          Login
-        </button>
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/auth/register")}
-        >
-          Register
-        </button>
+        {isAuthenticated ? (
+          <button
+            className="hover:underline"
+            onClick={handleLogout}
+            data-testid="logout-button"
+          >
+            Logout
+          </button>
+        ) : (
+          <>
+            <button
+              className="hover:underline"
+              onClick={() => handleNavigation("/auth/login")}
+            >
+              Login
+            </button>
+            <button
+              className="hover:underline"
+              onClick={() => handleNavigation("/auth/register")}
+            >
+              Register
+            </button>
+          </>
+        )}
         <button
           className="hover:underline"
           onClick={() => handleNavigation("/membership")}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthLayout } from '../../components/auth/AuthLayout';
 import { TextInput } from '../../components/ui/TextInput';
 import { PasswordInput } from '../../components/ui/PasswordInput';
@@ -15,6 +15,7 @@ interface FormErrors {
 
 export function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -22,6 +23,17 @@ export function Login() {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [apiError, setApiError] = useState<React.ReactNode>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
+
+  useEffect(() => {
+    // Check if we have a success message from navigation state (e.g., after password reset)
+    const state = location.state as { message?: string; type?: string } | null;
+    if (state?.message && state?.type === 'success') {
+      setSuccessMessage(state.message);
+      // Clear the state to prevent the message from persisting on refresh
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -34,6 +46,11 @@ export function Login() {
     // Clear API error when user modifies form
     if (apiError) {
       setApiError('');
+    }
+    
+    // Clear success message when user starts typing
+    if (successMessage) {
+      setSuccessMessage('');
     }
   };
 
@@ -107,6 +124,7 @@ export function Login() {
   return (
     <AuthLayout title="Sign In">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {successMessage && <Alert message={successMessage} type="success" />}
         {apiError && <Alert message={apiError} type="error" />}
         
         <TextInput
@@ -142,7 +160,7 @@ export function Login() {
 
         <div className="text-center pt-4">
           <Link 
-            to="/auth/forgot-password" 
+            to="/auth/password/request" 
             className="text-sm text-white/80 hover:text-white underline"
           >
             Forgot password?

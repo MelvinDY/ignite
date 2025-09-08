@@ -103,4 +103,47 @@ describe('GET /profile/skills', () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.length).toBe(0);
   });
+
+  it('should dedupe and sort skills alphabetically', async () => {
+    await vi.resetModules();
+    vi.doMock('jsonwebtoken', () => ({
+      verify: () => ({ sub: TEST_USER_ID }),
+    }));
+    vi.doMock('../src/lib/supabase', () => ({
+      supabase: {
+        from: (table: string) => {
+          if (table === 'profile_skills') {
+            return {
+              select: (_: string) => ({
+                eq: (_col: string, val: string) => ({
+                  data: [
+                    { skills: { id: 2, name: 'SQL' } },
+                    { skills: { id: 1, name: 'Python' } },
+                    { skills: { id: 1, name: 'Python' } }, // duplicate
+                    { skills: { id: 3, name: 'C++' } },
+                  ],
+                  error: null,
+                }),
+              }),
+            };
+          }
+          return { select: () => ({ eq: () => ({ data: [], error: null }) }) };
+        },
+      },
+    }));
+    vi.doMock('../src/utils/tokens', () => ({
+      generateAccessToken: (userId: string) => `token-for-${userId}`,
+    }));
+    const mod = await import('../src/app');
+    const appDedupeSort = mod.createApp();
+    const res = await request(appDedupeSort)
+      .get('/api/profile/skills')
+      .set('Authorization', `Bearer token-for-${TEST_USER_ID}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { id: 3, name: 'C++' },
+      { id: 1, name: 'Python' },
+      { id: 2, name: 'SQL' },
+    ]);
+  });
 });

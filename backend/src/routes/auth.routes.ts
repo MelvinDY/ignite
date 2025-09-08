@@ -398,9 +398,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
 
   try {
     console.info("login.attempt", { email: emailLower, ip: req.ip });
+    // 1. Find signup row
     const { data: row } = await supabase
       .from("user_signups")
-      .select("id, status, password_hash")
+      .select("id, status, password_hash, profile_id, zid")
       .eq("signup_email", emailLower)
       .maybeSingle();
 
@@ -433,8 +434,24 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ code: "INVALID_CREDENTIALS" });
     }
 
-    const accessToken = await generateAccessToken(row.id);
-    const refreshToken = await generateRefreshToken(row.id);
+    // 2. Find profile row (canonical user id)
+    let profileId = row.profile_id;
+    if (!profileId) {
+      // fallback: lookup by signup zID (should not happen if ensureProfileForSignup is used)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("zid", row.zid)
+        .maybeSingle();
+      profileId = profile?.id;
+    }
+    if (!profileId) {
+      console.error("login.no_profile", { signupId: row.id });
+      return res.status(500).json({ code: "INTERNAL", details: "No profile found for user" });
+    }
+
+    const accessToken = await generateAccessToken(profileId);
+    const refreshToken = await generateRefreshToken(profileId);
 
     // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
     res.cookie("refreshToken", refreshToken, {
@@ -445,10 +462,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    console.info("login.success", { userId: row.id });
+    console.info("login.success", { userId: profileId });
     return res.status(200).json({
       success: true,
-      userId: row.id,
+      userId: profileId,
       accessToken,
       expiresIn: 60 * 15,
     });

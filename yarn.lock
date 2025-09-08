@@ -458,10 +458,10 @@
     "@smithy/types" "^4.3.2"
     tslib "^2.6.2"
 
-"@esbuild/linux-x64@0.25.9":
+"@esbuild/win32-x64@0.25.9":
   version "0.25.9"
-  resolved "https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.9.tgz"
-  integrity sha512-iSwByxzRe48YVkmpbgoxVzn76BXjlYFXC7NvLYq+b+kDjyyk30J0JY47DIn8z1MO3K0oSl9fZoRmZPQI4Hklzg==
+  resolved "https://registry.npmjs.org/@esbuild/win32-x64/-/win32-x64-0.25.9.tgz"
+  integrity sha512-PPOl1mi6lpLNQxnGoyAfschAodRFYXJ+9fs6WHXz7CSWKbOqiMZsubC+BQsVKuul+3vKLuwTHsS2c2y9EoKwxQ==
 
 "@isaacs/fs-minipass@^4.0.0":
   version "4.0.1"
@@ -487,15 +487,10 @@
   dependencies:
     "@noble/hashes" "^1.1.5"
 
-"@rollup/rollup-linux-x64-gnu@4.50.0":
+"@rollup/rollup-win32-x64-msvc@4.50.0":
   version "4.50.0"
-  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-gnu/-/rollup-linux-x64-gnu-4.50.0.tgz"
-  integrity sha512-8PrJJA7/VU8ToHVEPu14FzuSAqVKyo5gg/J8xUerMbyNkWkO9j2ExBho/68RnJsMGNJq4zH114iAttgm7BZVkA==
-
-"@rollup/rollup-linux-x64-musl@4.50.0":
-  version "4.50.0"
-  resolved "https://registry.npmjs.org/@rollup/rollup-linux-x64-musl/-/rollup-linux-x64-musl-4.50.0.tgz"
-  integrity sha512-SkE6YQp+CzpyOrbw7Oc4MgXFvTw2UIBElvAvLCo230pyxOLmYwRPwZ/L5lBe/VW/qT1ZgND9wJfOsdy0XptRvw==
+  resolved "https://registry.npmjs.org/@rollup/rollup-win32-x64-msvc/-/rollup-win32-x64-msvc-4.50.0.tgz"
+  integrity sha512-xMmiWRR8sp72Zqwjgtf3QbZfF1wdh8X2ABu3EaozvZcyHJeU0r+XAnXdKgs4cCAp6ORoYoCygipYP1mjmbjrsg==
 
 "@smithy/abort-controller@^4.0.5":
   version "4.0.5"
@@ -1221,6 +1216,11 @@ dezalgo@^1.0.4:
   dependencies:
     asap "^2.0.0"
     wrappy "1"
+
+dotenv@^17.2.2:
+  version "17.2.2"
+  resolved "https://registry.npmjs.org/dotenv/-/dotenv-17.2.2.tgz"
+  integrity sha512-Sf2LSQP+bOlhKWWyhFsn0UsfdK/kCWRv1iuA2gXAwt3dyNabr6QSj00I2V10pidqz69soatm9ZwZvpQMTIOd5Q==
 
 dunder-proto@^1.0.1:
   version "1.0.1"

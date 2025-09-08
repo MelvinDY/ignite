@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:5000/docs
     description: Local dev
 
 paths:

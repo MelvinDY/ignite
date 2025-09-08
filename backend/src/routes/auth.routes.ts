@@ -10,7 +10,8 @@ import {
   VerifyEmailChangeSchema,
   VerifyOtpSchema,
   loginSchema,
-  RequestPasswordResetSchema
+  RequestPasswordResetSchema,
+  VerifyPasswordResetOtpSchema
 } from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
@@ -25,6 +26,7 @@ import {
   rotateResumeToken,
   invalidateRefreshToken,
   verifyTokenVersion,
+  makeResetSessionToken
 } from "../utils/tokens";
 import { rateLimit } from "../middlewares/rateLimit";
 import {
@@ -41,6 +43,7 @@ import {
 } from "../services/otp.service";
 import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
+import * as crypto from "crypto";
 import {
   completePendingEmailChange,
   createPendingEmailChange,
@@ -1035,6 +1038,92 @@ router.post('/auth/password/request-reset', requestResetLimiter, async (req, res
       success: true,
       message: 'If this email exists, a code has been sent.',
     });
+  }
+});
+
+/**
+ * Story 1.15 – Verify Password Reset OTP (Create reset session)
+ */
+router.post('/auth/password/verify-otp', async (req, res) => {
+  // 1. Validate email and otp
+  const parsed = VerifyPasswordResetOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const { email, otp } = parsed.data;
+  const emailLower = email.toLowerCase();
+
+  try {
+    // 2. Find profile by email
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id, status')
+      .eq('email', emailLower)
+      .maybeSingle();
+
+    if (profileErr || !profile || profile.status !== 'ACTIVE') {
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    const profileId = profile.id;
+
+    // 3. Get existing RESET_PASSWORD OTP row
+    const { data: otpRow, error: otpErr } = await getResetPasswordOtp(profileId);
+    if (otpErr || !otpRow) {
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    // 4. Check locked
+    if (otpRow.locked_at) {
+      return res.status(423).json({ code: 'OTP_LOCKED' });
+    }
+
+    const now = new Date();
+
+    // 5. Check expiry
+    if (new Date(otpRow.expires_at).getTime() < now.getTime()) {
+      return res.status(400).json({ code: 'OTP_EXPIRED' });
+    }
+
+    // 6. Verify OTP
+    const hashedInput = hashOtp(otp);
+    const presented = Buffer.from(hashedInput);
+    const stored = Buffer.from(otpRow.otp_hash);
+    const isMatch =
+      presented.length === stored.length &&
+      crypto.timingSafeEqual(presented, stored);
+
+    // Increment OTP attempts (lock at 5 attempts)
+    if (!isMatch) {
+      const newAttempts = (otpRow.attempts ?? 0) + 1;
+      const updates: any = { attempts: newAttempts, updated_at: now.toISOString() };
+      if (newAttempts >= 5) {
+        updates.locked_at = now.toISOString();
+      }
+      await supabase.from('user_otps').update(updates).eq('id', otpRow.id);
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    // 7. Success, issue resetSessionToken
+    const { token, expiresIn } = makeResetSessionToken(profileId);
+
+    // Clear OTP row
+    await supabase
+      .from('user_otps')
+      .delete()
+      .eq('id', otpRow.id);
+
+    console.info('password-reset.verify.success', { profileId });
+
+    return res.status(200).json({
+      success: true,
+      resetSessionToken: token,
+      expiresIn,
+    });
+  } catch (err: any) {
+    console.error('password-reset.verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
   }
 });
 

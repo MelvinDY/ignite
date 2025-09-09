@@ -765,6 +765,285 @@ paths:
                   value:
                     code: OTP_EXPIRED
         '401':
+
+  /auth/password/request-reset:
+    post:
+      summary: Request Password Reset (Start)
+      description: |
+        Starts the password-reset flow in an **enumeration-safe** way.
+
+        **Behavior**
+        - Always returns **200** with a generic message.
+        - If an **ACTIVE** account exists for the email, create/overwrite a single `user_otps` row
+          with `purpose="RESET_PASSWORD"` (hashed OTP, TTL +10m, attempts=0, resend_count=0, last_sent_at=now)
+          and send the 6-digit code via email.
+        - If the user is not ACTIVE (or does not exist), still respond **200** without sending an OTP.
+
+        **Rate limit**
+        - **5 requests / 10 minutes** per **(IP + email)** → **429** thereafter.
+
+        **Enumeration safety**
+        - Response body never reveals whether the email exists.
+      security: []  # public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
+            examples:
+              ok:
+                value: { email: "jane@gmail.com" }
+      responses:
+        "200":
+          description: Generic success (enumeration-safe)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResetGenericOk" }
+              examples:
+                ok:
+                  value:
+                    success: true
+                    message: "If this email exists, a code has been sent."
+        "400":
+          description: Validation error (zod)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+              examples:
+                invalid_email:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        email: [Invalid email]
+        "429":
+          description: "Too many requests (5 / 10 min per IP+email)"
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/password/verify-otp:
+    post:
+      summary: Verify Password Reset OTP (Create reset session)
+      description: |
+        Validates a 6-digit OTP for the **RESET_PASSWORD** flow. On success, returns a short-lived
+        `resetSessionToken` (JWT, ~10 minutes) that authorizes setting a new password.
+
+        **Errors are enumeration-safe**
+        - For unknown/non-ACTIVE email or missing OTP row: respond with **400 `OTP_INVALID`**.
+        - If attempts reach 5, OTP is **locked** → **423 `OTP_LOCKED`** (subsequent attempts).
+      security: []  # public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyPasswordResetOtpRequest" }
+            examples:
+              valid:
+                value: { email: "jane@gmail.com", otp: "123456" }
+      responses:
+        "200":
+          description: OTP verified; reset session created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VerifyPasswordResetOtpResponse" }
+              examples:
+                ok:
+                  value:
+                    success: true
+                    resetSessionToken: "rst_eyJ..."
+                    expiresIn: 600
+        "400":
+          description: Bad request — validation or OTP failure
+          content:
+            application/json:
+              oneOf:
+                - $ref: "#/components/schemas/ValidationError"
+                - $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                otp_invalid: { value: { code: OTP_INVALID } }
+                otp_expired: { value: { code: OTP_EXPIRED } }
+        "423":
+          description: OTP locked after too many attempts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                locked: { value: { code: OTP_LOCKED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/password/reset:
+    post:
+      summary: Set New Password (Complete)
+      description: |
+        Sets a new password for the user identified by a valid `resetSessionToken`. Enforces password policy,
+        updates the password hash, and **revokes all refresh tokens** (logs out other devices). No new tokens
+        are issued automatically—user must log in again.
+
+        **Errors**
+        - **401 `RESET_SESSION_INVALID`** if token is bad/expired or not mapped to an ACTIVE signup.
+      security: []  # public endpoint (auth via resetSessionToken, not bearer)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResetPasswordRequest" }
+            examples:
+              valid:
+                value:
+                  resetSessionToken: "rst_eyJ..."
+                  newPassword: "NewAbcd1234"
+                  confirmPassword: "NewAbcd1234"
+      responses:
+        "200":
+          description: Password updated and existing sessions revoked
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResetPasswordResponse" }
+              examples:
+                ok:
+                  value:
+                    success: true
+                    message: "Password has been reset"
+        "400":
+          description: Validation error (zod)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+              examples:
+                mismatch:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        confirmPassword: [Passwords do not match]
+        "401":
+          description: Invalid/expired reset session
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_token: { value: { code: RESET_SESSION_INVALID } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/password/resend-otp:
+    post:
+      summary: Resend Password Reset OTP
+      description: |
+        Resends a fresh OTP for the **RESET_PASSWORD** flow in an **enumeration-safe** way.
+
+        **Behavior**
+        - Always returns **200** with a generic message.
+        - If an **ACTIVE** user exists and cooldown/daily cap allow:
+          overwrite the single `RESET_PASSWORD` OTP row (new hash + TTL), reset attempts, update timers, send email.
+
+        **Rate limit**
+        - **5 requests / 10 minutes** per **(IP + email)** → **429** thereafter.
+      security: []  # public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
+            examples:
+              ok:
+                value: { email: "jane@gmail.com" }
+      responses:
+        "200":
+          description: Generic success (enumeration-safe)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResetGenericOk" }
+              examples:
+                ok:
+                  value:
+                    success: true
+                    message: "If this email exists, a new code has been sent."
+        "400":
+          description: Validation error (zod)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+              examples:
+                invalid_email:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        email: [Invalid email]
+        "429":
+          description: "Too many requests (5 / 10 min per IP+email)"
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /auth/password/cancel:
+    post:
+      summary: Cancel Password Reset
+      description: |
+        Cancels an in-progress password reset by clearing any active `RESET_PASSWORD` OTP.
+        Always returns **200** (enumeration-safe), regardless of whether the email exists.
+      security: []  # public endpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
+            examples:
+              ok:
+                value: { email: "jane@gmail.com" }
+      responses:
+        "200":
+          description: Generic success (enumeration-safe)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SuccessOnly" }
+              examples:
+                ok: { value: { success: true } }
+        "400":
+          description: Validation error (zod)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+              examples:
+                invalid_email:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      fieldErrors:
+                        email: [Invalid email]
+        "429":
+          description: "Too many requests (5 / 10 min per IP+email)"
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                too_many: { value: { code: TOO_MANY_REQUESTS } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
           description: Not authenticated
           content:
             application/json:
@@ -1311,6 +1590,76 @@ components:
           type: integer
           description: OTP expiry time in seconds
           example: 600
+
+    EmailOnlyRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetGenericOk:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string }
+
+    SuccessOnly:
+      type: object
+      required: [success]
+      properties:
+        success: { type: boolean, example: true }
+
+    VerifyPasswordResetOtpRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email:
+          type: string
+          format: email
+        otp:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: 6-digit numeric code
+
+    VerifyPasswordResetOtpResponse:
+      type: object
+      required: [success, resetSessionToken, expiresIn]
+      properties:
+        success: { type: boolean, example: true }
+        resetSessionToken:
+          type: string
+          description: Short-lived JWT that authorizes password reset
+          example: "rst_eyJ..."
+        expiresIn:
+          type: integer
+          description: Time-to-live in seconds
+          example: 600
+
+    ResetPasswordRequest:
+      type: object
+      required: [resetSessionToken, newPassword, confirmPassword]
+      properties:
+        resetSessionToken:
+          type: string
+          example: "rst_eyJ..."
+        newPassword:
+          type: string
+          minLength: 8
+        confirmPassword:
+          type: string
+          minLength: 8
+
+    ResetPasswordResponse:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message:
+          type: string
+          example: "Password has been reset"
 
     ErrorSimple:
       type: object

@@ -17,6 +17,6 @@ body {
 }
 
 body {
-  background-color: var(--dark-red-bg);
+  background-color: var(--dark-red);
   color: var(--primary-text);
 }

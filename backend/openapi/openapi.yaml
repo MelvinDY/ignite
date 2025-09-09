@@ -1074,6 +1074,120 @@ paths:
                 otp_locked:
                   value:
                     code: OTP_LOCKED
+  /user/email/resend-otp:
+    post:
+      summary: Resend OTP for email change
+      description: |
+        Resends the OTP for pending email change with rate limiting and cooldown protection.
+        
+        **Rate Limiting**
+        - 5 requests per day per (IP + email)
+        - 60 second cooldown between requests
+        - Maximum 5 resends per pending change
+        
+        **Flow**
+        1) Validate JWT access token
+        2) Check for pending email change
+        3) Enforce cooldown and resend limits
+        4) Generate new OTP
+        5) Send OTP to pending email
+        6) Update resend counters
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OTP resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendEmailOtpResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    expiresInSeconds: 600
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: No pending email change found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_pending:
+                  value:
+                    code: NO_PENDING_EMAIL_CHANGE
+        '429':
+          description: Rate limit exceeded or cooldown active
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                cooldown:
+                  value:
+                    code: OTP_COOLDOWN
+                resend_limit:
+                  value:
+                    code: OTP_RESEND_LIMIT
+        '500':
+          $ref: "#/components/responses/InternalError"
+
+  /user/email/cancel-change:
+    delete:
+      summary: Cancel pending email change
+      description: |
+        Cancels any pending email change for the authenticated user.
+        
+        **Flow**
+        1) Validate JWT access token
+        2) Delete pending email change record from database
+        
+        **Notes**
+        - Idempotent operation (safe to call even if no pending change exists)
+        - Does not require additional verification
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Email change cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+              examples:
+                success:
+                  value:
+                    success: true
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
         '500':
           $ref: "#/components/responses/InternalError"
 
@@ -1227,123 +1341,6 @@ paths:
                 not_found:
                   value:
                     code: NOT_FOUND
-
-  /user/email/resend-otp:
-    post:
-      summary: Resend OTP for email change
-      description: |
-        Resends the OTP for pending email change with rate limiting and cooldown protection.
-        
-        **Rate Limiting**
-        - 5 requests per day per (IP + email)
-        - 60 second cooldown between requests
-        - Maximum 5 resends per pending change
-        
-        **Flow**
-        1) Validate JWT access token
-        2) Check for pending email change
-        3) Enforce cooldown and resend limits
-        4) Generate new OTP
-        5) Send OTP to pending email
-        6) Update resend counters
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: OTP resent successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ResendEmailOtpResponse'
-              examples:
-                success:
-                  value:
-                    success: true
-                    expiresInSeconds: 600
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                not_authenticated:
-                  value:
-                    code: NOT_AUTHENTICATED
-                    details: "Invalid or expired token"
-        '404':
-          description: No pending email change found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                no_pending:
-                  value:
-                    code: NO_PENDING_EMAIL_CHANGE
-        '429':
-          description: Rate limit exceeded or cooldown active
-          headers:
-            X-RateLimit-Limit:     { schema: { type: string } }
-            X-RateLimit-Remaining: { schema: { type: string } }
-            X-RateLimit-Reset:     { schema: { type: string } }
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                cooldown:
-                  value:
-                    code: OTP_COOLDOWN
-                resend_limit:
-                  value:
-                    code: OTP_RESEND_LIMIT
-        '500':
-          $ref: "#/components/responses/InternalError"
-
-  /user/email/cancel-change:
-    delete:
-      summary: Cancel pending email change
-      description: |
-        Cancels any pending email change for the authenticated user.
-        
-        **Flow**
-        1) Validate JWT access token
-        2) Delete pending email change record from database
-        
-        **Notes**
-        - Idempotent operation (safe to call even if no pending change exists)
-        - Does not require additional verification
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Email change cancelled successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [success]
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-              examples:
-                success:
-                  value:
-                    success: true
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                not_authenticated:
-                  value:
-                    code: NOT_AUTHENTICATED
-        '500':
-          $ref: "#/components/responses/InternalError"
 
 components:
   securitySchemes:

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { getProfileSkills, addSkillToProfile } from "../services/skills.service";
+import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
 
 const router = Router();
 
@@ -25,7 +25,6 @@ router.get("/profile/skills", async (req, res) => {
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
-
 
 // POST /profile/skills - Add a skill to the user's profile
 router.post("/profile/skills", async (req, res) => {
@@ -63,6 +62,44 @@ router.post("/profile/skills", async (req, res) => {
   }
 });
 
+// DELETE /profile/skills/:id - Remove a skill from the user's profile
+router.delete("/profile/skills/:id", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  let userId: string;
 
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  
+  const skillId = Number(req.params.id);
+  if (!skillId || isNaN(skillId)) {
+    return res.status(404).json({ code: "NOT_FOUND" });
+  }
+  
+  try {
+    // Returns true if deleted, false if not found/not owned
+    await removeSkillFromProfile(userId, skillId);
+    // Always return 200 for idempotency
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    // If error is auth, return 401
+    if (err.code === "NOT_AUTHENTICATED") {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+    // If error is not found, return 404
+    if (err.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    console.error("removeSkillFromProfile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
 
 export default router;

@@ -47,25 +47,25 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 
     {/* content */}
     <div className="px-4 pb-2">
-    <p className="mt-1 text-sm text-gray-800 break-words">
-            {displayText}
-            {isLong && !expanded && (
-            <button
-                className="ml-1 text-gray-500 hover:text-gray-700 underline underline-offset-2"
-                onClick={() => setExpanded(true)}
-            >
-                see more
-            </button>
-            )}
-            {isLong && expanded && (
-            <button
-                className="ml-1 text-gray-500 hover:text-gray-700 underline underline-offset-2"
-                onClick={() => setExpanded(false)}
-            >
-                see less
-            </button>
-            )}
-        </p>
+      <p className="mt-1 text-sm text-gray-800 break-words text-left whitespace-pre-line leading-relaxed">
+        {displayText}
+        {isLong && !expanded && (
+          <button
+            className="ml-1 text-gray-500 hover:text-gray-700 underline underline-offset-2"
+            onClick={() => setExpanded(true)}
+          >
+            see more
+          </button>
+        )}
+        {isLong && expanded && (
+          <button
+            className="ml-1 text-gray-500 hover:text-gray-700 underline underline-offset-2"
+            onClick={() => setExpanded(false)}
+          >
+            see less
+          </button>
+        )}
+      </p>
 
         {post.mediaUrl && (
             <div className="w-full mt-3">

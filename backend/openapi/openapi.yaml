@@ -13,9 +13,18 @@ servers:
 security:
   - bearerAuth: []
 
+tags:
+  - name: Auth
+    description: Authentication, verification, sessions
+  - name: Profile
+    description: Profile data, skills, media, and preferences
+  - name: Handles
+    description: Public profile handles (unique slugs)
+
 paths:
   /auth/register:
     post:
+      tags: ["Auth"]
       summary: Register new account
       description: |
         **Flow**
@@ -129,6 +138,7 @@ paths:
 
   /auth/verify-otp:
     post:
+      tags: ["Auth"]
       summary: Verify OTP (Activate account)
       description: |
         Verify the 6-digit OTP for a **PENDING_VERIFICATION** signup.
@@ -222,6 +232,7 @@ paths:
 
   /auth/resend-otp:
     post:
+      tags: ["Auth"]
       summary: Resend OTP for a pending signup
       description: |
         Issues a **new 6-digit OTP** (overwriting the previous one), resets attempts, and updates
@@ -305,6 +316,7 @@ paths:
 
   /auth/pending/email:
     patch:
+      tags: ["Auth"]
       summary: Change Email (Pre-Verification)
       description: |
         Allows unverified users to fix a mistyped email before completing verification.
@@ -395,6 +407,7 @@ paths:
 
   /auth/pending/context?resumeToken=RES_xxx:
     get:
+      tags: ["Auth"]
       summary: Get pending registration context
       description: |
         Return lightweight context for a pending signup using a secure resumeToken (issued by Story 1.1). 
@@ -463,6 +476,7 @@ paths:
 
   /auth/login:
     post:
+      tags: ["Auth"]
       summary: Log in a user
       description: |
         Authenticates an **ACTIVE** user with their email and password.
@@ -528,6 +542,7 @@ paths:
 
   /auth/refresh:
     post:
+      tags: ["Auth"]
       summary: Refresh access token
       description: >
         Issues a new `accessToken` using the `refreshToken` stored in the `HttpOnly` cookie.
@@ -558,6 +573,7 @@ paths:
 
   /auth/logout:
     post:
+      tags: ["Auth"]
       summary: Log out user
       description: |
         Securely logs out the user by invalidating their refresh token and clearing the refresh token cookie.
@@ -608,6 +624,7 @@ paths:
 
   /user/email/change-request:
     post:
+      tags: ["Auth"]
       summary: Request email change for verified users
       description: |
         Allows verified users to request an email change by providing their current password and new email.
@@ -702,6 +719,7 @@ paths:
 
   /user/email/verify-change:
     post:
+      tags: ["Auth"]
       summary: Verify email change with OTP
       description: |
         Verifies the email change using the OTP sent to the new email address.
@@ -798,6 +816,7 @@ paths:
 
   /user/email/resend-otp:
     post:
+      tags: ["Auth"]
       summary: Resend OTP for email change
       description: |
         Resends the OTP for pending email change with rate limiting and cooldown protection.
@@ -871,6 +890,7 @@ paths:
 
   /user/email/cancel-change:
     delete:
+      tags: ["Auth"]
       summary: Cancel pending email change
       description: |
         Cancels any pending email change for the authenticated user.
@@ -915,6 +935,7 @@ paths:
 
   /auth/password/request-reset:
     post:
+      tags: ["Auth"]
       summary: Request Password Reset (Start)
       description: |
         Starts the password-reset flow in an **enumeration-safe** way.
@@ -979,6 +1000,7 @@ paths:
 
   /auth/password/verify-otp:
     post:
+      tags: ["Auth"]
       summary: Verify Password Reset OTP (Create reset session)
       description: |
         Validates a 6-digit OTP for the **RESET_PASSWORD** flow. On success, returns a short-lived
@@ -1031,6 +1053,7 @@ paths:
 
   /auth/password/reset:
     post:
+      tags: ["Auth"]
       summary: Set New Password (Complete)
       description: |
         Sets a new password for the user identified by a valid `resetSessionToken`. Enforces password policy,
@@ -1086,6 +1109,7 @@ paths:
 
   /auth/password/resend-otp:
     post:
+      tags: ["Auth"]
       summary: Resend Password Reset OTP
       description: |
         Resends a fresh OTP for the **RESET_PASSWORD** flow in an **enumeration-safe** way.
@@ -1145,6 +1169,7 @@ paths:
 
   /auth/password/cancel:
     post:
+      tags: ["Auth"]
       summary: Cancel Password Reset
       description: |
         Cancels an in-progress password reset by clearing any active `RESET_PASSWORD` OTP.
@@ -1194,6 +1219,7 @@ paths:
 
   /profile/skills:
     get:
+      tags: ["Profile"]
       summary: List all skills for the authenticated user
       description: |
         Returns all skills linked to the authenticated user's profile via `profile_skills`.
@@ -1232,6 +1258,7 @@ paths:
                     code: NOT_AUTHENTICATED
                     details: "Invalid or expired token"
     post:
+      tags: ["Profile"]
       summary: Add a skill to the authenticated user's profile
       description: |
         Adds a skill to the user's profile. The skill is normalized and ensured to exist in the skills lookup table. Association is idempotent.
@@ -1292,6 +1319,7 @@ paths:
 
   /profile/skills/{id}:
     delete:
+      tags: ["Profile"]
       summary: Remove a skill from the authenticated user's profile
       description: |
         Deletes the association between the authenticated user and the given skill by id.
@@ -1342,6 +1370,90 @@ paths:
                 not_found:
                   value:
                     code: NOT_FOUND
+
+  /profile/handle:
+    patch:
+      tags: ["Handles"]
+      summary: Set or change profile handle (slug)
+      description: >
+        Claim or update a unique, public handle for the authenticated user.
+        Must match `^[a-z0-9_.-]{3,30}$` and is unique case-insensitively.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HandleRequest"
+            examples:
+              ok: { value: { handle: "janedoe" } }
+      responses:
+        "200":
+          description: Handle set successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HandleOK"
+              examples:
+                ok: { value: { success: true, handle: "janedoe" } }
+        "400":
+          description: Invalid format or length
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_format: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "409":
+          description: Handle already taken
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                taken: { value: { code: HANDLE_TAKEN } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /handles/check:
+    get:
+      tags: ["Handles"]
+      summary: Check handle availability
+      description: >
+        Validates format and checks if the handle is available (case-insensitive).
+      parameters:
+        - name: handle
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-z0-9_.-]{3,30}$"
+          example: janedoe
+      responses:
+        "200":
+          description: Availability result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HandleAvailability"
+              examples:
+                free:  { value: { available: true } }
+                taken: { value: { available: false } }
+        "400":
+          description: Invalid format
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_format: { value: { code: VALIDATION_ERROR } }
+        "500":
+          $ref: "#/components/responses/InternalError"
 
 components:
   securitySchemes:
@@ -1688,6 +1800,8 @@ components:
             - NO_PENDING_EMAIL_CHANGE
             - TOO_MANY_REQUESTS
             - INTERNAL
+            - HANDLE_TAKEN
+
         details:
           type: string
           description: Optional additional details about the error
@@ -1705,6 +1819,7 @@ components:
           properties:
             fieldErrors:
               type: object
+    
     PendingContextOK:
       type: object
       required:
@@ -1732,7 +1847,33 @@ components:
             remainingToday:
               type: integer
               description: Number of OTP resends remaining today (daily limit is 5)
-  
+    
+    HandleRequest:
+      type: object
+      required: [handle]
+      properties:
+        handle:
+          type: string
+          pattern: "^[a-z0-9_.-]{3,30}$"
+          description: Lowercase slug; unique case-insensitively
+
+    HandleOK:
+      type: object
+      required: [success, handle]
+      properties:
+        success: { type: boolean, example: true }
+        handle:
+          type: string
+          example: "janedoe"
+
+    HandleAvailability:
+      type: object
+      required: [available]
+      properties:
+        available:
+          type: boolean
+          example: true
+
 
     Skill:
       type: object

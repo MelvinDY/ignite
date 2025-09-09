@@ -79,7 +79,7 @@ export async function removeSkillFromProfile(profileId: string, skillId: number)
   // Check if the association exists and is owned by the user
   const { data, error } = await supabase
     .from("profile_skills")
-    .select("id")
+    .select("profile_id, skill_id")
     .eq("profile_id", profileId)
     .eq("skill_id", skillId)
     .maybeSingle();
@@ -88,11 +88,12 @@ export async function removeSkillFromProfile(profileId: string, skillId: number)
     // Not found or not owned, but idempotent: treat as deleted
     return false;
   }
-  // Delete the association
+  // Delete the association using composite key
   const { error: deleteError } = await supabase
     .from("profile_skills")
     .delete()
-    .eq("id", data.id);
+    .eq("profile_id", profileId)
+    .eq("skill_id", skillId);
   if (deleteError) throw deleteError;
   return true;
 }

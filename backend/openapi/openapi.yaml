@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/docs
+  - url: http://localhost:5000/api
     description: Local dev
 
 security:
@@ -895,6 +895,59 @@ paths:
                 not_authenticated:
                   value:
                     code: NOT_AUTHENTICATED
+
+  /profile/skills/{id}:
+    delete:
+      summary: Remove a skill from the authenticated user's profile
+      description: |
+        Deletes the association between the authenticated user and the given skill by id.
+        Idempotent: returns 200 even if the association does not exist.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill ID to remove from the profile
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Skill association removed (or already deleted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+              examples:
+                deleted:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Skill not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
 
   /user/email/resend-otp:
     post:

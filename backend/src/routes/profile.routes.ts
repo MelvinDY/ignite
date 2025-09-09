@@ -85,17 +85,14 @@ router.delete("/profile/skills/:id", async (req, res) => {
   
   try {
     // Returns true if deleted, false if not found/not owned
-    await removeSkillFromProfile(userId, skillId);
-    // Always return 200 for idempotency
+    const deleted = await removeSkillFromProfile(userId, skillId);
+    if (!deleted) {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
     return res.status(200).json({ success: true });
   } catch (err: any) {
-    // If error is auth, return 401
     if (err.code === "NOT_AUTHENTICATED") {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-    }
-    // If error is not found, return 404
-    if (err.code === "NOT_FOUND") {
-      return res.status(404).json({ code: "NOT_FOUND" });
     }
     console.error("removeSkillFromProfile.error", err);
     return res.status(500).json({ code: "INTERNAL" });

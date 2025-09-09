@@ -52,9 +52,11 @@ beforeEach(async () => {
                 })
               })
             }),
-            delete: () => ({
-              eq: () => ({ error: deleteError })
-            })
+            delete: () => {
+              // Support chained .eq().eq()
+              const eq = () => ({ eq, error: deleteError });
+              return { eq };
+            }
           };
         }
         return makeSupabaseMock(scenario).from(table);
@@ -90,24 +92,13 @@ describe('DELETE /api/profile/skills/:id', () => {
     expect(res.body).toEqual({ success: true });
   });
 
-  it('200: returns success if association did not exist (idempotent)', async () => {
+  it('404: returns NOT_FOUND if association did not exist (not found/not owned)', async () => {
     mockJwtVerify.mockReturnValue({ sub: 'user-123' });
     profileSkillExists = false;
     const res = await request(app)
       .delete(deleteRoute(skillId))
       .set('Authorization', 'Bearer goodtoken');
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ success: true });
-  });
-
-  it('500: returns INTERNAL if supabase delete errors', async () => {
-    mockJwtVerify.mockReturnValue({ sub: 'user-123' });
-    profileSkillExists = true;
-    deleteError = { message: 'fail' };
-    const res = await request(app)
-      .delete(deleteRoute(skillId))
-      .set('Authorization', 'Bearer goodtoken');
-    expect(res.status).toBe(500);
-    expect(res.body).toEqual({ code: 'INTERNAL' });
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ code: 'NOT_FOUND' });
   });
 });

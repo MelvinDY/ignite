@@ -21,3 +21,50 @@ export async function getProfileSkills(profileId: string): Promise<Array<{ id: n
 		}, {});
 	return Object.values(skills).sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/**
+ * Normalize a skill name (trim, capitalize first letter, rest lowercase)
+ */
+function normalizeSkillName(name: string): string {
+  return name.trim().replace(/\s+/g, ' ').replace(/^./, c => c.toUpperCase()).replace(/(.)(.*)/, (m, a, b) => a.toUpperCase() + b.toLowerCase());
+}
+
+/**
+ * Add a skill to a user's profile. Idempotent if already linked.
+ * @param profileId string
+ * @param skillName string
+ * @returns { id, name }
+ */
+export async function addSkillToProfile(profileId: string, skillName: string): Promise<{ id: number; name: string }> {
+  const normalized = normalizeSkillName(skillName);
+  // 1. Ensure skill exists in skills table
+  let skillId: number;
+  let skillRow;
+  {
+    const { data, error } = await supabase
+      .from("skills")
+      .select("id, name")
+      .ilike("name", normalized)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      skillId = data.id;
+      skillRow = data;
+    } else {
+      // Insert new skill
+      const { data: inserted, error: insertErr } = await supabase
+        .from("skills")
+        .insert({ name: normalized })
+        .select("id, name")
+        .single();
+      if (insertErr) throw insertErr;
+      skillId = inserted.id;
+      skillRow = inserted;
+    }
+  }
+  // 2. Insert into profile_skills (idempotent)
+  await supabase
+    .from("profile_skills")
+    .upsert({ profile_id: profileId, skill_id: skillId }, { onConflict: "profile_id,skill_id" });
+  return { id: skillId, name: skillRow.name };
+}

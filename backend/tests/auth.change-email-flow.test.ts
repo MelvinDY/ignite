@@ -202,111 +202,111 @@ beforeEach(async () => {
   app = await buildApp();
 });
 
-// describe('POST /user/email/change-request (Story 1.10)', () => {
-//   const route = '/api/user/email/change-request';
+describe('POST /user/email/change-request (Story 1.10)', () => {
+  const route = '/api/user/email/change-request';
 
-//   it('200 success: creates pending change and sends OTP', async () => {
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer valid-token')
-//       .send({
-//         newEmail: 'new@example.com',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(200);
+  it('200 success: creates pending change and sends OTP', async () => {
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        newEmail: 'new@example.com',
+        currentPassword: 'correct-password',
+      })
+      .expect(200);
 
-//     expect(res.body).toMatchObject({
-//       success: true,
-//       emailMasked: expect.stringMatching(/n.*@e.*/),
-//       expiresInSeconds: 600,
-//     });
-//     expect(scenario.otpSent).toBe(true);
-//   });
+    expect(res.body).toMatchObject({
+      success: true,
+      emailMasked: expect.stringMatching(/n.*@e.*/),
+      expiresInSeconds: 600,
+    });
+    expect(scenario.otpSent).toBe(true);
+  });
 
-//   it('400 VALIDATION_ERROR for invalid email', async () => {
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer valid-token')
-//       .send({
-//         newEmail: 'invalid-email',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(400);
+  it('400 VALIDATION_ERROR for invalid email', async () => {
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        newEmail: 'invalid-email',
+        currentPassword: 'correct-password',
+      })
+      .expect(400);
 
-//     expect(res.body.code).toBe('VALIDATION_ERROR');
-//   });
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+  });
 
-//   it('401 NOT_AUTHENTICATED when no token provided', async () => {
-//     const res = await request(app)
-//       .post(route)
-//       .send({
-//         newEmail: 'new@example.com',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(401);
+  it('401 NOT_AUTHENTICATED when no token provided', async () => {
+    const res = await request(app)
+      .post(route)
+      .send({
+        newEmail: 'new@example.com',
+        currentPassword: 'correct-password',
+      })
+      .expect(401);
 
-//     expect(res.body.code).toBe('NOT_AUTHENTICATED');
-//   });
+    expect(res.body.code).toBe('NOT_AUTHENTICATED');
+  });
 
-//   it('500 INTERNAL when invalid token', async () => {
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer invalid-token')
-//       .send({
-//         newEmail: 'new@example.com',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(500); // JWT throws error, caught as INTERNAL
+  it('500 INTERNAL when invalid token', async () => {
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer invalid-token')
+      .send({
+        newEmail: 'new@example.com',
+        currentPassword: 'correct-password',
+      })
+      .expect(500); // JWT throws error, caught as INTERNAL
 
-//     expect(res.body.code).toBe('INTERNAL');
-//   });
+    expect(res.body.code).toBe('INTERNAL');
+  });
 
-//   it('404 USER_NOT_FOUND when user does not exist', async () => {
-//     scenario.userSignupById = null;
+  it('404 USER_NOT_FOUND when user does not exist', async () => {
+    scenario.userSignupById = null;
 
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer valid-token')
-//       .send({
-//         newEmail: 'new@example.com',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(404);
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        newEmail: 'new@example.com',
+        currentPassword: 'correct-password',
+      })
+      .expect(404);
 
-//     expect(res.body.code).toBe('USER_NOT_FOUND');
-//   });
+    expect(res.body.code).toBe('USER_NOT_FOUND');
+  });
 
-//   it('400 VALIDATION_ERROR for incorrect password', async () => {
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer valid-token')
-//       .send({
-//         newEmail: 'new@example.com',
-//         currentPassword: 'wrong-password',
-//       })
-//       .expect(400);
+  it('400 VALIDATION_ERROR for incorrect password', async () => {
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        newEmail: 'new@example.com',
+        currentPassword: 'wrong-password',
+      })
+      .expect(400);
 
-//     expect(res.body.code).toBe('VALIDATION_ERROR');
-//     expect(res.body.details).toBe('Incorrect password');
-//   });
+    expect(res.body.code).toBe('VALIDATION_ERROR');
+    expect(res.body.details).toBe('Incorrect password');
+  });
 
-//   it('409 EMAIL_EXISTS when email is already in use', async () => {
-//     scenario.profileByEmail = {
-//       id: 'other-user'
-//     };
+  it('409 EMAIL_EXISTS when email is already in use', async () => {
+    scenario.profileByEmail = {
+      id: 'other-user'
+    };
 
-//     const res = await request(app)
-//       .post(route)
-//       .set('Authorization', 'Bearer valid-token')
-//       .send({
-//         newEmail: 'existing@example.com',
-//         currentPassword: 'correct-password',
-//       })
-//       .expect(409);
+    const res = await request(app)
+      .post(route)
+      .set('Authorization', 'Bearer valid-token')
+      .send({
+        newEmail: 'existing@example.com',
+        currentPassword: 'correct-password',
+      })
+      .expect(409);
 
-//     expect(res.body.code).toBe('EMAIL_EXISTS');
-//   });
-// });
+    expect(res.body.code).toBe('EMAIL_EXISTS');
+  });
+});
 
 describe('POST /user/email/verify-change (Story 1.11)', () => {
   const route = '/api/user/email/verify-change';

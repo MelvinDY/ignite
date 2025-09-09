@@ -30,6 +30,7 @@ import {
   makeResetSessionToken,
   verifyResetSessionToken
 } from "../utils/tokens";
+import { maskEmail } from "../utils/email";
 import { rateLimit } from "../middlewares/rateLimit";
 import {
   loadPendingSignup,
@@ -405,9 +406,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
 
   try {
     console.info("login.attempt", { email: emailLower, ip: req.ip });
+    // 1. Find signup row
     const { data: row } = await supabase
       .from("user_signups")
-      .select("id, status, password_hash")
+      .select("id, status, password_hash, profile_id, zid")
       .eq("signup_email", emailLower)
       .maybeSingle();
 
@@ -440,8 +442,24 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ code: "INVALID_CREDENTIALS" });
     }
 
-    const accessToken = await generateAccessToken(row.id);
-    const refreshToken = await generateRefreshToken(row.id);
+    // 2. Find profile row (canonical user id)
+    let profileId = row.profile_id;
+    if (!profileId) {
+      // fallback: lookup by signup zID (should not happen if ensureProfileForSignup is used)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("zid", row.zid)
+        .maybeSingle();
+      profileId = profile?.id;
+    }
+    if (!profileId) {
+      console.error("login.no_profile", { signupId: row.id });
+      return res.status(500).json({ code: "INTERNAL", details: "No profile found for user" });
+    }
+
+    const accessToken = await generateAccessToken(profileId);
+    const refreshToken = await generateRefreshToken(profileId);
 
     // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
     res.cookie("refreshToken", refreshToken, {
@@ -452,10 +470,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    console.info("login.success", { userId: row.id });
+    console.info("login.success", { userId: profileId });
     return res.status(200).json({
       success: true,
-      userId: row.id,
+      userId: profileId,
       accessToken,
       expiresIn: 60 * 15,
     });
@@ -658,10 +676,84 @@ router.patch("/auth/pending/email", async (req, res) => {
       success: true,
       resumeToken: newResumeToken,
     });
+   } catch (err: any) {
+    console.error('change-email-pre-verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+   }
+});
+
+/**
+ * User Story 1.5: Get pending registration context
+ */
+router.get('/auth/pending/context', async (req, res) => {
+  const resumeToken = req.query.resumeToken as string;
+
+  try {
+    // 1. Validate resumeToken, get user id
+    let userId: string;
+    try {
+      ({ userId } = await verifyResumeTokenStrict(resumeToken));
+    } catch {
+      return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
+    }
+
+    // 2. Get sign up data from id
+    const { data: userSignup, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, signup_email, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const { data: userOtp } = await supabase
+      .from('user_otps')
+      .select('last_sent_at, resend_count')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (!userSignup || signupErr) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 3. Ensures status = PENDING_VERIFICATION
+    if (userSignup.status === 'ACTIVE') {
+      return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    }
+
+    if (userSignup.status === 'EXPIRED') {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 4. Calculate resend states
+    const now = new Date();
+    let cooldownSeconds = 0;
+    let remainingToday = 5;
+
+    if (userOtp?.last_sent_at) {
+      const lastSentAt = new Date(userOtp.last_sent_at);
+      // Calculates time since last sent OTP in seconds
+      const timeSinceLastSent = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
+      cooldownSeconds = Math.max(0, 60 - timeSinceLastSent);
+    }
+
+    if (userOtp?.resend_count !== undefined) {
+      // Calculates the remaining OTP attempts for today (5 OTP attempts a day)
+      remainingToday = Math.max(5 - userOtp.resend_count, 0);
+    }
+    // 5. Mask email for privacy
+    const emailMasked = maskEmail(userSignup.signup_email);
+    // 6. Return the context
+    return res.status(200).json({
+      emailMasked,
+      status: userSignup.status,
+      resend: {
+        cooldownSeconds,
+        remainingToday
+      }
+    });
   } catch (err: any) {
-    console.error("change-email-pre-verify.error", err?.message || err);
-    return res.status(500).json({ code: "INTERNAL" });
-  }
+    console.error('pending-context.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }     
 });
 
 /**

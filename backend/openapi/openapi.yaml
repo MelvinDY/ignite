@@ -7,8 +7,11 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:5000/docs
     description: Local dev
+
+security:
+  - bearerAuth: []
 
 paths:
   /auth/register:
@@ -372,6 +375,74 @@ paths:
                   value:
                     code: ALREADY_VERIFIED
 
+  /auth/pending/context?resumeToken=RES_xxx:
+    get:
+      summary: Get pending registration context
+      description: |
+        Return lightweight context for a pending signup using a secure resumeToken (issued by Story 1.1). 
+        The Verify screen calls this to decide what to show (email mask, resend state), or to fail fast 
+        if the signup is already verified/expired.
+
+        **Validation & Logic**
+        - Validate resumeToken (signature/TTL); locate user.
+        - Only return context when status = PENDING_VERIFICATION.
+        - Compute resend state from last_otp_sent_at, otp_resend_count (cooldown = 60s; daily cap = 5).
+        - Do not leak PII: return masked email only (never raw email).
+        - No OTP or sensitive fields should be returned.
+      parameters:
+        - name: resumeToken
+          in: query
+          required: true
+          description: Resume token issued during registration
+          schema:
+            type: string
+            example: 'res_xxxxx...'
+      responses:
+        '200':
+          description: Pending context retrieved success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingContextOK'
+              examples:
+                success:
+                  value:
+                    emailMasked: "j***@u***.edu"
+                    status: "PENDING_VERIFICATION"
+                    resend:
+                      cooldownSeconds: 37
+                      remainingToday: 3
+        '401':
+          description: Invalid token or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                bad_token:
+                  value:
+                    code: RESUME_TOKEN_INVALID
+        '404':
+          description: User expired/cleaned up or missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                expired_user:
+                  value:
+                    code: PENDING_NOT_FOUND
+        '409':
+          description: User already active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                active_user:
+                  value:
+                    code: ALREADY_VERIFIED
+
   /auth/login:
     post:
       summary: Log in a user
@@ -510,7 +581,410 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /user/email/change-request:
+    post:
+      summary: Request email change for verified users
+      description: |
+        Allows verified users to request an email change by providing their current password and new email.
+        
+        **Flow**
+        1) Validate JWT access token from Authorization header
+        2) Validate new email format and current password
+        3) Verify current password against stored hash
+        4) Check that new email is not already used by another active user
+        5) Generate OTP and create pending email change record
+        6) Send OTP to new email address
+        7) Return masked email and expiry information
+        
+        **Security Features**
+        - Requires valid JWT access token
+        - Requires current password verification
+        - Prevents email takeover by checking existing users
+        - OTP expires in 10 minutes (600 seconds)
+        - Email address is masked in response for privacy
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeEmailRequest'
+            examples:
+              valid:
+                value:
+                  newEmail: "john.new@gmail.com"
+                  currentPassword: "MySecurePassword123"
+      responses:
+        '200':
+          description: Email change request created; OTP sent to new email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangeEmailRequestResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    emailMasked: "j***@g***il.com"
+                    expiresInSeconds: 600
+        '400':
+          description: Validation error or incorrect password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+              examples:
+                incorrect_password:
+                  value:
+                    code: VALIDATION_ERROR
+                    details: "Incorrect password"
+        '401':
+          description: Not authenticated or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                user_not_found:
+                  value:
+                    code: USER_NOT_FOUND
+                    details: "User not found"
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                email_exists:
+                  value:
+                    code: EMAIL_EXISTS
+                    details: "Given email is already used"
+        '500':
+          $ref: "#/components/responses/InternalError"
+
+  /user/email/verify-change:
+    post:
+      summary: Verify email change with OTP
+      description: |
+        Verifies the email change using the OTP sent to the new email address.
+        
+        **Flow**
+        1) Validate JWT access token
+        2) Retrieve pending email change for user
+        3) Verify OTP is valid, not expired, and not locked
+        4) Complete the email change in database
+        5) Invalidate refresh tokens (security measure)
+        6) Issue new access and refresh tokens
+        7) Set new refresh token cookie
+        
+        **Security Features**
+        - OTP attempt limiting (5 attempts max, then locked)
+        - OTP expiry (10 minutes)
+        - Token rotation after email change
+        - All existing sessions are invalidated
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyEmailChangeRequest'
+            examples:
+              valid:
+                value:
+                  otp: "123456"
+      responses:
+        '200':
+          description: Email change verified successfully
+          headers:
+            Set-Cookie:
+              description: New refresh token cookie
+              schema:
+                type: string
+                example: refreshToken=rft_eyJhbGciOi...; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyEmailChangeResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    message: "Email updated successfully"
+                    newAccessToken: "jwt_eyJhbGciOi..."
+        '400':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                otp_invalid:
+                  value:
+                    code: OTP_INVALID
+                otp_expired:
+                  value:
+                    code: OTP_EXPIRED
+        '401':
+  /profile/skills:
+    get:
+      summary: List all skills for the authenticated user
+      description: |
+        Returns all skills linked to the authenticated user's profile via `profile_skills`.
+        Names are deduped and sorted alphabetically.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of skills for the user (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+              examples:
+                some_skills:
+                  value:
+                    - id: 12
+                      name: Python
+                    - id: 34
+                      name: SQL
+                no_skills:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: No pending email change found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_pending:
+                  value:
+                    code: NO_PENDING_EMAIL_CHANGE
+        '423':
+          description: OTP locked due to too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                otp_locked:
+                  value:
+                    code: OTP_LOCKED
+        '500':
+          $ref: "#/components/responses/InternalError"
+
+  /user/email/resend-otp:
+    post:
+      summary: Resend OTP for email change
+      description: |
+        Resends the OTP for pending email change with rate limiting and cooldown protection.
+        
+        **Rate Limiting**
+        - 5 requests per day per (IP + email)
+        - 60 second cooldown between requests
+        - Maximum 5 resends per pending change
+        
+        **Flow**
+        1) Validate JWT access token
+        2) Check for pending email change
+        3) Enforce cooldown and resend limits
+        4) Generate new OTP
+        5) Send OTP to pending email
+        6) Update resend counters
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OTP resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendEmailOtpResponse'
+              examples:
+                success:
+                  value:
+                    success: true
+                    expiresInSeconds: 600
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: No pending email change found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_pending:
+                  value:
+                    code: NO_PENDING_EMAIL_CHANGE
+        '429':
+          description: Rate limit exceeded or cooldown active
+          headers:
+            X-RateLimit-Limit:     { schema: { type: string } }
+            X-RateLimit-Remaining: { schema: { type: string } }
+            X-RateLimit-Reset:     { schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                cooldown:
+                  value:
+                    code: OTP_COOLDOWN
+                resend_limit:
+                  value:
+                    code: OTP_RESEND_LIMIT
+        '500':
+          $ref: "#/components/responses/InternalError"
+
+  /user/email/cancel-change:
+    delete:
+      summary: Cancel pending email change
+      description: |
+        Cancels any pending email change for the authenticated user.
+        
+        **Flow**
+        1) Validate JWT access token
+        2) Delete pending email change record from database
+        
+        **Notes**
+        - Idempotent operation (safe to call even if no pending change exists)
+        - Does not require additional verification
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Email change cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+              examples:
+                success:
+                  value:
+                    success: true
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        '500':
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      summary: Add a skill to the authenticated user's profile
+      description: |
+        Adds a skill to the user's profile. The skill is normalized and ensured to exist in the skills lookup table. Association is idempotent.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill]
+              properties:
+                skill:
+                  type: string
+                  example: Python
+      responses:
+        "201":
+          description: Skill added to profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  id:
+                    type: integer
+                    example: 12
+                  name:
+                    type: string
+                    example: Python
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      skill: Skill is required
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      
   responses:
     InternalError:
       description: Internal error
@@ -645,47 +1119,6 @@ components:
         accessToken: { type: string, example: "jwt_eyJhbGciOi..." }
         expiresIn: { type: integer, example: 900 }
 
-    ErrorSimple:
-      type: object
-      required: [code]
-      properties:
-        code:
-          type: string
-          enum:
-            - VALIDATION_ERROR
-            - EMAIL_EXISTS
-            - ZID_EXISTS
-            - ZID_MISMATCH
-            - PENDING_VERIFICATION_EXISTS
-            - PENDING_NOT_FOUND
-            - ALREADY_VERIFIED
-            - RESUME_TOKEN_INVALID
-            - OTP_INVALID
-            - OTP_EXPIRED
-            - OTP_LOCKED
-            - OTP_COOLDOWN
-            - OTP_RESEND_LIMIT
-            - INVALID_CREDENTIALS
-            - ACCOUNT_NOT_VERIFIED
-            - NO_REFRESH_TOKEN
-            - INVALID_REFRESH_TOKEN
-            - TOO_MANY_REQUESTS
-            - INTERNAL
-
-    ValidationError:
-      type: object
-      required: [code, details]
-      properties:
-        code:
-          type: string
-          enum: [VALIDATION_ERROR]
-        details:
-          type: object
-          description: Zod-flattened errors (shape may vary)
-          properties:
-            fieldErrors:
-              type: object
-
     ChangeEmailPreVerifyRequest:
       type: object
       required:
@@ -711,3 +1144,167 @@ components:
         resumeToken:
           description: The new resume token bound to the new email
           example: "res_def456..."
+
+    ChangeEmailRequest:
+      type: object
+      required:
+        - newEmail
+        - currentPassword
+      properties:
+        newEmail:
+          type: string
+          format: email
+          description: The new email address to change to
+          example: "john.new@gmail.com"
+        currentPassword:
+          type: string
+          description: Current password for verification
+          example: "MySecurePassword123"
+
+    ChangeEmailRequestResponse:
+      type: object
+      required:
+        - success
+        - emailMasked
+        - expiresInSeconds
+      properties:
+        success:
+          type: boolean
+          example: true
+        emailMasked:
+          type: string
+          description: Masked version of the new email for privacy
+          example: "j***@g***il.com"
+        expiresInSeconds:
+          type: integer
+          description: OTP expiry time in seconds
+          example: 600
+
+    VerifyEmailChangeRequest:
+      type: object
+      required:
+        - otp
+      properties:
+        otp:
+          type: string
+          pattern: "^[0-9]{6}$"
+          description: 6-digit OTP received via email
+          example: "123456"
+
+    VerifyEmailChangeResponse:
+      type: object
+      required:
+        - success
+        - message
+        - newAccessToken
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Email updated successfully"
+        newAccessToken:
+          type: string
+          description: New JWT access token (existing tokens are invalidated)
+          example: "jwt_eyJhbGciOi..."
+
+    ResendEmailOtpResponse:
+      type: object
+      required:
+        - success
+        - expiresInSeconds
+      properties:
+        success:
+          type: boolean
+          example: true
+        expiresInSeconds:
+          type: integer
+          description: OTP expiry time in seconds
+          example: 600
+
+    ErrorSimple:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - EMAIL_EXISTS
+            - ZID_EXISTS
+            - ZID_MISMATCH
+            - PENDING_VERIFICATION_EXISTS
+            - PENDING_NOT_FOUND
+            - ALREADY_VERIFIED
+            - RESUME_TOKEN_INVALID
+            - OTP_INVALID
+            - OTP_EXPIRED
+            - OTP_LOCKED
+            - OTP_COOLDOWN
+            - OTP_RESEND_LIMIT
+            - INVALID_CREDENTIALS
+            - ACCOUNT_NOT_VERIFIED
+            - NO_REFRESH_TOKEN
+            - INVALID_REFRESH_TOKEN
+            - NOT_AUTHENTICATED
+            - USER_NOT_FOUND
+            - NO_PENDING_EMAIL_CHANGE
+            - TOO_MANY_REQUESTS
+            - INTERNAL
+        details:
+          type: string
+          description: Optional additional details about the error
+
+    ValidationError:
+      type: object
+      required: [code, details]
+      properties:
+        code:
+          type: string
+          enum: [VALIDATION_ERROR]
+        details:
+          type: object
+          description: Zod-flattened errors (shape may vary)
+          properties:
+            fieldErrors:
+              type: object
+    PendingContextOK:
+      type: object
+      required:
+        - emailMasked
+        - status
+        - resend
+      properties:
+        emailMasked:
+          type: string
+          description: Masked email address for privacy
+          example: "j***@u***.edu"
+        status:
+          type: string
+          description: Current signup status
+          example: "PENDING_VERIFICATION"
+        resend:
+          type: object
+          required:
+            - cooldownSeconds
+            - remainingToday
+          properties:
+            cooldownSeconds:
+              type: integer
+              description: Seconds remaining before next OTP can be requested
+            remainingToday:
+              type: integer
+              description: Number of OTP resends remaining today (daily limit is 5)
+  
+
+    Skill:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string

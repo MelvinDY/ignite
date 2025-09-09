@@ -68,3 +68,32 @@ export async function addSkillToProfile(profileId: string, skillName: string): P
     .upsert({ profile_id: profileId, skill_id: skillId }, { onConflict: "profile_id,skill_id" });
   return { id: skillId, name: skillRow.name };
 }
+
+/**
+ * Remove a skill from a user's profile by skill id. Idempotent: returns true if association existed and was deleted, false if not found (but both are 200 at API layer).
+ * @param profileId string
+ * @param skillId number
+ * @returns boolean (true if deleted, false if not found)
+ */
+export async function removeSkillFromProfile(profileId: string, skillId: number): Promise<boolean> {
+  // Check if the association exists and is owned by the user
+  const { data, error } = await supabase
+    .from("profile_skills")
+    .select("profile_id, skill_id")
+    .eq("profile_id", profileId)
+    .eq("skill_id", skillId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) {
+    // Not found or not owned, but idempotent: treat as deleted
+    return false;
+  }
+  // Delete the association using composite key
+  const { error: deleteError } = await supabase
+    .from("profile_skills")
+    .delete()
+    .eq("profile_id", profileId)
+    .eq("skill_id", skillId);
+  if (deleteError) throw deleteError;
+  return true;
+}

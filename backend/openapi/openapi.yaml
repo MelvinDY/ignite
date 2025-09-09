@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/docs
+  - url: http://localhost:5000/api
     description: Local dev
 
 security:
@@ -81,7 +81,8 @@ paths:
           description: Validation error (zod)
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ValidationError" }
+              schema:
+                $ref: "#/components/schemas/ValidationError"
               examples:
                 bad_email:
                   value:
@@ -99,9 +100,10 @@ paths:
           description: Conflict — active user exists or pending already created
           content:
             application/json:
-              oneOf:
-                - $ref: "#/components/schemas/ErrorSimple"
-                - $ref: "#/components/schemas/PendingExists"
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorSimple"
+                  - $ref: "#/components/schemas/PendingExists"
               examples:
                 email_exists: { value: { code: EMAIL_EXISTS } }
                 zid_exists:   { value: { code: ZID_EXISTS } }
@@ -118,7 +120,8 @@ paths:
             X-RateLimit-Reset:     { schema: { type: string } }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 too_many: { value: { code: TOO_MANY_REQUESTS } }
         "500":
@@ -145,7 +148,8 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/VerifyOtpRequest" }
+            schema:
+              $ref: "#/components/schemas/VerifyOtpRequest"
             examples:
               valid:
                 value: { resumeToken: "res_eyJhbGciOi...", otp: "123456" }
@@ -154,16 +158,18 @@ paths:
           description: OTP verified; account activated
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/VerifyOtpOK" }
+              schema:
+                $ref: "#/components/schemas/VerifyOtpOK"
               examples:
                 ok: { value: { success: true, message: "Account verified successfully" } }
         "400":
           description: Bad/expired OTP or validation error
           content:
             application/json:
-              oneOf:
-                - $ref: "#/components/schemas/ErrorSimple"
-                - $ref: "#/components/schemas/ValidationError"
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ErrorSimple"
+                  - $ref: "#/components/schemas/ValidationError"
               examples:
                 otp_invalid: { value: { code: OTP_INVALID } }
                 otp_expired: { value: { code: OTP_EXPIRED } }
@@ -171,28 +177,32 @@ paths:
           description: Invalid or expired resume token
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 bad_token: { value: { code: RESUME_TOKEN_INVALID } }
         "404":
           description: Pending signup or OTP not found
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 not_found: { value: { code: PENDING_NOT_FOUND } }
         "409":
           description: User already verified
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 already_verified: { value: { code: ALREADY_VERIFIED } }
         "423":
           description: OTP locked after too many failed attempts
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 locked: { value: { code: OTP_LOCKED } }
         "429":
@@ -203,7 +213,8 @@ paths:
             X-RateLimit-Reset:     { schema: { type: string } }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 too_many: { value: { code: TOO_MANY_REQUESTS } }
         "500":
@@ -229,7 +240,8 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/ResendOtpRequest" }
+            schema:
+              $ref: "#/components/schemas/ResendOtpRequest"
             examples:
               ok:
                 value: { resumeToken: "res_eyJhbGciOi..." }
@@ -238,35 +250,40 @@ paths:
           description: OTP reissued and email sent
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ResendOtpOK" }
+              schema:
+                $ref: "#/components/schemas/ResendOtpOK"
               examples:
                 success: { value: { success: true } }
         "400":
           description: Validation error (missing resumeToken)
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 bad_body: { value: { code: VALIDATION_ERROR } }
         "401":
           description: Invalid or expired resume token
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 bad_token: { value: { code: RESUME_TOKEN_INVALID } }
         "404":
           description: Pending signup not found
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 not_found: { value: { code: PENDING_NOT_FOUND } }
         "409":
           description: Already verified
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 already_verified: { value: { code: ALREADY_VERIFIED } }
         "429":
@@ -277,7 +294,8 @@ paths:
             X-RateLimit-Reset:     { schema: { type: string } }
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 cooldown: { value: { code: OTP_COOLDOWN } }
                 daily_cap: { value: { code: OTP_RESEND_LIMIT } }
@@ -464,7 +482,8 @@ paths:
                 example: refreshToken=rft_eyJhbGciOi...; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/LoginSuccess" }
+              schema:
+                $ref: "#/components/schemas/LoginSuccess"
               examples:
                 success:
                   value:
@@ -476,28 +495,32 @@ paths:
           description: Validation error for missing or invalid fields.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 missing_fields: { value: { code: VALIDATION_ERROR } }
         "401":
           description: Invalid credentials (unknown email or wrong password).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 invalid: { value: { code: INVALID_CREDENTIALS } }
         "403":
           description: The user's account is not in an ACTIVE state.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 not_active: { value: { code: ACCOUNT_NOT_VERIFIED } }
         "429":
           description: Too many failed login attempts (rate limit hit).
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 too_many: { value: { code: TOO_MANY_REQUESTS } }
         "500":
@@ -513,7 +536,8 @@ paths:
           description: Token refreshed successfully.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/RefreshSuccess" }
+              schema:
+                $ref: "#/components/schemas/RefreshSuccess"
               examples:
                 success:
                   value:
@@ -524,7 +548,8 @@ paths:
           description: Refresh token is missing, invalid, or expired.
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
               examples:
                 no_token:      { value: { code: NO_REFRESH_TOKEN } }
                 invalid_token: { value: { code: INVALID_REFRESH_TOKEN } }
@@ -740,6 +765,36 @@ paths:
                   value:
                     code: OTP_EXPIRED
         '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: No pending email change found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_pending:
+                  value:
+                    code: NO_PENDING_EMAIL_CHANGE
+        '423':
+          description: OTP locked due to too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                otp_locked:
+                  value:
+                    code: OTP_LOCKED
 
   /auth/password/request-reset:
     post:
@@ -840,9 +895,10 @@ paths:
           description: Bad request — validation or OTP failure
           content:
             application/json:
-              oneOf:
-                - $ref: "#/components/schemas/ValidationError"
-                - $ref: "#/components/schemas/ErrorSimple"
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ValidationError"
+                  - $ref: "#/components/schemas/ErrorSimple"
               examples:
                 otp_invalid: { value: { code: OTP_INVALID } }
                 otp_expired: { value: { code: OTP_EXPIRED } }
@@ -1019,68 +1075,6 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
-  /profile/skills:
-    get:
-      summary: List all skills for the authenticated user
-      description: |
-        Returns all skills linked to the authenticated user's profile via `profile_skills`.
-        Names are deduped and sorted alphabetically.
-        
-        **Auth:** Bearer token required.
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: List of skills for the user (may be empty)
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Skill"
-              examples:
-                some_skills:
-                  value:
-                    - id: 12
-                      name: Python
-                    - id: 34
-                      name: SQL
-                no_skills:
-                  value: []
-        "401":
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
-              examples:
-                not_authenticated:
-                  value:
-                    code: NOT_AUTHENTICATED
-                    details: "Invalid or expired token"
-        '404':
-          description: No pending email change found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                no_pending:
-                  value:
-                    code: NO_PENDING_EMAIL_CHANGE
-        '423':
-          description: OTP locked due to too many attempts
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                otp_locked:
-                  value:
-                    code: OTP_LOCKED
-        '500':
-          $ref: "#/components/responses/InternalError"
-
   /user/email/resend-otp:
     post:
       summary: Resend OTP for email change
@@ -1198,6 +1192,45 @@ paths:
         '500':
           $ref: "#/components/responses/InternalError"
 
+  /profile/skills:
+    get:
+      summary: List all skills for the authenticated user
+      description: |
+        Returns all skills linked to the authenticated user's profile via `profile_skills`.
+        Names are deduped and sorted alphabetically.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of skills for the user (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+              examples:
+                some_skills:
+                  value:
+                    - id: 12
+                      name: Python
+                    - id: 34
+                      name: SQL
+                no_skills:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
     post:
       summary: Add a skill to the authenticated user's profile
       description: |
@@ -1257,6 +1290,59 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile/skills/{id}:
+    delete:
+      summary: Remove a skill from the authenticated user's profile
+      description: |
+        Deletes the association between the authenticated user and the given skill by id.
+        Idempotent: returns 200 even if the association does not exist.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Skill ID to remove from the profile
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Skill association removed (or already deleted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+              examples:
+                deleted:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Skill not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1269,7 +1355,8 @@ components:
       description: Internal error
       content:
         application/json:
-          schema: { $ref: "#/components/schemas/ErrorSimple" }
+          schema:
+            $ref: "#/components/schemas/ErrorSimple"
           examples:
             internal: { value: { code: INTERNAL } }
 

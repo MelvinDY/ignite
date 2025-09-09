@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/docs
+  - url: http://localhost:5000/api
     description: Local dev
 
 security:
@@ -740,67 +740,6 @@ paths:
                   value:
                     code: OTP_EXPIRED
         '401':
-  /profile/skills:
-    get:
-      summary: List all skills for the authenticated user
-      description: |
-        Returns all skills linked to the authenticated user's profile via `profile_skills`.
-        Names are deduped and sorted alphabetically.
-        
-        **Auth:** Bearer token required.
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: List of skills for the user (may be empty)
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Skill"
-              examples:
-                some_skills:
-                  value:
-                    - id: 12
-                      name: Python
-                    - id: 34
-                      name: SQL
-                no_skills:
-                  value: []
-        "401":
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorSimple"
-              examples:
-                not_authenticated:
-                  value:
-                    code: NOT_AUTHENTICATED
-                    details: "Invalid or expired token"
-        '404':
-          description: No pending email change found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                no_pending:
-                  value:
-                    code: NO_PENDING_EMAIL_CHANGE
-        '423':
-          description: OTP locked due to too many attempts
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorSimple'
-              examples:
-                otp_locked:
-                  value:
-                    code: OTP_LOCKED
-        '500':
-          $ref: "#/components/responses/InternalError"
 
   /user/email/resend-otp:
     post:
@@ -919,6 +858,67 @@ paths:
         '500':
           $ref: "#/components/responses/InternalError"
 
+  /profile/skills:
+    get:
+      summary: List all skills for the authenticated user
+      description: |
+        Returns all skills linked to the authenticated user's profile via `profile_skills`.
+        Names are deduped and sorted alphabetically.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of skills for the user (may be empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+              examples:
+                some_skills:
+                  value:
+                    - id: 12
+                      name: Python
+                    - id: 34
+                      name: SQL
+                no_skills:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '404':
+          description: No pending email change found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                no_pending:
+                  value:
+                    code: NO_PENDING_EMAIL_CHANGE
+        '423':
+          description: OTP locked due to too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                otp_locked:
+                  value:
+                    code: OTP_LOCKED
+        '500':
+          $ref: "#/components/responses/InternalError"
     post:
       summary: Add a skill to the authenticated user's profile
       description: |

@@ -807,12 +807,23 @@ router.post("/user/email/change-request", async (req, res) => {
         .json({ code: "VALIDATION_ERROR", details: "Incorrect password" });
     }
 
-    const { data: existingUser } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", newEmailLowered)
-      .eq("status", "ACTIVE")
-      .maybeSingle();
+    // Check if they are existing emails on BOTH active OR pending emails
+    const [{ data: emailExists }, { data: pendingExists }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", newEmailLowered)
+        .eq("status", "ACTIVE")
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("id")
+        .eq("pending_new_email", newEmailLowered)
+        .eq("status", "ACTIVE")
+        .maybeSingle()
+    ]);
+
+    const existingUser = emailExists || pendingExists;
 
     if (existingUser) {
       return res
@@ -884,7 +895,7 @@ router.post("/user/email/verify-change", async (req, res) => {
     const userId = decoded.sub;
 
     const pendingChange = await getPendingEmailChange(userId);
-    console.log(pendingChange);
+    console.log('pendingChange:', pendingChange);
     if (!pendingChange) {
       return res.status(404).json({ code: "NO_PENDING_EMAIL_CHANGE" });
     }

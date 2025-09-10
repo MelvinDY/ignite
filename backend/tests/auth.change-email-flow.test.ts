@@ -75,7 +75,7 @@ beforeEach(async () => {
     },
     pendingChange: {
       id: 'pending-1',
-      user_id: 'user-123',
+      owner_id: 'user-123',
       pending_email: 'new@example.com',
       otp_hash: sha256('123456'),
       expires_at: futureISO(10),
@@ -135,7 +135,7 @@ beforeEach(async () => {
     createPendingEmailChange: vi.fn(async (userId: string, email: string, otp: string) => {
       scenario.pendingChange = {
         id: 'pending-1',
-        user_id: userId,
+        owner_id: userId,
         pending_email: email,
         otp_hash: sha256(otp),
         expires_at: futureISO(10),
@@ -147,14 +147,14 @@ beforeEach(async () => {
     }),
 
     getPendingEmailChange: vi.fn(async (userId: string) => {
-      if (scenario.pendingChange && scenario.pendingChange.user_id === userId) {
+      if (scenario.pendingChange && scenario.pendingChange.owner_id === userId) {
         return scenario.pendingChange;
       }
       return null;
     }),
 
     updateEmailChangeAttempts: vi.fn(async (userId: string, attempts: number, shouldLock: boolean) => {
-      if (scenario.pendingChange && scenario.pendingChange.user_id === userId) {
+      if (scenario.pendingChange && scenario.pendingChange.owner_id === userId) {
         scenario.pendingChange.attempts = attempts;
         if (shouldLock) {
           scenario.pendingChange.locked_at = new Date().toISOString();
@@ -175,7 +175,7 @@ beforeEach(async () => {
     }),
 
     resendEmailChangeOtp: vi.fn(async (userId: string, otp: string) => {
-      if (scenario.pendingChange && scenario.pendingChange.user_id === userId) {
+      if (scenario.pendingChange && scenario.pendingChange.owner_id === userId) {
         scenario.pendingChange.otp_hash = sha256(otp);
         scenario.pendingChange.attempts = 0;
         scenario.pendingChange.resend_count += 1;

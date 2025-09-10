@@ -110,9 +110,6 @@ export async function getPendingEmailChange(
   return {
     ...otpData,
     pending_new_email: profileData.pending_new_email,
-    user_id: userId,
-    expires_at: otpData.expires_at,
-    attempts: otpData.attempts,
   };
 }
 

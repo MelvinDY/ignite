@@ -2,9 +2,38 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { HandleSchema } from "../validation/profile.schemas";
 import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
-import { isHandleAvailable, setHandle } from "../services/profile.service";
+import {
+  isHandleAvailable,
+  setHandle,
+  getProfileDetails,
+} from "../services/profile.service";
 
 const router = Router();
+
+// GET /profile/me - Get user profile details
+router.get("/profile/me", async (req, res) => {
+  // Check for valid token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // Extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  try {
+    const profileDetails = await getProfileDetails(userId);
+    return res.status(200).json(profileDetails);
+  } catch (err) {
+    console.error("get-profile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
 
 // 2.7a — GET /handles/check?handle=xxx
 router.get("/handles/check", async (req, res) => {

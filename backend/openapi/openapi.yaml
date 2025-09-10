@@ -1217,6 +1217,59 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /profile/me:
+    get:
+      tags: ["Profile"]
+      summary: Get current user's profile core details
+      description: |
+        Returns the full profile record for the authenticated user (owner view; no visibility filtering).
+        This allows users to view their own profile information.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProfileOK"
+              examples:
+                complete_profile:
+                  value:
+                    id: "123e4567-e89b-12d3-a456-426614174000"
+                    fullName: "Jane Doe"
+                    handle: "janedoe"
+                    photoUrl: "https://example.com/profile.jpg"
+                    isIndonesian: true
+                    programId: 2
+                    majorId: 5
+                    level: "undergrad"
+                    yearStart: 2020
+                    yearGrad: 2024
+                    zid: "z1234567"
+                    headline: "Software Engineer"
+                    domicileCity: "Sydney"
+                    domicileCountry: "AU"
+                    bio: "Passionate about building innovative software solutions."
+                    socialLinks:
+                      linkedin: "https://www.linkedin.com/in/janedoe"
+                      github: "https://github.com/janedoe"
+                      website: "https://janedoe.dev"
+                    createdAt: "2024-01-15T10:30:00Z"
+                    updatedAt: "2024-03-20T14:45:00Z"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
   /profile/skills:
     get:
       tags: ["Profile"]
@@ -1885,3 +1938,81 @@ components:
           type: integer
         name:
           type: string
+
+    GetProfileOK:
+      type: object
+      required:
+        - id
+        - fullName
+        - isIndonesian
+        - level
+        - yearStart
+        - zid
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          description: Unique profile identifier
+        fullName:
+          type: string
+          description: User's full name
+        handle:
+          type: string
+          description: User's unique handle/username
+        photoUrl:
+          type: string
+          description: URL to user's profile photo
+        isIndonesian:
+          type: boolean
+          description: Whether the user is Indonesian or not
+        programId:
+          type: integer
+          description: ID of the user's academic program
+        majorId:
+          type: integer
+          description: ID of the user's major
+        level:
+          type: string
+          description: Academic level
+        yearStart:
+          type: integer
+          description: Year the user started their studies
+        yearGrad:
+          type: integer
+          nullable: true
+          description: Year the user graduated or will graduate
+        zid:
+          type: string
+          description: UNSW student ID
+        headline:
+          type: string
+          description: User's professional headline
+        domicileCity:
+          type: string
+          description: User's city of residence
+        domicileCountry:
+          type: string
+          description: User's country of residence (ISO 3166-1 alpha-2)
+        bio:
+          type: string
+          description: User set bio
+        socialLinks:
+          type: object
+          description: User's social media links
+          properties:
+            linkedin:
+              type: string
+              description: LinkedIn profile URL
+            github:
+              type: string
+              description: GitHub profile URL
+            website:
+              type: string
+              description: Personal website URL
+        createdAt:
+          type: string
+          description: Profile creation timestamp
+        updatedAt:
+          type: string
+          description: Profile last update timestamp

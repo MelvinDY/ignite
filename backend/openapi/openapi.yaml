@@ -2055,3 +2055,16 @@ components:
         updatedAt:
           type: string
           description: Profile last update timestamp
+          
+    Major:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            type: integer
+            example: 12
+          name:
+            type: string
+            example: "Software Engineering"

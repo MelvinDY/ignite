@@ -5,6 +5,7 @@ create table if not exists profiles (
   photo_url text,
   banner_url text,
   email text not null,
+  pending_new_email text,
   zid varchar(8) unique,
   is_indonesian boolean not null,
   program_id integer,

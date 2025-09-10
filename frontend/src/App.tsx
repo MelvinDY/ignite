@@ -14,6 +14,7 @@ import { VerifyReset } from "./pages/auth/password/VerifyReset";
 import { ResetPassword } from "./pages/auth/password/ResetPassword";
 import { ProfileEdit } from "./pages/ProfileEdit";
 import { FeedPage } from "./pages/FeedPage";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -33,7 +34,7 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
-      <Route path="/feed" element={<FeedPage/>}/>
+      <Route path="/feed" element={<ProtectedRoute><FeedPage/></ProtectedRoute>}/>
 
       {/* App routes - with navbar/footer */}
       <Route

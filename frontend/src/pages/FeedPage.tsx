@@ -1,6 +1,6 @@
 
 import React, { useMemo } from "react";
-import { Bell, Bookmark, Heart, MessageCircle, MoreHorizontal, Send, Users, Calendar } from "lucide-react";
+import { Bell, Bookmark, Users, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 import SearchBar from "../components/ui/SearchBar";
 import ProfileCard from "../components/ui/ProfileCardFeed";
@@ -44,6 +44,7 @@ function NavItem({ label }: { label: string }) {
 }
 
 const FeedPage = () => {
+  // THis is just sample data
     const currentUser: User = {
       name: "Degus Sudarmawan",
       title: "2nd Year Computer Science Student",
@@ -51,7 +52,7 @@ const FeedPage = () => {
       avatarUrl: "https://placehold.co/400"
     };
 
-    
+    // This is just sample data
     const posts: Post[] = useMemo(
       () => [
         {

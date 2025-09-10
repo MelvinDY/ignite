@@ -8,10 +8,11 @@ import swaggerUi from 'swagger-ui-express';
 import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes';
+import profileRoutes from './routes/profile.routes';
 
 export const createApp = () => {
-  const app = express();
   
+  const app = express();
   // Configure CORS to allow frontend origin with credentials
   app.use(cors({
     origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
@@ -43,6 +44,7 @@ export const createApp = () => {
   // -----------------------------------------
 
   app.use('/api', authRoutes);
+  app.use('/api', profileRoutes);
 
   return app;
 };

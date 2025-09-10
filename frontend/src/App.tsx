@@ -9,7 +9,11 @@ import { Login } from "./pages/auth/Login";
 import { Register } from "./pages/auth/Register";
 import { ForgotPassword } from "./pages/auth/ForgotPassword";
 import { Verify } from "./pages/auth/Verify";
+import { RequestReset } from "./pages/auth/password/RequestReset";
+import { VerifyReset } from "./pages/auth/password/VerifyReset";
+import { ResetPassword } from "./pages/auth/password/ResetPassword";
 import { ProfileEdit } from "./pages/ProfileEdit";
+import { FeedPage } from "./pages/FeedPage";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -25,7 +29,11 @@ function App() {
       <Route path="/auth/register" element={<Register />} />
       <Route path="/auth/forgot-password" element={<ForgotPassword />} />
       <Route path="/auth/verify" element={<Verify />} />
+      <Route path="/auth/password/request" element={<RequestReset />} />
+      <Route path="/auth/password/verify" element={<VerifyReset />} />
+      <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
+      <Route path="/feed" element={<FeedPage/>}/>
 
       {/* App routes - with navbar/footer */}
       <Route

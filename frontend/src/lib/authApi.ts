@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 // Error Response Schema
 const ErrorResponseSchema = z.object({
@@ -76,6 +76,59 @@ const ResendOtpResponseSchema = z.object({
   }),
 });
 
+// Password Reset Request
+const PasswordResetRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+const PasswordResetRequestResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string(),
+});
+
+// Password Reset Verify OTP
+const PasswordResetVerifyOtpRequestSchema = z.object({
+  email: z.string().email(),
+  otp: z.string().length(6),
+});
+
+const PasswordResetVerifyOtpResponseSchema = z.object({
+  success: z.literal(true),
+  resetSessionToken: z.string(),
+});
+
+// Password Reset
+const PasswordResetSchema = z.object({
+  resetSessionToken: z.string(),
+  newPassword: z.string().min(8),
+  confirmPassword: z.string().min(8),
+});
+
+const PasswordResetResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string(),
+});
+
+// Password Reset Resend OTP
+const PasswordResetResendOtpRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+const PasswordResetResendOtpResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string(),
+});
+
+// Password Reset Cancel
+const PasswordResetCancelRequestSchema = z.object({
+  email: z.string().email(),
+});
+
+const PasswordResetCancelResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string(),
+});
+
 // Types
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
@@ -94,13 +147,28 @@ export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponseSchema>;
 export type ResendOtpRequest = z.infer<typeof ResendOtpRequestSchema>;
 export type ResendOtpResponse = z.infer<typeof ResendOtpResponseSchema>;
 
+export type PasswordResetRequest = z.infer<typeof PasswordResetRequestSchema>;
+export type PasswordResetRequestResponse = z.infer<typeof PasswordResetRequestResponseSchema>;
+
+export type PasswordResetVerifyOtpRequest = z.infer<typeof PasswordResetVerifyOtpRequestSchema>;
+export type PasswordResetVerifyOtpResponse = z.infer<typeof PasswordResetVerifyOtpResponseSchema>;
+
+export type PasswordResetData = z.infer<typeof PasswordResetSchema>;
+export type PasswordResetResponse = z.infer<typeof PasswordResetResponseSchema>;
+
+export type PasswordResetResendOtpRequest = z.infer<typeof PasswordResetResendOtpRequestSchema>;
+export type PasswordResetResendOtpResponse = z.infer<typeof PasswordResetResendOtpResponseSchema>;
+
+export type PasswordResetCancelRequest = z.infer<typeof PasswordResetCancelRequestSchema>;
+export type PasswordResetCancelResponse = z.infer<typeof PasswordResetCancelResponseSchema>;
+
 // Error types for discriminated unions
 export type AuthError = {
   success: false;
   code: 'VALIDATION_ERROR' | 'EMAIL_EXISTS' | 'ZID_EXISTS' | 'PENDING_VERIFICATION_EXISTS' | 
         'RESUME_TOKEN_INVALID' | 'PENDING_NOT_FOUND' | 'ALREADY_VERIFIED' | 'OTP_INVALID' | 
         'OTP_EXPIRED' | 'OTP_LOCKED' | 'OTP_COOLDOWN' | 'OTP_RESEND_LIMIT' | 'INVALID_CREDENTIALS' | 
-        'ACCOUNT_NOT_VERIFIED' | 'TOO_MANY_ATTEMPTS' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+        'ACCOUNT_NOT_VERIFIED' | 'TOO_MANY_ATTEMPTS' | 'RESET_SESSION_INVALID' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
   message: string;
   details?: any;
 };
@@ -217,6 +285,41 @@ class AuthApi {
       method: 'POST',
       body: JSON.stringify(request),
     }, ResendOtpResponseSchema);
+  }
+
+  async requestPasswordReset(email: string): Promise<PasswordResetRequestResponse> {
+    return this.request('/auth/password/request-reset', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }, PasswordResetRequestResponseSchema);
+  }
+
+  async verifyPasswordOtp(request: PasswordResetVerifyOtpRequest): Promise<PasswordResetVerifyOtpResponse> {
+    return this.request('/auth/password/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }, PasswordResetVerifyOtpResponseSchema);
+  }
+
+  async resetPassword(request: PasswordResetData): Promise<PasswordResetResponse> {
+    return this.request('/auth/password/reset', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    }, PasswordResetResponseSchema);
+  }
+
+  async resendPasswordOtp(email: string): Promise<PasswordResetResendOtpResponse> {
+    return this.request('/auth/password/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }, PasswordResetResendOtpResponseSchema);
+  }
+
+  async cancelPasswordReset(email: string): Promise<PasswordResetCancelResponse> {
+    return this.request('/auth/password/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }, PasswordResetCancelResponseSchema);
   }
 }
 

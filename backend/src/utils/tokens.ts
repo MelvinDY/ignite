@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const RES_PREFIX = 'res_';
+const RST_PREFIX = 'rst_';
 const ISSUER = process.env.JWT_ISSUER || 'ignite-api';
 const AUDIENCE = process.env.JWT_AUDIENCE || 'signup-flow';
 
@@ -107,7 +108,7 @@ export async function verifyTokenVersion(userId: string, tokenVersion: number): 
     .select('token_version')
     .eq('id', userId)
     .single();
-  
+
   return user?.token_version === tokenVersion;
 }
 
@@ -118,12 +119,12 @@ export async function generateAccessToken(userId: string): Promise<string> {
     .select('token_version')
     .eq('id', userId)
     .single();
-  
+
   const tokenVersion = user?.token_version || 1;
-  
-  return jwt.sign({ 
-    sub: userId, 
-    tokenVersion 
+
+  return jwt.sign({
+    sub: userId,
+    tokenVersion
   }, process.env.JWT_SECRET!, { expiresIn: '15m' });
 }
 
@@ -134,11 +135,39 @@ export async function generateRefreshToken(userId: string): Promise<string> {
     .select('token_version')
     .eq('id', userId)
     .single();
-  
+
   const tokenVersion = user?.token_version || 1;
-  
-  return jwt.sign({ 
-    sub: userId, 
-    tokenVersion 
+
+  return jwt.sign({
+    sub: userId,
+    tokenVersion
   }, process.env.JWT_SECRET!, { expiresIn: '7d' });
+}
+
+export function makeResetSessionToken(profileId: string): { token: string; expiresIn: number } {
+  const expiresIn = 600; // 10 minutes
+  const token = jwt.sign(
+    { sub: profileId, purpose: 'RESET_PASSWORD', aud: AUDIENCE },
+    JWT_SECRET,
+    { expiresIn, issuer: ISSUER }
+  );
+  return { token: RST_PREFIX + token, expiresIn };
+}
+
+export function verifyResetSessionToken(resetSessionToken: string): { profileId: string } {
+  if (!resetSessionToken || !resetSessionToken.startsWith(RST_PREFIX)) {
+    throw new Error('RESET_SESSION_TOKEN_INVALID');
+  }
+
+  const raw = resetSessionToken.slice(RST_PREFIX.length);
+  const decoded = jwt.verify(raw, JWT_SECRET, {
+    issuer: ISSUER,
+    audience: AUDIENCE,
+    clockTolerance: 5,
+  }) as JwtPayload & { purpose: 'RESET_PASSWORD'; sub: string };
+
+  if (decoded.purpose !== 'RESET_PASSWORD' || !decoded.sub) {
+    throw new Error('RESET_SESSION_TOKEN_INVALID');
+  }
+  return { profileId: decoded.sub };
 }

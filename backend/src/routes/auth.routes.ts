@@ -10,6 +10,9 @@ import {
   VerifyEmailChangeSchema,
   VerifyOtpSchema,
   loginSchema,
+  RequestPasswordResetSchema,
+  VerifyPasswordResetOtpSchema,
+  ResetPasswordSchema
 } from "../validation/auth.schemas";
 import { hashPassword } from "../utils/crypto";
 import {
@@ -24,7 +27,10 @@ import {
   rotateResumeToken,
   invalidateRefreshToken,
   verifyTokenVersion,
+  makeResetSessionToken,
+  verifyResetSessionToken
 } from "../utils/tokens";
+import { maskEmail } from "../utils/email";
 import { rateLimit } from "../middlewares/rateLimit";
 import {
   loadPendingSignup,
@@ -35,9 +41,11 @@ import {
   getSignupOtp,
   issueSignupOtp,
   generateOtp,
+  getResetPasswordOtp,
 } from "../services/otp.service";
 import { applyProgramAndMajorFromSignupToProfile, ensureProfileForSignup } from "../services/profile.service";
 import * as jwt from "jsonwebtoken";
+import * as crypto from "crypto";
 import {
   completePendingEmailChange,
   createPendingEmailChange,
@@ -45,6 +53,7 @@ import {
   updateEmailChangeAttempts,
   resendEmailChangeOtp,
 } from "../services/email.service";
+import { processResetOtpRequest, processCancelResetOtp } from "../services/passwordReset.service";
 
 const router = Router();
 
@@ -397,9 +406,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
 
   try {
     console.info("login.attempt", { email: emailLower, ip: req.ip });
+    // 1. Find signup row
     const { data: row } = await supabase
       .from("user_signups")
-      .select("id, status, password_hash")
+      .select("id, status, password_hash, profile_id, zid")
       .eq("signup_email", emailLower)
       .maybeSingle();
 
@@ -419,8 +429,8 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     const hashSource = (row as any)?.password_hash
       ? "user_signups.password_hash"
       : (row as any)?.user?.encrypted_password
-      ? "auth.users.encrypted_password"
-      : "none";
+        ? "auth.users.encrypted_password"
+        : "none";
     console.info("login.hash_source", {
       userId: row.id,
       source: hashSource,
@@ -432,8 +442,24 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       return res.status(401).json({ code: "INVALID_CREDENTIALS" });
     }
 
-    const accessToken = await generateAccessToken(row.id);
-    const refreshToken = await generateRefreshToken(row.id);
+    // 2. Find profile row (canonical user id)
+    let profileId = row.profile_id;
+    if (!profileId) {
+      // fallback: lookup by signup zID (should not happen if ensureProfileForSignup is used)
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("zid", row.zid)
+        .maybeSingle();
+      profileId = profile?.id;
+    }
+    if (!profileId) {
+      console.error("login.no_profile", { signupId: row.id });
+      return res.status(500).json({ code: "INTERNAL", details: "No profile found for user" });
+    }
+
+    const accessToken = await generateAccessToken(profileId);
+    const refreshToken = await generateRefreshToken(profileId);
 
     // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
     res.cookie("refreshToken", refreshToken, {
@@ -444,10 +470,10 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    console.info("login.success", { userId: row.id });
+    console.info("login.success", { userId: profileId });
     return res.status(200).json({
       success: true,
-      userId: row.id,
+      userId: profileId,
       accessToken,
       expiresIn: 60 * 15,
     });
@@ -650,10 +676,84 @@ router.patch("/auth/pending/email", async (req, res) => {
       success: true,
       resumeToken: newResumeToken,
     });
+   } catch (err: any) {
+    console.error('change-email-pre-verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+   }
+});
+
+/**
+ * User Story 1.5: Get pending registration context
+ */
+router.get('/auth/pending/context', async (req, res) => {
+  const resumeToken = req.query.resumeToken as string;
+
+  try {
+    // 1. Validate resumeToken, get user id
+    let userId: string;
+    try {
+      ({ userId } = await verifyResumeTokenStrict(resumeToken));
+    } catch {
+      return res.status(401).json({ code: 'RESUME_TOKEN_INVALID' });
+    }
+
+    // 2. Get sign up data from id
+    const { data: userSignup, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, signup_email, status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const { data: userOtp } = await supabase
+      .from('user_otps')
+      .select('last_sent_at, resend_count')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (!userSignup || signupErr) {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 3. Ensures status = PENDING_VERIFICATION
+    if (userSignup.status === 'ACTIVE') {
+      return res.status(409).json({ code: 'ALREADY_VERIFIED' });
+    }
+
+    if (userSignup.status === 'EXPIRED') {
+      return res.status(404).json({ code: 'PENDING_NOT_FOUND' });
+    }
+
+    // 4. Calculate resend states
+    const now = new Date();
+    let cooldownSeconds = 0;
+    let remainingToday = 5;
+
+    if (userOtp?.last_sent_at) {
+      const lastSentAt = new Date(userOtp.last_sent_at);
+      // Calculates time since last sent OTP in seconds
+      const timeSinceLastSent = Math.floor((now.getTime() - lastSentAt.getTime()) / 1000);
+      cooldownSeconds = Math.max(0, 60 - timeSinceLastSent);
+    }
+
+    if (userOtp?.resend_count !== undefined) {
+      // Calculates the remaining OTP attempts for today (5 OTP attempts a day)
+      remainingToday = Math.max(5 - userOtp.resend_count, 0);
+    }
+    // 5. Mask email for privacy
+    const emailMasked = maskEmail(userSignup.signup_email);
+    // 6. Return the context
+    return res.status(200).json({
+      emailMasked,
+      status: userSignup.status,
+      resend: {
+        cooldownSeconds,
+        remainingToday
+      }
+    });
   } catch (err: any) {
-    console.error("change-email-pre-verify.error", err?.message || err);
-    return res.status(500).json({ code: "INTERNAL" });
-  }
+    console.error('pending-context.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }     
 });
 
 /**
@@ -686,7 +786,7 @@ router.post("/user/email/change-request", async (req, res) => {
     const { data: userRow } = await supabase
       .from("user_signups")
       .select("password_hash, full_name")
-      .eq("id", userId)
+      .eq("profile_id", userId)
       .single();
 
     if (!userRow) {
@@ -843,6 +943,9 @@ const emailChangeResendLimiter = rateLimit({
   },
 });
 
+/**
+ * User Stories 1.12: Resend OTP (Email Change)
+ */
 router.post(
   "/user/email/resend-otp",
   emailChangeResendLimiter,
@@ -907,6 +1010,9 @@ router.post(
   }
 );
 
+/**
+ * User Stories 1.13: Cancel Email Change
+ */
 router.delete("/user/email/cancel-change", async (req, res) => {
   const accessToken = req.headers.authorization?.split(" ")[1];
 
@@ -928,6 +1034,221 @@ router.delete("/user/email/cancel-change", async (req, res) => {
     console.error("resend-email-change-otp.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });
   }
-}); 
+});
+
+// request reset password limiter to reduce spam (still returns 200 on pass/fail)
+// (5 attempts / 10 min per IP+email)
+const requestResetLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => `${req.ip}:${(req.body?.email || '').toLowerCase()}`,
+});
+
+/**
+ * User Stories 1.14: Request Password Reset (Start)
+ */
+router.post('/auth/password/request-reset', requestResetLimiter, async (req, res) => {
+  // 1) validate email
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const emailLower = parsed.data.email.toLowerCase();
+  const result = await processResetOtpRequest(
+    emailLower,
+    'If this email exists, a code has been sent.',
+    'password-reset.request'
+  );
+
+  return res.status(200).json(result);
+});
+
+/**
+ * Story 1.15 – Verify Password Reset OTP (Create reset session)
+ */
+router.post('/auth/password/verify-otp', async (req, res) => {
+  // 1. Validate email and otp
+  const parsed = VerifyPasswordResetOtpSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const { email, otp } = parsed.data;
+  const emailLower = email.toLowerCase();
+
+  try {
+    // 2. Find profile by email
+    const { data: profile, error: profileErr } = await supabase
+      .from('profiles')
+      .select('id, status')
+      .eq('email', emailLower)
+      .maybeSingle();
+
+    if (profileErr || !profile || profile.status !== 'ACTIVE') {
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    const profileId = profile.id;
+
+    // 3. Get existing RESET_PASSWORD OTP row
+    const { data: otpRow, error: otpErr } = await getResetPasswordOtp(profileId);
+    if (otpErr || !otpRow) {
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    // 4. Check locked
+    if (otpRow.locked_at) {
+      return res.status(423).json({ code: 'OTP_LOCKED' });
+    }
+
+    const now = new Date();
+
+    // 5. Check expiry
+    if (new Date(otpRow.expires_at).getTime() < now.getTime()) {
+      return res.status(400).json({ code: 'OTP_EXPIRED' });
+    }
+
+    // 6. Verify OTP
+    const hashedInput = hashOtp(otp);
+    const presented = Buffer.from(hashedInput, 'hex');
+    const stored = Buffer.from(otpRow.otp_hash, 'hex');
+    const isMatch =
+      presented.length === stored.length &&
+      crypto.timingSafeEqual(presented, stored);
+
+    // Increment OTP attempts (lock at 5 attempts)
+    if (!isMatch) {
+      const newAttempts = (otpRow.attempts ?? 0) + 1;
+      const updates: any = { attempts: newAttempts, updated_at: now.toISOString() };
+      if (newAttempts >= 5) {
+        updates.locked_at = now.toISOString();
+      }
+      await supabase.from('user_otps').update(updates).eq('id', otpRow.id);
+      return res.status(400).json({ code: 'OTP_INVALID' });
+    }
+
+    // 7. Success, issue resetSessionToken
+    const { token, expiresIn } = makeResetSessionToken(profileId);
+
+    // Clear OTP row
+    await supabase
+      .from('user_otps')
+      .delete()
+      .eq('id', otpRow.id);
+
+    console.info('password-reset.verify.success', { profileId });
+
+    return res.status(200).json({
+      success: true,
+      resetSessionToken: token,
+      expiresIn,
+    });
+  } catch (err: any) {
+    console.error('password-reset.verify.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+/**
+ * Story 1.16 – Set New Password (Complete)
+ */
+router.post('/auth/password/reset', async (req, res) => {
+  // 1) Validate input shape & password policy
+  const parsed = ResetPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const { resetSessionToken, newPassword } = parsed.data;
+
+  try {
+    // 2) Verify resetSessionToken (JWT signature/TTL/purpose)
+    let profileId: string;
+    try {
+      ({ profileId } = verifyResetSessionToken(resetSessionToken));
+    } catch {
+      return res.status(401).json({ code: 'RESET_SESSION_INVALID' });
+    }
+
+    // 3) Find the ACTIVE signup row that maps to this profile
+    const { data: signupRow, error: signupErr } = await supabase
+      .from('user_signups')
+      .select('id, status')
+      .eq('profile_id', profileId)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    // If mapping is missing or not ACTIVE, treat as invalid session
+    if (signupErr || !signupRow) {
+      return res.status(401).json({ code: 'RESET_SESSION_INVALID' });
+    }
+
+    const signupId = signupRow.id;
+    const nowISO = new Date().toISOString();
+
+    // 4) Hash and update the new password
+    const pwHash = await hashPassword(newPassword);
+    const { error: updateErr } = await supabase
+      .from('user_signups')
+      .update({ password_hash: pwHash, updated_at: nowISO })
+      .eq('id', signupId);
+
+    if (updateErr) {
+      console.error('password-reset.complete.update_password.error', updateErr);
+      return res.status(500).json({ code: 'INTERNAL' });
+    }
+
+    // 5) Revoke all existing refresh tokens (logout other devices/sessions)
+    try {
+      await invalidateRefreshToken(signupId);
+    } catch (e: any) {
+      console.error('password-reset.complete.invalidate_refresh.error', e?.message || e);
+    }
+
+    console.info('password-reset.complete.success', { profileId, signupId });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password has been reset',
+    });
+  } catch (err: any) {
+    console.error('password-reset.complete.error', err?.message || err);
+    return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+/**
+ * Story 1.17 – Resend Password Reset OTP
+ */
+router.post('/auth/password/resend-otp', requestResetLimiter, async (req, res) => {
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.flatten() });
+  }
+  const emailLower = parsed.data.email.toLowerCase();
+
+  const result = await processResetOtpRequest(
+    emailLower,
+    'If this email exists, a new code has been sent.',
+    'password-reset.resend'
+  );
+
+  return res.status(200).json(result);
+});
+
+/**
+ * Story 1.18 – Cancel Password Reset
+ */
+router.post('/auth/password/cancel', requestResetLimiter, async (req, res) => {
+  const parsed = RequestPasswordResetSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: 'VALIDATION_ERROR', details: parsed.error.issues });
+  }
+
+  const emailLower = parsed.data.email.toLowerCase();
+  const result = await processCancelResetOtp(emailLower);
+  return res.status(200).json(result);
+});
 
 export default router;

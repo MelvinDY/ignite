@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { authApi, type LoginRequest, type RegisterRequest } from '../lib/authApi';
+import { authApi, type LoginRequest, type RegisterRequest, type PasswordResetVerifyOtpRequest, type PasswordResetData } from '../lib/authApi';
 
 interface AuthState {
   accessToken: string | null;
@@ -15,6 +15,12 @@ interface AuthContextType extends AuthState {
   logout: () => void;
   refreshAuth: () => Promise<void>;
   clearAuth: () => void;
+  // Password reset helpers
+  requestPasswordReset: (email: string) => Promise<{ message: string }>;
+  verifyPasswordOtp: (request: PasswordResetVerifyOtpRequest) => Promise<{ resetSessionToken: string }>;
+  resetPassword: (request: PasswordResetData) => Promise<{ message: string }>;
+  resendPasswordOtp: (email: string) => Promise<{ message: string }>;
+  cancelPasswordReset: (email: string) => Promise<{ message: string }>;
 }
 
 // Create a singleton auth state to persist across component rerenders
@@ -124,11 +130,6 @@ export function useAuth(): AuthContextType {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      authStateManager.cancelRefresh();
-    };
-  }, []);
 
   const login = useCallback(async (credentials: LoginRequest): Promise<void> => {
     authStateManager.setLoading(true);
@@ -161,16 +162,43 @@ export function useAuth(): AuthContextType {
   const refreshAuth = useCallback(async (): Promise<void> => {
     try {
       const response = await authApi.refresh();
-      authStateManager.setAuth(response.accessToken, state.userId!, response.expiresIn);
+      const currentUserId = authStateManager.getState().userId;
+      authStateManager.setAuth(response.accessToken, currentUserId!, response.expiresIn);
     } catch (error) {
       console.error('Manual refresh failed:', error);
       authStateManager.clearAuth();
       throw error;
     }
-  }, [state.userId]);
+  }, []);
 
   const clearAuth = useCallback(() => {
     authStateManager.clearAuth();
+  }, []);
+
+  // Password reset helpers (independent of login state)
+  const requestPasswordReset = useCallback(async (email: string): Promise<{ message: string }> => {
+    const response = await authApi.requestPasswordReset(email);
+    return { message: response.message };
+  }, []);
+
+  const verifyPasswordOtp = useCallback(async (request: PasswordResetVerifyOtpRequest): Promise<{ resetSessionToken: string }> => {
+    const response = await authApi.verifyPasswordOtp(request);
+    return { resetSessionToken: response.resetSessionToken };
+  }, []);
+
+  const resetPassword = useCallback(async (request: PasswordResetData): Promise<{ message: string }> => {
+    const response = await authApi.resetPassword(request);
+    return { message: response.message };
+  }, []);
+
+  const resendPasswordOtp = useCallback(async (email: string): Promise<{ message: string }> => {
+    const response = await authApi.resendPasswordOtp(email);
+    return { message: response.message };
+  }, []);
+
+  const cancelPasswordReset = useCallback(async (email: string): Promise<{ message: string }> => {
+    const response = await authApi.cancelPasswordReset(email);
+    return { message: response.message };
   }, []);
 
   return {
@@ -180,6 +208,11 @@ export function useAuth(): AuthContextType {
     logout,
     refreshAuth,
     clearAuth,
+    requestPasswordReset,
+    verifyPasswordOtp,
+    resetPassword,
+    resendPasswordOtp,
+    cancelPasswordReset,
   };
 }
 

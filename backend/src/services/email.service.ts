@@ -55,37 +55,65 @@ export async function createPendingEmailChange(
   const now = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
-  const { error } = await supabase.from("pending_email_changes").upsert(
+  const { error: profileError } = await supabase.from("profiles").update({
+    pending_new_email: pendingEmail.toLowerCase(),
+    updated_at: now,
+  });
+
+  if (profileError) throw profileError;
+
+  const { error: userOtpError } = await supabase.from("user_otps").upsert(
     {
-      user_id: userId,
-      pending_email: pendingEmail.toLowerCase(),
+      owner_table: "profiles",
+      owner_id: userId,
+      purpose: "EMAIL_CHANGE",
       otp_hash: hashOtp(otp),
-      otp_expires_at: expiresAt,
-      otp_attempts: 0,
-      last_otp_sent_at: now,
+      expires_at: expiresAt,
+      attempts: 0,
       resend_count: 0,
+      last_sent_at: now,
       locked_at: null,
       updated_at: now,
     },
     {
-      onConflict: "user_id",
+      onConflict: "owner_table,owner_id,purpose",
     }
   );
 
-  if (error) throw error;
+  if (userOtpError) throw userOtpError;
 }
 
 export async function getPendingEmailChange(
   userId: string
 ): Promise<PendingEmailChange | null> {
-  const { data, error } = await supabase
-    .from("pending_email_changes")
+  const { data: otpData, error: otpError } = await supabase
+    .from("user_otps")
     .select("*")
-    .eq("user_id", userId)
+    .eq("owner_table", "profiles")
+    .eq("owner_id", userId)
+    .eq("purpose", "EMAIL_CHANGE")
     .maybeSingle();
 
-  if (error) throw error;
-  return data;
+  if (otpError) throw otpError;
+
+  if (!otpData) return null;
+
+  const { data: profileData, error: profileError } = await supabase
+    .from("profiles")
+    .select("pending_new_email")
+    .eq("id", userId)
+    .single();
+
+  if (profileError) throw profileError;
+  console.log('From service:')
+  console.log(otpData)
+  return {
+    ...otpData,
+    pending_new_email: profileData.pending_new_email,
+    user_id: userId,
+    expires_at: otpData.expires_at,
+    attempts: otpData.attempts,
+  };
 }
 
 export async function completePendingEmailChange(
@@ -95,11 +123,11 @@ export async function completePendingEmailChange(
   const pending = await getPendingEmailChange(userId);
   if (!pending) throw new Error("No pending email change found");
 
-  // Update user's email in profiles table
   const { error: profileError } = await supabase
     .from("profiles")
     .update({
-      email: pending.pending_email,
+      email: pending.pending_new_email,
+      pending_new_email: null, // Clear the pending email
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId);
@@ -110,26 +138,38 @@ export async function completePendingEmailChange(
   const { error: signupError } = await supabase
     .from("user_signups")
     .update({
-      signup_email: pending.pending_email,
+      signup_email: pending.pending_new_email,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId);
 
   if (signupError) throw signupError;
 
-  // Clear pending change
+  // Clear the OTP record
   await clearPendingEmailChange(userId);
 
-  return pending.pending_email;
+  return pending.pending_new_email;
 }
 
 export async function clearPendingEmailChange(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from("pending_email_changes")
+  const { error: otpError } = await supabase
+    .from("user_otps")
     .delete()
-    .eq("user_id", userId);
+    .eq("owner_table", "profiles")
+    .eq("owner_id", userId)
+    .eq("purpose", "EMAIL_CHANGE");
 
-  if (error) throw error;
+  if (otpError) throw otpError;
+
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      pending_new_email: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId);
+
+  if (profileError) throw profileError;
 }
 
 export async function updateEmailChangeAttempts(
@@ -138,7 +178,7 @@ export async function updateEmailChangeAttempts(
   shouldLock: boolean = false
 ): Promise<void> {
   const updates: any = {
-    otp_attempts: attempts,
+    attempts: attempts,
     updated_at: new Date().toISOString(),
   };
 
@@ -147,9 +187,9 @@ export async function updateEmailChangeAttempts(
   }
 
   const { error } = await supabase
-    .from("pending_email_changes")
+    .from("user_otps")
     .update(updates)
-    .eq("user_id", userId);
+    .eq("owner_id", userId);
 
   if (error) throw error;
 }
@@ -162,9 +202,9 @@ export async function resendEmailChangeOtp(
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
   const { data: currentData, error: fetchError } = await supabase
-    .from("pending_email_changes")
+    .from("user_otps")
     .select("resend_count")
-    .eq("user_id", userId)
+    .eq("owner_id", userId)
     .single();
 
   if (fetchError) throw fetchError;
@@ -172,17 +212,17 @@ export async function resendEmailChangeOtp(
   const newResendCount = (currentData?.resend_count || 0) + 1;
 
   const { error } = await supabase
-    .from("pending_email_changes")
+    .from("user_otps")
     .update({
       otp_hash: hashOtp(otp),
-      otp_expires_at: expiresAt,
-      otp_attempts: 0,
-      last_otp_sent_at: now,
+      expires_at: expiresAt,
+      attempts: 0,
+      last_sent_at: now,
       resend_count: newResendCount,
       locked_at: null,
       updated_at: now,
     })
-    .eq("user_id", userId);
+    .eq("owner_id", userId);
 
   if (error) throw error;
 }

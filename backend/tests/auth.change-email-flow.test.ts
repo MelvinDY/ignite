@@ -78,9 +78,9 @@ beforeEach(async () => {
       user_id: 'user-123',
       pending_email: 'new@example.com',
       otp_hash: sha256('123456'),
-      otp_expires_at: futureISO(10),
-      otp_attempts: 0,
-      last_otp_sent_at: new Date().toISOString(),
+      expires_at: futureISO(10),
+      attempts: 0,
+      last_sent_at: new Date().toISOString(),
       resend_count: 0,
       locked_at: null,
     },
@@ -138,9 +138,9 @@ beforeEach(async () => {
         user_id: userId,
         pending_email: email,
         otp_hash: sha256(otp),
-        otp_expires_at: futureISO(10),
-        otp_attempts: 0,
-        last_otp_sent_at: new Date().toISOString(),
+        expires_at: futureISO(10),
+        attempts: 0,
+        last_sent_at: new Date().toISOString(),
         resend_count: 0,
         locked_at: null,
       };
@@ -155,7 +155,7 @@ beforeEach(async () => {
 
     updateEmailChangeAttempts: vi.fn(async (userId: string, attempts: number, shouldLock: boolean) => {
       if (scenario.pendingChange && scenario.pendingChange.user_id === userId) {
-        scenario.pendingChange.otp_attempts = attempts;
+        scenario.pendingChange.attempts = attempts;
         if (shouldLock) {
           scenario.pendingChange.locked_at = new Date().toISOString();
         }
@@ -177,9 +177,9 @@ beforeEach(async () => {
     resendEmailChangeOtp: vi.fn(async (userId: string, otp: string) => {
       if (scenario.pendingChange && scenario.pendingChange.user_id === userId) {
         scenario.pendingChange.otp_hash = sha256(otp);
-        scenario.pendingChange.otp_attempts = 0;
+        scenario.pendingChange.attempts = 0;
         scenario.pendingChange.resend_count += 1;
-        scenario.pendingChange.last_otp_sent_at = new Date().toISOString();
+        scenario.pendingChange.last_sent_at = new Date().toISOString();
         scenario.pendingChange.locked_at = null;
       }
     }),
@@ -381,7 +381,7 @@ describe('POST /user/email/verify-change (Story 1.11)', () => {
   });
 
   it('400 OTP_EXPIRED when OTP has expired', async () => {
-    scenario.pendingChange!.otp_expires_at = pastISO(1);
+    scenario.pendingChange!.expires_at = pastISO(1);
 
     const res = await request(app)
       .post(route)
@@ -406,12 +406,12 @@ describe('POST /user/email/verify-change (Story 1.11)', () => {
       .expect(400);
 
     expect(res.body.code).toBe('OTP_INVALID');
-    expect(scenario.pendingChange!.otp_attempts).toBe(1);
+    expect(scenario.pendingChange!.attempts).toBe(1);
   });
 
   it('423 OTP_LOCKED after 5 failed attempts', async () => {
     scenario.pendingChange!.otp_hash = sha256('000000'); // Wrong OTP
-    scenario.pendingChange!.otp_attempts = 4; // Will become 5
+    scenario.pendingChange!.attempts = 4; // Will become 5
 
     const res = await request(app)
       .post(route)
@@ -431,7 +431,7 @@ describe('POST /user/email/resend-otp (Story 1.12)', () => {
 
   it('200 success: resends OTP', async () => {
     // Set last sent to past cooldown period
-    scenario.pendingChange!.last_otp_sent_at = pastISO(2);
+    scenario.pendingChange!.last_sent_at = pastISO(2);
 
     const res = await request(app)
       .post(route)
@@ -469,7 +469,7 @@ describe('POST /user/email/resend-otp (Story 1.12)', () => {
 
   it('429 OTP_COOLDOWN when within cooldown period', async () => {
     // Set last sent to 30 seconds ago (within 60s cooldown)
-    scenario.pendingChange!.last_otp_sent_at = new Date(Date.now() - 30 * 1000).toISOString();
+    scenario.pendingChange!.last_sent_at = new Date(Date.now() - 30 * 1000).toISOString();
 
     const res = await request(app)
       .post(route)
@@ -482,7 +482,7 @@ describe('POST /user/email/resend-otp (Story 1.12)', () => {
 
   it('429 OTP_RESEND_LIMIT when daily limit reached', async () => {
     scenario.pendingChange!.resend_count = 5;
-    scenario.pendingChange!.last_otp_sent_at = pastISO(2); // Outside cooldown
+    scenario.pendingChange!.last_sent_at = pastISO(2); // Outside cooldown
 
     const res = await request(app)
       .post(route)

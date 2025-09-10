@@ -782,12 +782,12 @@ router.post("/user/email/change-request", async (req, res) => {
 
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    const profileId = decoded.sub;
 
     const { data: userRow } = await supabase
       .from("user_signups")
       .select("password_hash, full_name")
-      .eq("profile_id", userId)
+      .eq("profile_id", profileId)
       .single();
 
     if (!userRow) {
@@ -832,7 +832,7 @@ router.post("/user/email/change-request", async (req, res) => {
     }
 
     const otp = generateOtp();
-    await createPendingEmailChange(userId, newEmailLowered, otp);
+    await createPendingEmailChange(profileId, newEmailLowered, otp);
 
     if (!userRow.full_name) {
       return res
@@ -840,7 +840,7 @@ router.post("/user/email/change-request", async (req, res) => {
         .json({ code: "USER_NOT_FOUND", details: "User has no full name" });
     }
 
-    await issueSignupOtp(userId, newEmailLowered, userRow.full_name);
+    await issueSignupOtp(profileId, newEmailLowered, userRow.full_name);
     const emailParts = newEmailLowered.split("@");
     const localPart = emailParts[0];
     const domain = emailParts[1];
@@ -853,7 +853,7 @@ router.post("/user/email/change-request", async (req, res) => {
     const emailMasked = `${maskedLocal}@${maskedDomain}`;
 
     console.info("email-change.requested", {
-      userId,
+      profileId,
       newEmail: newEmailLowered,
     });
 

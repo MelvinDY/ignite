@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 
 import authRoutes from './routes/auth.routes';
 import profileRoutes from './routes/profile.routes';
+import searchRoutes from './routes/search.routes';
 
 export const createApp = () => {
   
@@ -45,6 +46,7 @@ export const createApp = () => {
 
   app.use('/api', authRoutes);
   app.use('/api', profileRoutes);
+  app.use('/api', searchRoutes);
 
   return app;
 };

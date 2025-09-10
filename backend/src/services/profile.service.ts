@@ -165,3 +165,36 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
 		updatedAt: data.updated_at,
 	};
 }
+
+export async function isHandleAvailable(handle: string): Promise<boolean> {
+  const handleLower = handle.toLowerCase();
+  // handles are lowercase-only by spec, so equality is enough
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", handleLower)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") throw error; // ignore "No rows" error
+  return !data; // available when no row
+}
+
+export async function setHandle(userId: string, handle: string) {
+  const handleLower = handle.toLowerCase();
+
+  // quick availability check first to return 409 before DB unique constraint
+  const available = await isHandleAvailable(handleLower);
+  if (!available) {
+    const err: any = new Error("HANDLE_TAKEN");
+    err.code = "HANDLE_TAKEN";
+    throw err;
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ handle: handleLower })
+    .eq("id", userId);
+
+  if (error) throw error;
+  return handleLower;
+}

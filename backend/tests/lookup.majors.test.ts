@@ -28,15 +28,18 @@ beforeEach(async () => {
                 if (table === 'majors') {
                     return {
                         select: () => ({
-                            order: () => ({ data: mockMajors, error: null })
+                            order: () => ({
+                                data: [...mockMajors].sort((a, b) => a.name.localeCompare(b.name)),
+                                error: null
+                            })
                         })
                     };
                 }
-                // fallback
                 return { select: () => ({ order: () => ({ data: [], error: null }) }) };
             }
         }
     }));
+
     app = await buildApp();
 });
 
@@ -62,6 +65,8 @@ describe('GET /api/lookup/majors', () => {
             .get(route)
             .set('Authorization', 'Bearer validtoken');
         expect(res.status).toBe(200);
-        expect(res.body).toEqual({ majors: mockMajors });
+        // Always expect sorted by name
+        const expectedMajors = [...mockMajors].sort((a, b) => a.name.localeCompare(b.name));
+        expect(res.body).toEqual(expectedMajors);
     });
 });

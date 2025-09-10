@@ -6,5 +6,5 @@ export async function listMajors(): Promise<{ id: number; name: string }[]> {
         .select("id, name")
         .order("name", { ascending: true });
     if (error) throw error;
-    return data;
+    return data ?? [];
 }

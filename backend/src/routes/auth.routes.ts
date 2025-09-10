@@ -786,7 +786,7 @@ router.post("/user/email/change-request", async (req, res) => {
     const { data: userRow } = await supabase
       .from("user_signups")
       .select("password_hash, full_name")
-      .eq("id", userId)
+      .eq("profile_id", userId)
       .single();
 
     if (!userRow) {

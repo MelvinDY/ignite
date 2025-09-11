@@ -32,7 +32,10 @@ export function Button({
       "bg-white text-[#3E000C] hover:bg-white/90 disabled:bg-white/50 disabled:cursor-not-allowed",
     secondary:
       "bg-white/10 text-white border border-white/30 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed",
-    link: "bg-transparent text-white underline hover:text-white/80 disabled:text-white/50 disabled:cursor-not-allowed",
+    link: `inline-flex p-0 relative bg-transparent text-white disabled:text-white/50 disabled:cursor-not-allowed
+      focus-visible:ring-0 focus-visible:ring-offset-0 after:absolute after:left-0 after:bottom-0
+      after:h-[2px] after:w-0 after:bg-white after:transition-all after:duration-300 hover:after:w-full
+      focus-visible:after:w-full w-fit`,
   };
 
   return (

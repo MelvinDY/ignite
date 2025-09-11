@@ -4,6 +4,7 @@ import { GlassCard } from "../components/ui/GlassCard";
 import { Button } from "../components/ui/Button";
 import { Pencil } from "lucide-react";
 import { AccountDetailsForm } from "../components/profile-edit/AccountDetailsForm";
+import { twMerge } from "tailwind-merge";
 
 const initialFormData = {
   fullName: "Andrew Garfield",
@@ -12,13 +13,22 @@ const initialFormData = {
 };
 
 const menuItems = [
-  { label: "Account Details", value: "accountDetails" },
-  { label: "Change Password", value: "changePassword" },
-  { label: "Log Out", value: "logOut" },
+  {
+    label: "Account Details",
+    component: <AccountDetailsForm initialFormData={initialFormData} />,
+  },
+  {
+    label: "Change Password",
+    component: <></>,
+  },
+  {
+    label: "Log Out",
+    component: <></>,
+  },
 ];
 
 const ProfileEdit = () => {
-  const [menu, setMenu] = useState("accountDetails");
+  const [menu, setMenu] = useState(0);
 
   return (
     <div className="w-full flex flex-col justify-center items-center min-h-screen">
@@ -43,29 +53,24 @@ const ProfileEdit = () => {
                 </div>
                 <div className="flex flex-col">
                   {/* Menu */}
-                  <Button
-                    type="button"
-                    variant="link"
-                    children="Account Details"
-                    className="mt-2 font-bold text-xl"
-                  />
-                  <Button
-                    type="button"
-                    variant="link"
-                    children="Change Password"
-                    className="mt-2 font-bold text-xl"
-                  />
-                  <Button
-                    type="button"
-                    variant="link"
-                    children="Log Out"
-                    className="mt-2 font-bold text-xl"
-                  />
+                  {Object.entries(menuItems).map(([_, item], index) => (
+                    <Button
+                      key={index}
+                      type="button"
+                      variant="link"
+                      children={item.label}
+                      className={twMerge(
+                        "mt-2 font-bold text-xl",
+                        menu === index && "after:w-full"
+                      )}
+                      onClick={() => setMenu(index)}
+                    />
+                  ))}
                 </div>
               </div>
 
               {/* Form */}
-              <AccountDetailsForm initialFormData={initialFormData} />
+              {menuItems[menu].component}
             </div>
           </div>
         }

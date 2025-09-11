@@ -12,6 +12,9 @@ interface TextInputProps {
   maxLength?: number;
   className?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email' | 'url';
+  pattern?: string;
 }
 
 export function TextInput({ 
@@ -25,7 +28,10 @@ export function TextInput({
   required = false,
   maxLength,
   className = '',
-  disabled = false
+  disabled = false,
+  autoFocus = false,
+  inputMode,
+  pattern
 }: TextInputProps) {
   return (
     <div className="mb-4">
@@ -41,6 +47,10 @@ export function TextInput({
         placeholder={placeholder}
         maxLength={maxLength}
         disabled={disabled}
+        required={required}
+        autoFocus={autoFocus}
+        inputMode={inputMode}
+        pattern={pattern}
         className={`w-full px-3 py-2 bg-white/10 border rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent ${
           error ? 'border-red-400' : 'border-white/30'
         } ${className} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}

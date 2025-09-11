@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import AddUser from "./components/AddUser";
 import { Route, Routes } from "react-router-dom";
@@ -14,13 +14,32 @@ import { VerifyReset } from "./pages/auth/password/VerifyReset";
 import { ResetPassword } from "./pages/auth/password/ResetPassword";
 import { ProfileEdit } from "./pages/ProfileEdit";
 import { FeedPage } from "./pages/FeedPage";
+import { HandleSetupPage } from "./pages/profile/handle-setup";
+import { MyProfilePage } from "./pages/profile/me";
+import { useAuth } from "./hooks/useAuth";
 
 function App() {
   const [, setRefreshKey] = useState(0);
+  const { refreshAuth } = useAuth();
 
   const handleUserAdded = () => {
     setRefreshKey((prev) => prev + 1);
   };
+
+  // Try to refresh auth on app startup
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        await refreshAuth();
+        console.log('Session restored successfully');
+      } catch (error) {
+        // Silently handle case where no valid refresh token exists
+        // This is normal for users who haven't logged in or whose sessions expired
+      }
+    };
+    
+    initializeAuth();
+  }, [refreshAuth]);
 
   return (
     <Routes>
@@ -33,6 +52,8 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
+      <Route path="/profile/handle-setup" element={<HandleSetupPage />} />
+      <Route path="/profile/me" element={<MyProfilePage />} />
       <Route path="/feed" element={<FeedPage/>}/>
 
       {/* App routes - with navbar/footer */}

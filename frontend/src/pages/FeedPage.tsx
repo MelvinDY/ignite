@@ -109,7 +109,7 @@ const FeedPage = () => {
     );
 
     return (
-      <div className="min-h-screen">
+      <div className="min-h-screen bg-[#f8f9fa]">
         {/* Top bar */}
         <TopBar imgSrc={currentUser.avatarUrl ?? "https://placehold.co/400"} />
 
@@ -120,7 +120,7 @@ const FeedPage = () => {
             
             <ProfileCard user={currentUser} />
 
-            <nav className="mt-4 overflow-hidden rounded-xl bg-white text-black">
+            <nav className="mt-4 overflow-hidden white-card">
               <ul className="divide-y text-sm">
                 <NavItem label="Connections" />
                 <NavItem label="Bookmarks" />
@@ -138,7 +138,16 @@ const FeedPage = () => {
 
           {/* Right rail (widget) */}
           <aside className="hidden md:block md:sticky md:top-20 pt-4">
-            <div className="h-[520px] rounded-xl bg-white/70 border border-white/10" />
+            <div className="h-[520px] flex flex-col white-card">
+              <div className="flex items-center gap-2 p-5">
+                <Calendar className="size-5 text-gray-700" />
+                <span className="text-black font-semibold text-lg">Upcoming Events</span>
+              </div>
+              <div className="h-full flex-center flex-col p-5 pb-7">
+                <Calendar className="w-20 h-20 text-gray-300 mb-4" />
+                <span className="text-gray-500 text-lg font-medium">No upcoming events</span>
+              </div>
+            </div>
           </aside>
         </div>
       </div>

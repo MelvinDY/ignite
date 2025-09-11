@@ -10,7 +10,7 @@ type User = {
 const ProfileCard = ({user}: {user: User}) => {
   return (
     <Link to="/profile">
-      <div className="rounded-xl bg-white overflow-hidden">
+      <div className="overflow-hidden white-card">
           <div className="h-20 w-full bg-[url('https://placehold.co/300x200')] bg-cover bg-center" />
           <div className="px-4 pb-4 flex-col justify-items-start text-black">
             <div className="-mt-6 mb-3">

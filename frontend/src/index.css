@@ -36,4 +36,7 @@
         @apply size-[50px] rounded-full bg-black flex justify-center items-center !important;
     }
     
+    .white-card {
+        @apply rounded-xl bg-white shadow-sm border border-gray-200 text-black;
+    }
 }

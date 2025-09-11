@@ -4,7 +4,7 @@ import { Bell } from "lucide-react"
 
 const TopBar = ({imgSrc}: {imgSrc: string}) => {
   return (
-    <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-200">
+    <header className="sticky top-0 z-20 w-full bg-[#7C0B2B] border-b border-gray-200">
         <div className="mx-auto max-w-6xl px-4 h-16 flex-between gap-2">
             {/* Possibly change it to logo? */}
             <Link className="flex items-center gap-2 mr-8" to='/dashboard'>
@@ -19,8 +19,8 @@ const TopBar = ({imgSrc}: {imgSrc: string}) => {
                 </Link>
 
                 {/* Notification Icon */}
-                <button className="rounded-full px-2 py-2 hover:bg-gray-100 transition-colors">
-                    <Bell className="size-5 text-gray-600" />
+                <button className="rounded-full px-2 py-2 hover:text-[#fbbf39] transition-colors">
+                    <Bell className="size-5" />
                 </button>
             </div>
         </div>

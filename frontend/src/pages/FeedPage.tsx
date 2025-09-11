@@ -110,9 +110,9 @@ const FeedPage = () => {
     );
 
     return (
-      <div className="min-h-screen bg-[#3E000C]">
+      <div className="min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-40 w-full bg-white border-b border-gray-200">
+        <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-200">
           <div className="mx-auto max-w-6xl px-4 h-16 flex-between gap-2">
             {/* Possibly change it to logo? */}
             <Link className="flex items-center gap-2" to='/dashboard'>

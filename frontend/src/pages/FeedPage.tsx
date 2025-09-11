@@ -1,10 +1,9 @@
 
 import React, { useMemo } from "react";
-import { Bell, Bookmark, Users, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
-import SearchBar from "../components/ui/SearchBar";
+import { Bookmark, Users, Calendar } from "lucide-react";
 import ProfileCard from "../components/ui/ProfileCardFeed";
 import PostCard from "../components/ui/PostsCardFeed";
+import TopBar from "../components/ui/TopBar";
 
 type User = {
     name: string;
@@ -112,26 +111,13 @@ const FeedPage = () => {
     return (
       <div className="min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 w-full bg-white border-b border-gray-200">
-          <div className="mx-auto max-w-6xl px-4 h-16 flex-between gap-2">
-            {/* Possibly change it to logo? */}
-            <Link className="flex items-center gap-2" to='/dashboard'>
-              <div className="w-10 h-10 rounded-60 bg-gray-200 flex-center font-bold text-lg text-gray-600">H</div>
-            </Link>
-            
-            <SearchBar/>
-
-            {/* Notification Icon */}
-            <button className="rounded-full px-2 py-2 hover:bg-gray-100 transition-colors">
-                <Bell className="size-5 text-gray-600" />
-            </button>
-          </div>
-        </header>
+        <TopBar imgSrc={currentUser.avatarUrl ?? "https://placehold.co/400"} />
 
         {/* Content grid */}
         <div className="mx-auto max-w-6xl px-4 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_300px] gap-6">
           {/* Left rail (profile) */}
           <aside className="md:sticky md:top-20 h-fit">
+            
             <ProfileCard user={currentUser} />
 
             <nav className="mt-4 overflow-hidden rounded-xl bg-white text-black">

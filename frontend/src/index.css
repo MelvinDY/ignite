@@ -13,43 +13,15 @@
 
 @layer utilities {
     .flex-between {
-        @apply flex justify-between items-center;
+        @apply flex justify-between items-center
     }
 
     .flex-center {
       @apply flex justify-center items-center
     }
 
-    .text-30-extrabold {
-        @apply text-[30px] font-extrabold text-white;
-    }
-
-    .text-30-bold {
-        @apply text-[30px] font-bold text-black;
-    }
-
-    .text-30-semibold {
-        @apply font-semibold text-[30px] text-black;
-    }
-
-    .text-26-semibold {
-        @apply font-semibold text-[26px] text-black;
-    }
-
-    .text-24-black {
-        @apply text-[24px] font-black text-black;
-    }
-
-    .text-20-medium {
-        @apply font-medium text-[20px] text-black;
-    }
-
-    .text-16-medium {
-        @apply font-medium text-[16px] text-black;
-    }
-
-    .text-14-normal {
-        @apply font-normal text-sm text-white-100/80;
+    .flex-inline-center {
+        @apply inline-flex justify-center items-center
     }
 
     .search-form {
@@ -63,4 +35,5 @@
     .search-btn {
         @apply size-[50px] rounded-full bg-black flex justify-center items-center !important;
     }
+    
 }

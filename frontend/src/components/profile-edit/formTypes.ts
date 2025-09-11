@@ -8,9 +8,10 @@ export interface FormData {
   major: string;
   level: string;
   program: string;
+  skills: string[];
 }
 
 export interface EditProfileFormProps {
   formData: FormData;
-  changeFormData: (field: string, value: string | boolean) => void;
+  changeFormData: (field: string, value: string | boolean | string[]) => void;
 }

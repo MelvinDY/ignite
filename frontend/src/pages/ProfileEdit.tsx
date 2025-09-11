@@ -25,10 +25,14 @@ const ProfileEdit = () => {
     major: "Computer Science",
     level: "undergrad",
     program: "Bachelor of Science (Computer Science)",
+    skills: ["JavaScript", "React", "Node.js"],
   });
   const [formData, setFormData] = useState(initialFormData);
 
-  const changeFormData = (field: string, value: string | boolean) => {
+  const changeFormData = (
+    field: string,
+    value: string | boolean | string[]
+  ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setShowSaveButton(true);
   };
@@ -101,7 +105,7 @@ const ProfileEdit = () => {
               {/* Save and Cancel Button group, hidden when no changes */}
               <div
                 className={twMerge(
-                  "flex justify-end gap-4 mt-2",
+                  "flex justify-end gap-4 mt-6 w-full",
                   !showSaveButton && "hidden"
                 )}
               >

@@ -4,6 +4,7 @@ import { Select } from "../ui/Select";
 import { TextArea } from "../ui/TextArea";
 import { TextInput } from "../ui/TextInput";
 import type { EditProfileFormProps } from "./formTypes";
+import { SkillsContainer } from "./SkillsContainer";
 
 // Get program and major options from the data service
 const PROGRAM_OPTIONS = programDataService
@@ -100,6 +101,12 @@ const DashboardForm = ({ formData, changeFormData }: EditProfileFormProps) => {
             value={formData.bio}
             onChange={(value) => changeFormData("bio", value)}
             className="w-full h-52"
+          />
+          <SkillsContainer
+            id="skills"
+            label="Skills"
+            value={formData.skills}
+            onChange={(value) => changeFormData("skills", value)}
           />
         </div>
       </section>

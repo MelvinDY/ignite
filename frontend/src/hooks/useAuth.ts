@@ -25,16 +25,33 @@ interface AuthContextType extends AuthState {
 
 // Create a singleton auth state to persist across component rerenders
 class AuthStateManager {
-  private state: AuthState = {
-    accessToken: null,
-    userId: null,
-    expiresAt: null,
-    isAuthenticated: false,
-    isLoading: false,
-  };
-
+  private state: AuthState;
   private listeners: Set<() => void> = new Set();
   private refreshTimer: NodeJS.Timeout | null = null;
+  private readonly STORAGE_KEY = 'auth_state';
+
+  constructor() {
+    // Load state from localStorage or use default
+    this.state = this.loadFromStorage() || {
+      accessToken: null,
+      userId: null,
+      expiresAt: null,
+      isAuthenticated: false,
+      isLoading: false,
+    };
+
+    // If we have valid auth state from storage, schedule refresh
+    if (this.state.isAuthenticated && this.state.expiresAt && this.state.accessToken) {
+      const timeUntilExpiry = this.state.expiresAt - Date.now();
+      if (timeUntilExpiry > 60000) { // Only if more than 1 minute left
+        this.scheduleRefresh(timeUntilExpiry / 1000);
+      } else {
+        // Token expired or expiring soon, clear auth
+        console.log('Stored token expired or expiring soon, clearing auth');
+        this.clearAuth();
+      }
+    }
+  }
 
   getState(): AuthState {
     return { ...this.state };
@@ -42,6 +59,7 @@ class AuthStateManager {
 
   setState(newState: Partial<AuthState>) {
     this.state = { ...this.state, ...newState };
+    this.saveToStorage();
     this.notifyListeners();
   }
 
@@ -74,6 +92,7 @@ class AuthStateManager {
       isAuthenticated: false,
       isLoading: false,
     });
+    this.clearStorage();
     this.cancelRefresh();
   }
 
@@ -106,7 +125,57 @@ class AuthStateManager {
   }
 
   setLoading(isLoading: boolean) {
-    this.setState({ isLoading });
+    // Don't persist loading state to localStorage
+    this.state = { ...this.state, isLoading };
+    this.notifyListeners();
+  }
+
+  private loadFromStorage(): AuthState | null {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate that the stored state has the expected structure and valid data
+        if (parsed && 
+            typeof parsed === 'object' && 
+            parsed.accessToken && 
+            parsed.userId && 
+            parsed.expiresAt && 
+            typeof parsed.expiresAt === 'number' &&
+            parsed.expiresAt > Date.now()) {
+          return {
+            ...parsed,
+            isLoading: false, // Never persist loading state
+          };
+        } else {
+          // Invalid or expired stored data, clear it
+          console.log('Invalid or expired auth data in localStorage, clearing');
+          this.clearStorage();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load auth state from localStorage:', error);
+      this.clearStorage();
+    }
+    return null;
+  }
+
+  private saveToStorage() {
+    try {
+      // Only save persistent state (exclude loading)
+      const { isLoading, ...persistentState } = this.state;
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(persistentState));
+    } catch (error) {
+      console.error('Failed to save auth state to localStorage:', error);
+    }
+  }
+
+  private clearStorage() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to clear auth state from localStorage:', error);
+    }
   }
 }
 

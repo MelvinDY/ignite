@@ -21,7 +21,7 @@ export function Button({
   className = "",
 }: ButtonProps) {
   const baseClasses =
-    "rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/50 transition-colors";
+    "rounded-md font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-white/50 transition-colors";
   const sizeClasses = {
     sm: "px-3 py-1.5 text-sm",
     md: "px-4 py-2",

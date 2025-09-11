@@ -35,13 +35,14 @@ function App() {
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
       <Route path="/feed" element={<ProtectedRoute><FeedPage/></ProtectedRoute>}/>
+      
       {/* App routes - with navbar/footer */}
       <Route
         path="/*"
         element={
           <div className="flex flex-col h-full w-full">
             <Navbar />
-            <div className="flex flex-col">
+            <div className="flex flex-col m-20 pt-16">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />

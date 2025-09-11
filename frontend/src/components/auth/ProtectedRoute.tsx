@@ -5,8 +5,8 @@ import { LoaderCircle } from "lucide-react";
 
 // Wrapper component for pages/components that needs authentication
 export function ProtectedRoute({ children }: {children: React.ReactNode}) {
-    var {isAuthenticated, isLoading} = useAuth();
-    isAuthenticated = true;
+    const {isAuthenticated, isLoading} = useAuth();
+    
     // Display laoding if token is being refreshed
     if (isLoading) {
         return (

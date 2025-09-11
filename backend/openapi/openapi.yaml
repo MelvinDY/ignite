@@ -1507,6 +1507,94 @@ paths:
                 bad_format: { value: { code: VALIDATION_ERROR } }
         "500":
           $ref: "#/components/responses/InternalError"
+          
+  /lookup/majors:
+    get:
+      tags: ["Search"]
+      summary: List all available majors
+      description: |
+        Returns all available majors from the majors table, sorted alphabetically by name. Used to populate filter UI in the directory.
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of all majors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  majors:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Major"
+              examples:
+                majors:
+                  value:
+                    majors:
+                      - id: 12
+                        name: Mechanical Engineering
+                      - id: 13
+                        name: Software Engineering
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
+  /lookup/companies:
+    get:
+      tags: ["Search"]
+      summary: Lookup companies for autocomplete
+      description: |
+        Returns a list of companies that appear in user experiences.
+        Supports an optional query parameter `q` for typeahead/autocomplete functionality.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search term to filter company names (case-insensitive)
+      responses:
+        '200':
+          description: List of companies matching the query or all companies if no query is provided
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+              examples:
+                some_companies:
+                  value:
+                    - id: 12
+                      name: Google
+                    - id: 13
+                      name: Grab
+                no_companies:
+                  value: []
+        '401':
+          description: Not authenticated or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '500':
+          $ref: "#/components/responses/InternalError"
+
 
 components:
   securitySchemes:
@@ -1927,7 +2015,6 @@ components:
           type: boolean
           example: true
 
-
     Skill:
       type: object
       required:
@@ -2016,3 +2103,31 @@ components:
         updatedAt:
           type: string
           description: Profile last update timestamp
+          
+    Major:
+        type: object
+        required:
+          - id
+          - name
+        properties:
+          id:
+            type: integer
+            example: 12
+          name:
+            type: string
+            example: "Software Engineering"
+
+    Company:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          description: Unique identifier of the company
+          example: 12
+        name:
+          type: string
+          description: Name of the company
+          example: Google

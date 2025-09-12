@@ -302,6 +302,8 @@ router.post("/auth/verify-otp", verifyLimiter, async (req, res) => {
 
     // 6) Success → activate, delete OTP, invalidate resume token
     const profileId = await ensureProfileForSignup(userId);
+
+    await applyProgramAndMajorFromSignupToProfile(userId, profileId);
     await activateUser(userId);
     await deleteSignupOtp(userId);
     await invalidateResumeToken(userId);

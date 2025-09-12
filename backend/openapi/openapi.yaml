@@ -1243,8 +1243,8 @@ paths:
                     handle: "janedoe"
                     photoUrl: "https://example.com/profile.jpg"
                     isIndonesian: true
-                    programId: 2
-                    majorId: 5
+                    program: "BE"
+                    major: "Computer Science"
                     level: "undergrad"
                     yearStart: 2020
                     yearGrad: 2024
@@ -2085,12 +2085,12 @@ components:
         isIndonesian:
           type: boolean
           description: Whether the user is Indonesian or not
-        programId:
-          type: integer
-          description: ID of the user's academic program
-        majorId:
-          type: integer
-          description: ID of the user's major
+        program:
+          type: string
+          description: the user's academic program or user's education program
+        major:
+          type: string
+          description: the user's major or user's education major
         level:
           type: string
           description: Academic level

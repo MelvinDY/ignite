@@ -4,8 +4,8 @@ export interface ProfileObject {
   handle: string | null;
   photoUrl: string | null;
   isIndonesian: boolean;
-  programId: number | null;
-  majorId: number | null;
+  program: string | null;
+  major: string | null;
   level: 'foundation' | 'diploma' | 'undergrad' | 'postgrad' | 'phd';
   yearStart: number;
   yearGrad: number | null;

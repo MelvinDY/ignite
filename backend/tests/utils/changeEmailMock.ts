@@ -15,7 +15,7 @@ export type EmailChangeScenario = Scenario & {
   userSignupById: { id: string; password_hash: string; full_name: string } | null;
   profileByEmail: { id: string } | null;
   profileById: { id: string; full_name: string } | null;
-  pendingChange: { id: string; user_id: string } | null;
+  pendingChange: { id: string; owner_id: string } | null;
   pendingChangeCleared: boolean;
 };
 
@@ -32,7 +32,7 @@ function projector<T extends Record<string, any>>(row: T, cols: string) {
 export function makeEmailChangeSupabaseMock(scenario: EmailChangeScenario) {
   return {
     from(table: string) {
-      if (table === 'pending_email_changes') {
+      if (table === 'user_otps') {
         const state: { filters: Filters } = { filters: {} };
         const api = {
           delete() {
@@ -40,7 +40,7 @@ export function makeEmailChangeSupabaseMock(scenario: EmailChangeScenario) {
               eq(col: string, val: any) {
                 state.filters[col] = val;
                 
-                if (col === 'user_id' && scenario.pendingChange?.user_id === val) {
+                if (col === 'owner_id' && scenario.pendingChange?.owner_id === val) {
                   scenario.pendingChange = null;
                   scenario.pendingChangeCleared = true;
                 }
@@ -116,8 +116,14 @@ export function makeEmailChangeSupabaseMock(scenario: EmailChangeScenario) {
 
           // Add single() method for email change route queries
           single() {
-            const { id } = state.filters;
+            const { id, profile_id } = state.filters;
             if (id && scenario.userSignupById) {
+              return { 
+                data: projector(scenario.userSignupById, state.cols), 
+                error: null 
+              };
+            }
+              if (profile_id && scenario.userSignupById) {
               return { 
                 data: projector(scenario.userSignupById, state.cols), 
                 error: null 

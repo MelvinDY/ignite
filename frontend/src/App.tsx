@@ -33,7 +33,7 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
-      <Route path="/feed" element={<FeedPage/>}/>
+      <Route path="/feed" element={<FeedPage />} />
 
       {/* App routes - with navbar/footer */}
       <Route

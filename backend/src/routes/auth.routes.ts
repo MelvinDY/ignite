@@ -52,6 +52,7 @@ import {
   getPendingEmailChange,
   updateEmailChangeAttempts,
   resendEmailChangeOtp,
+  clearPendingEmailChange,
 } from "../services/email.service";
 import { processResetOtpRequest, processCancelResetOtp } from "../services/passwordReset.service";
 
@@ -783,12 +784,12 @@ router.post("/user/email/change-request", async (req, res) => {
 
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    const profileId = decoded.sub;
 
     const { data: userRow } = await supabase
       .from("user_signups")
       .select("password_hash, full_name")
-      .eq("profile_id", userId)
+      .eq("profile_id", profileId)
       .single();
 
     if (!userRow) {
@@ -808,12 +809,23 @@ router.post("/user/email/change-request", async (req, res) => {
         .json({ code: "VALIDATION_ERROR", details: "Incorrect password" });
     }
 
-    const { data: existingUser } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", newEmailLowered)
-      .eq("status", "ACTIVE")
-      .maybeSingle();
+    // Check if they are existing emails on BOTH active OR pending emails
+    const [{ data: emailExists }, { data: pendingExists }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", newEmailLowered)
+        .eq("status", "ACTIVE")
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("id")
+        .eq("pending_new_email", newEmailLowered)
+        .eq("status", "ACTIVE")
+        .maybeSingle()
+    ]);
+
+    const existingUser = emailExists || pendingExists;
 
     if (existingUser) {
       return res
@@ -822,7 +834,7 @@ router.post("/user/email/change-request", async (req, res) => {
     }
 
     const otp = generateOtp();
-    await createPendingEmailChange(userId, newEmailLowered, otp);
+    await createPendingEmailChange(profileId, newEmailLowered, otp);
 
     if (!userRow.full_name) {
       return res
@@ -830,7 +842,7 @@ router.post("/user/email/change-request", async (req, res) => {
         .json({ code: "USER_NOT_FOUND", details: "User has no full name" });
     }
 
-    await issueSignupOtp(userId, newEmailLowered, userRow.full_name);
+    await issueSignupOtp(profileId, newEmailLowered, userRow.full_name);
     const emailParts = newEmailLowered.split("@");
     const localPart = emailParts[0];
     const domain = emailParts[1];
@@ -843,7 +855,7 @@ router.post("/user/email/change-request", async (req, res) => {
     const emailMasked = `${maskedLocal}@${maskedDomain}`;
 
     console.info("email-change.requested", {
-      userId,
+      profileId,
       newEmail: newEmailLowered,
     });
 
@@ -885,7 +897,7 @@ router.post("/user/email/verify-change", async (req, res) => {
     const userId = decoded.sub;
 
     const pendingChange = await getPendingEmailChange(userId);
-
+    console.log('pendingChange:', pendingChange);
     if (!pendingChange) {
       return res.status(404).json({ code: "NO_PENDING_EMAIL_CHANGE" });
     }
@@ -894,12 +906,12 @@ router.post("/user/email/verify-change", async (req, res) => {
       return res.status(423).json({ code: "OTP_LOCKED" });
     }
 
-    if (new Date(pendingChange.otp_expires_at) < new Date()) {
+    if (new Date(pendingChange.expires_at) < new Date()) {
       return res.status(400).json({ code: "OTP_EXPIRED" });
     }
 
     if (!(hashOtp(otp) === pendingChange.otp_hash)) {
-      const newAttempts = pendingChange.otp_attempts + 1;
+      const newAttempts = pendingChange.attempts + 1;
 
       await updateEmailChangeAttempts(userId, newAttempts, newAttempts >= 5);
 
@@ -973,7 +985,7 @@ router.post(
         return res.status(404).json({ code: "NO_PENDING_EMAIL_CHANGE" });
       }
 
-      const lastSent = new Date(pendingChange.last_otp_sent_at).getTime();
+      const lastSent = new Date(pendingChange.last_sent_at).getTime();
       const now = Date.now();
       const cooldownMs = 60 * 1000;
 
@@ -985,7 +997,7 @@ router.post(
         return res.status(429).json({ code: "OTP_RESEND_LIMIT" });
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = generateOtp();
       await resendEmailChangeOtp(userId, otp);
 
       const { data: profile } = await supabase
@@ -995,7 +1007,7 @@ router.post(
         .single();
 
       await issueSignupOtp(
-        pendingChange.pending_email,
+        pendingChange.pending_new_email,
         profile?.full_name || "User",
         otp
       );
@@ -1026,11 +1038,8 @@ router.delete("/user/email/cancel-change", async (req, res) => {
   const userId = decoded.sub;
 
   try {
-    // Delete the pending instance from the database
-    await supabase
-      .from("pending_email_changes")
-      .delete()
-      .eq("user_id", userId);
+    // Clear instance in user_otps table
+    await clearPendingEmailChange(userId);
     return res.status(200).json({ success: true });
   } catch (err: any) {
     console.error("resend-email-change-otp.error", err?.message || err);

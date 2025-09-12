@@ -1,13 +1,15 @@
 export interface PendingEmailChange {
   id: string;
-  user_id: string;
-  pending_email: string;
+  owner_table: string;
+  owner_id: string;
+  purpose: string;
+  pending_new_email: string;
   otp_hash: string;
-  otp_expires_at: string;
-  otp_attempts: number;
-  last_otp_sent_at: string;
+  expires_at: string;
+  attempts: number;
   resend_count: number;
-  locked_at?: string;
+  last_sent_at: string;
+  locked_at: string | null;
   created_at: string;
   updated_at: string;
 }

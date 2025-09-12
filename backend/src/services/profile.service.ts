@@ -1,5 +1,6 @@
 // src/services/profile.service.ts
 import { supabase } from '../lib/supabase';
+import { ProfileObject } from '../types/Profile';
 import { ensureProgramId, ensureMajorId } from './lookups.service';
 
 type SignupRow = {
@@ -110,4 +111,90 @@ export async function applyProgramAndMajorFromSignupToProfile(
     const { error: uErr } = await supabase.from('profiles').update(patch).eq('id', pid);
     if (uErr) throw uErr;
   }
+}
+
+/**
+ * Fetch all profile details for a given profile (user) ID.
+ */
+export async function getProfileDetails(profileId: string): Promise<ProfileObject> {
+	const { data, error } = await supabase
+		.from("profiles")
+		.select(`
+			id,
+			full_name,
+			handle,
+			photo_url,
+			is_indonesian,
+			program_id,
+			major_id,
+			level,
+			year_start,
+			year_grad,
+			zid,
+			headline,
+			domicile_city,
+			domicile_country,
+			bio,
+			social_links,
+			created_at,
+			updated_at
+		`)
+		.eq("id", profileId)
+		.single();
+	
+	if (error) throw error;
+
+	return {
+		id: data.id,
+		fullName: data.full_name,
+		handle: data.handle,
+		photoUrl: data.photo_url,
+		isIndonesian: data.is_indonesian,
+		programId: data.program_id,
+		majorId: data.major_id,
+		level: data.level,
+		yearStart: data.year_start,
+		yearGrad: data.year_grad,
+		zid: data.zid,
+		headline: data.headline,
+		domicileCity: data.domicile_city,
+		domicileCountry: data.domicile_country,
+		bio: data.bio,
+		socialLinks: data.social_links,
+		createdAt: data.created_at,
+		updatedAt: data.updated_at,
+	};
+}
+
+export async function isHandleAvailable(handle: string): Promise<boolean> {
+  const handleLower = handle.toLowerCase();
+  // handles are lowercase-only by spec, so equality is enough
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", handleLower)
+    .maybeSingle();
+
+  if (error && error.code !== "PGRST116") throw error; // ignore "No rows" error
+  return !data; // available when no row
+}
+
+export async function setHandle(userId: string, handle: string) {
+  const handleLower = handle.toLowerCase();
+
+  // quick availability check first to return 409 before DB unique constraint
+  const available = await isHandleAvailable(handleLower);
+  if (!available) {
+    const err: any = new Error("HANDLE_TAKEN");
+    err.code = "HANDLE_TAKEN";
+    throw err;
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ handle: handleLower })
+    .eq("id", userId);
+
+  if (error) throw error;
+  return handleLower;
 }

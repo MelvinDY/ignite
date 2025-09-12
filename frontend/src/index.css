@@ -12,31 +12,82 @@
 }
 
 @layer utilities {
-    .flex-between {
-        @apply flex justify-between items-center
-    }
+  .white-card {
+      @apply rounded-xl bg-white shadow-sm border border-gray-200 text-black;
+  }
+  
+  .flex-between {
+    @apply flex justify-between items-center;
+  }
 
-    .flex-center {
-      @apply flex justify-center items-center
-    }
+  .flex-center {
+    @apply flex justify-center items-center;
+  }
 
-    .flex-inline-center {
-        @apply inline-flex justify-center items-center
-    }
+  .text-30-extrabold {
+    @apply text-[30px] font-extrabold text-white;
+  }
 
-    .search-form {
-      @apply max-w-3xl w-full min-h-[50px] bg-white border-[5px] border-black rounded-[80px] text-[24px] mt-8 px-5 flex flex-row items-center gap-5;
-    }
+  .text-30-bold {
+    @apply text-[30px] font-bold text-black;
+  }
 
-    .search-input {
-        @apply flex-1 font-bold placeholder:font-semibold  w-full h-auto outline-none;
-    }
+  .text-30-semibold {
+    @apply font-semibold text-[30px] text-black;
+  }
 
-    .search-btn {
-        @apply size-[50px] rounded-full bg-black flex justify-center items-center !important;
-    }
-    
-    .white-card {
-        @apply rounded-xl bg-white shadow-sm border border-gray-200 text-black;
-    }
+  .text-26-semibold {
+    @apply font-semibold text-[26px] text-black;
+  }
+
+  .text-24-black {
+    @apply text-[24px] font-black text-black;
+  }
+
+  .text-20-medium {
+    @apply font-medium text-[20px] text-black;
+  }
+
+  .text-16-medium {
+    @apply font-medium text-[16px] text-black;
+  }
+
+  .text-14-normal {
+    @apply font-normal text-sm text-white-100/80;
+  }
+
+  .search-form {
+    @apply max-w-3xl w-full min-h-[50px] bg-white border-[5px] border-black rounded-[80px] text-[24px] mt-8 px-5 flex flex-row items-center gap-5;
+  }
+
+  .search-input {
+    @apply flex-1 font-bold placeholder:font-semibold  w-full h-auto outline-none;
+  }
+
+  .search-btn {
+    @apply size-[50px] rounded-full bg-black flex justify-center items-center !important;
+  }
+}
+
+/* Customize the entire scrollbar */
+::-webkit-scrollbar {
+  width: 10px; /* Adjust width for vertical scrollbar */
+  height: 10px; /* Adjust height for horizontal scrollbar */
+}
+
+/* Customize the scrollbar track */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+/* Customize the scrollbar thumb */
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+/* Change thumb color on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }

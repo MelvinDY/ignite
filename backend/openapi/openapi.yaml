@@ -1270,6 +1270,94 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile:
+    patch:
+      tags: ["Profile"]
+      summary: Update user profile basic details
+      description: |
+        Updates core profile fields for the authenticated user. Only provided fields are updated (partial update).
+        Excludes photoUrl, handle, and socialLinks which have their own dedicated endpoints.
+        
+        **Validation:**
+        - `level`: Must be one of foundation, diploma, undergrad, postgrad, phd
+        - `yearStart`, `yearGrad`: Must be between 2000-2100
+        - `yearGrad`: Must be after `yearStart` if both provided
+        - `domicileCountry`: Must be ISO country code (2 uppercase letters)
+        - `programId`, `majorId`: Must reference existing records
+        
+        **Note:** Current schema has no relationship validation between programs and majors.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            examples:
+              full_update:
+                summary: Complete profile update
+                value:
+                  fullName: "Jane Doe"
+                  headline: "Backend Engineer @ Acme | AI/ML"
+                  isIndonesian: true
+                  program: "BE"
+                  major: "Software Engineering"
+                  level: "undergrad"
+                  yearStart: 2022
+                  yearGrad: 2026
+                  domicileCity: "Sydney"
+                  domicileCountry: "AU"
+                  bio: "I ship boring, reliable services."
+              partial_update:
+                summary: Partial update (only some fields)
+                value:
+                  fullName: "Updated Name"
+                  bio: "Updated bio only"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "400":
+          description: Validation error; Invalid country code, invalid academic level enum, invalid year range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL 
+
   /profile/skills:
     get:
       tags: ["Profile"]
@@ -2068,3 +2156,60 @@ components:
           name:
             type: string
             example: "Software Engineering"
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          description: User's full name
+          example: "Jane Doe"
+        headline:
+          type: string
+          nullable: true
+          description: Professional headline or tagline
+          example: "Backend Engineer @ Acme | AI/ML"
+        isIndonesian:
+          type: boolean
+          description: Whether the user is Indonesian
+          example: true
+        program:
+          type: string
+          description: The user's academic program
+          example: "BE"
+        major:
+          type: string
+          description: The user's major
+          example: "Software Engineering"
+        level:
+          type: string
+          enum: [foundation, diploma, undergrad, postgrad, phd]
+          description: Academic level
+          example: "undergrad"
+        yearStart:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+          description: Year the user started their studies
+          example: 2022
+        yearGrad:
+          type: integer
+          nullable: true
+          minimum: 2000
+          maximum: 2100
+          description: Year the user graduated or will graduate
+          example: 2026
+        domicileCity:
+          type: string
+          description: User's city of residence
+          example: "Sydney"
+        domicileCountry:
+          type: string
+          pattern: "^[A-Z]{2}$"
+          description: User's country of residence (ISO 3166-1 alpha-2)
+          example: "AU"
+        bio:
+          type: string
+          nullable: true
+          description: User's bio or about section
+          example: "I ship boring, reliable services."

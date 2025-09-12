@@ -1,10 +1,6 @@
 // src/services/purgeExpiredAccounts.service.ts
 import { supabase } from '../lib/supabase';
-
-export interface PurgeExpiredAccountsResult {
-  purgedCount: number;
-  userIds: string[];
-}
+import { PurgeExpiredAccountsResult } from '../types/PurgeExpiredAccounts';
 
 /**
  * Permanently delete unverified accounts that have been expired for more than 15 days

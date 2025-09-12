@@ -18,7 +18,7 @@ export async function purgeExpiredAccounts(): Promise<PurgeExpiredAccountsResult
   try {
     // First, find the users that will be deleted for logging purposes
     const { data: usersToDelete, error: findError } = await supabase
-      .from('users')
+      .from('user_signups')
       .select('id')
       .eq('status', 'EXPIRED')
       .lt('updated_at', cutoffDate);
@@ -46,8 +46,9 @@ export async function purgeExpiredAccounts(): Promise<PurgeExpiredAccountsResult
 
     // Delete dependent records first (OTP entries)
     const { error: otpDeleteError, count: deletedOtpsCount } = await supabase
-      .from('otps')
+      .from('user_otps')
       .delete({ count: 'exact' })
+      .eq('type', 'REGISTRATION')
       .in('user_id', userIds);
 
     if (otpDeleteError) {
@@ -60,7 +61,7 @@ export async function purgeExpiredAccounts(): Promise<PurgeExpiredAccountsResult
 
     // Delete resume tokens
     const { error: tokenDeleteError, count: deletedTokensCount } = await supabase
-      .from('resume_tokens')
+      .from('user_resume_tokens')
       .delete({ count: 'exact' })
       .in('user_id', userIds);
 
@@ -74,7 +75,7 @@ export async function purgeExpiredAccounts(): Promise<PurgeExpiredAccountsResult
 
     // Finally, delete the users
     const { error: userDeleteError, count: deletedUsersCount } = await supabase
-      .from('users')
+      .from('user_signups')
       .delete({ count: 'exact' })
       .in('id', userIds)
       .eq('status', 'EXPIRED')
@@ -127,7 +128,7 @@ export async function getExpiredAccountsPurgeCount(): Promise<number> {
 
   try {
     const { count, error } = await supabase
-      .from('users')
+      .from('user_signups')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'EXPIRED')
       .lt('updated_at', cutoffDate);

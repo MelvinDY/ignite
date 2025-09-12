@@ -9,7 +9,7 @@ import { purgeExpiredAccounts } from '../services/purgeExpiredAccounts.service';
 export function startScheduledJobs() {
   console.info('scheduled-jobs.initializing');
 
-  // Run daily at 2:00 AM 
+  // Run daily at 2:00 AM - Expire stale signups
   cron.schedule('0 2 * * *', async () => {
     console.info('scheduled-job.expire-stale-signups.triggered');
     try {
@@ -25,14 +25,37 @@ export function startScheduledJobs() {
       });
     }
   }, {
-    timezone: 'Australia/Sydney', // Adjust to your timezone
+    timezone: 'Australia/Sydney',
     name: 'expire-stale-signups'
   });
 
-  console.info('scheduled-jobs.started', {
-    jobs: ['expire-stale-signups'],
+  // Run daily at 3:00 AM - Purge expired accounts (runs after expire job)
+  cron.schedule('0 3 * * *', async () => {
+    console.info('scheduled-job.purge-expired-accounts.triggered');
+    try {
+      const result = await purgeExpiredAccounts();
+      console.info('scheduled-job.purge-expired-accounts.completed', {
+        purgedCount: result.purgedCount,
+        userIdCount: result.userIds.length
+      });
+    } catch (error) {
+      console.error('scheduled-job.purge-expired-accounts.failed', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+    }
+  }, {
     timezone: 'Australia/Sydney',
-    schedule: 'daily at 2:00 AM'
+    name: 'purge-expired-accounts'
+  });
+
+  console.info('scheduled-jobs.started', {
+    jobs: ['expire-stale-signups', 'purge-expired-accounts'],
+    timezone: 'Australia/Sydney',
+    schedules: {
+      'expire-stale-signups': 'daily at 2:00 AM',
+      'purge-expired-accounts': 'daily at 3:00 AM'
+    }
   });
 }
 
@@ -51,6 +74,9 @@ export async function triggerExpireStaleSignups() {
   }
 }
 
+/**
+ * Manually trigger the purge expired accounts job (for testing)
+ */
 export async function triggerPurgeExpiredAccounts() {
   console.info('manual-trigger.purge-expired-accounts.start');
   try {

@@ -1283,9 +1283,6 @@ paths:
         - `yearStart`, `yearGrad`: Must be between 2000-2100
         - `yearGrad`: Must be after `yearStart` if both provided
         - `domicileCountry`: Must be ISO country code (2 uppercase letters)
-        - `programId`, `majorId`: Must reference existing records
-        
-        **Note:** Current schema has no relationship validation between programs and majors.
         
         **Auth:** Bearer token required.
       security:

@@ -1,11 +1,12 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { HandleSchema } from "../validation/profile.schemas";
+import { HandleSchema, UpdateProfileSchema } from "../validation/profile.schemas";
 import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
+  updateProfile,
 } from "../services/profile.service";
 
 const router = Router();
@@ -31,6 +32,41 @@ router.get("/profile/me", async (req, res) => {
     return res.status(200).json(profileDetails);
   } catch (err) {
     console.error("get-profile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// PATCH /profile - Update user profile details
+router.patch("/profile", async (req, res) => {
+  // Check for valid token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // Extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // Validate request body
+  const parsed = UpdateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await updateProfile(userId, parsed.data);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    console.error("updateProfile.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

@@ -17,8 +17,8 @@ const Navbar = () => {
     navigate(path);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/auth/login");
   };
 

@@ -21,40 +21,20 @@ import { useAuth } from "./hooks/useAuth";
 
 function App() {
   const [, setRefreshKey] = useState(0);
-  const { refreshAuth } = useAuth();
+  const { attemptSessionRestore } = useAuth();
 
   const handleUserAdded = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  // Initialize auth on app startup - check for existing tokens
+  // Initialize auth on app startup - attempt to restore session with refresh token cookie
   useEffect(() => {
     const initializeAuth = async () => {
-      // Import authStateManager directly to check stored state
-      const { authStateManager } = await import('./hooks/useAuth');
-      const currentState = authStateManager.getState();
-      
-      // Only try to refresh if we have ALL required auth data and it's not expired
-      if (currentState.isAuthenticated && 
-          currentState.accessToken && 
-          currentState.userId && 
-          currentState.expiresAt && 
-          currentState.expiresAt > Date.now() + 60000) { // Must have > 1 min remaining
-        try {
-          console.log('Attempting to restore session...');
-          await refreshAuth();
-          console.log('Session restored successfully');
-        } catch (error) {
-          console.log('Session refresh failed, user will need to log in again');
-          // Auth hook will automatically clear invalid tokens
-        }
-      } else {
-        console.log('No valid stored session found');
-      }
+      await attemptSessionRestore();
     };
     
     initializeAuth();
-  }, [refreshAuth]);
+  }, [attemptSessionRestore]);
 
   return (
     <Routes>

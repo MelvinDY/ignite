@@ -108,12 +108,16 @@ class AuthStateManager {
   }
 
   private async performRefresh() {
+    //Setting loading to true when refreshing
+    this.setLoading(true);
     try {
       const response = await authApi.refresh();
       this.setAuth(response.accessToken, this.state.userId!, response.expiresIn);
     } catch (error) {
       console.error('Token refresh failed:', error);
       this.clearAuth();
+    } finally {
+      this.setLoading(false);
     }
   }
 
@@ -229,6 +233,8 @@ export function useAuth(): AuthContextType {
   }, []);
 
   const refreshAuth = useCallback(async (): Promise<void> => {
+    //Set loading to true when refreshing auth
+    authStateManager.setLoading(true);
     try {
       const response = await authApi.refresh();
       const currentUserId = authStateManager.getState().userId;
@@ -237,6 +243,8 @@ export function useAuth(): AuthContextType {
       console.error('Manual refresh failed:', error);
       authStateManager.clearAuth();
       throw error;
+    } finally {
+      authStateManager.setLoading(false);
     }
   }, []);
 

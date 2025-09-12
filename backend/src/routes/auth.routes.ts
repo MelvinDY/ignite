@@ -302,6 +302,8 @@ router.post("/auth/verify-otp", verifyLimiter, async (req, res) => {
 
     // 6) Success → activate, delete OTP, invalidate resume token
     const profileId = await ensureProfileForSignup(userId);
+
+    await applyProgramAndMajorFromSignupToProfile(userId, profileId);
     await activateUser(userId);
     await deleteSignupOtp(userId);
     await invalidateResumeToken(userId);
@@ -465,7 +467,7 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
     // Set refresh token cookie (HttpOnly, Secure, SameSite=Lax)
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -565,7 +567,7 @@ router.post("/auth/logout", async (req, res) => {
       // Token already invalidated, but we still clear the cookie and return success (idempotent)
       res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: true,
+        secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
       });
@@ -578,7 +580,7 @@ router.post("/auth/logout", async (req, res) => {
     // Clear the refresh token cookie
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
     });
@@ -928,7 +930,7 @@ router.post("/user/email/verify-change", async (req, res) => {
 
     res.cookie("refreshToken", newRefreshToken, {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days

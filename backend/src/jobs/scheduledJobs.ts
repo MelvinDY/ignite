@@ -1,6 +1,7 @@
 // src/jobs/scheduledJobs.ts
 import cron from 'node-cron';
 import { expireStaleSignups } from '../services/expiredSignups.service';
+import { purgeExpiredAccounts } from '../services/purgeExpiredAccounts.service';
 
 /**
  * Initialize and start all scheduled jobs
@@ -46,6 +47,18 @@ export async function triggerExpireStaleSignups() {
     return result;
   } catch (error) {
     console.error('manual-trigger.expire-stale-signups.error', error);
+    throw error;
+  }
+}
+
+export async function triggerPurgeExpiredAccounts() {
+  console.info('manual-trigger.purge-expired-accounts.start');
+  try {
+    const result = await purgeExpiredAccounts();
+    console.info('manual-trigger.purge-expired-accounts.success', result);
+    return result;
+  } catch (error) {
+    console.error('manual-trigger.purge-expired-accounts.error', error);
     throw error;
   }
 }

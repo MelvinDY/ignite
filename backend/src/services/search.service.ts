@@ -39,3 +39,12 @@ export async function lookupCompanies(query?: string) {
 
   return data?.map(({ id, name }) => ({ id, name })) || [];
 }
+
+export async function listWorkFields(): Promise<{ id: number; name: string }[]> {
+    const { data, error } = await supabase
+        .from("fields_of_work")
+        .select("id, name")
+        .order("name", { ascending: true });
+    if (error) throw error;
+    return data ?? [];
+};

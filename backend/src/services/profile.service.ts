@@ -235,14 +235,22 @@ export async function updateProfile(profileId: string, updates: UpdateProfileInp
   if (updates.fullName !== undefined) updateData.full_name = updates.fullName;
   if (updates.headline !== undefined) updateData.headline = updates.headline;
   if (updates.isIndonesian !== undefined) updateData.is_indonesian = updates.isIndonesian;
-  if (updates.program !== undefined) updateData.program_id = updates.program;
-  if (updates.major !== undefined) updateData.major_id = updates.major;
   if (updates.level !== undefined) updateData.level = updates.level;
   if (updates.yearStart !== undefined) updateData.year_start = updates.yearStart;
   if (updates.yearGrad !== undefined) updateData.year_grad = updates.yearGrad;
   if (updates.domicileCity !== undefined) updateData.domicile_city = updates.domicileCity;
   if (updates.domicileCountry !== undefined) updateData.domicile_country = updates.domicileCountry;
   if (updates.bio !== undefined) updateData.bio = updates.bio;
+
+  if (updates.program !== undefined) {
+    const programId = await ensureProgramId(updates.program);
+    if (programId !== null) updateData.program_id = programId;
+  }
+
+  if (updates.major !== undefined) {
+    const majorId = await ensureMajorId(updates.major);
+    if (majorId !== null) updateData.major_id = majorId;
+  }
 
   // Only proceed if there are updates to apply
   if (Object.keys(updateData).length === 0) {

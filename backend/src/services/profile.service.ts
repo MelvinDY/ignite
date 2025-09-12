@@ -17,6 +17,27 @@ type SignupRow = {
   profile_id: string | null;
 };
 
+type ProfileRow = {
+  id: string;
+  full_name: string;
+  handle: string | null;
+  photo_url: string | null;
+  is_indonesian: boolean;
+  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  year_start: number;
+  year_grad: number | null;
+  zid: string;
+  headline: string | null;
+  domicile_city: string | null;
+  domicile_country: string | null;
+  bio: string | null;
+  social_links: any;
+  created_at: string;
+  updated_at: string;
+  programs?: { name: string } | { name: string }[] | null;
+  majors?: { name: string } | { name: string }[] | null;
+};
+
 export async function ensureProfileForSignup(userId: string): Promise<string> {
   const { data: s, error: loadErr } = await supabase
     .from('user_signups')
@@ -122,28 +143,31 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
 		.from("profiles")
 		.select(`
 			id,
-			full_name,
-			handle,
-			photo_url,
-			is_indonesian,
-			program_id,
-			major_id,
-			level,
-			year_start,
-			year_grad,
-			zid,
-			headline,
-			domicile_city,
-			domicile_country,
-			bio,
-			social_links,
-			created_at,
-			updated_at
+      full_name,
+      handle,
+      photo_url,
+      is_indonesian,
+      level,
+      year_start,
+      year_grad,
+      zid,
+      headline,
+      domicile_city,
+      domicile_country,
+      bio,
+      social_links,
+      created_at,
+      updated_at,
+      programs:programs!fk_profiles_program ( name ),
+      majors:majors!fk_profiles_major     ( name )
 		`)
 		.eq("id", profileId)
-		.single();
-	
+		.single<ProfileRow>();
+
 	if (error) throw error;
+
+  const pickName = (v: ProfileRow['programs']) =>
+    Array.isArray(v) ? v?.[0]?.name ?? null : v?.name ?? null;
 
 	return {
 		id: data.id,
@@ -151,8 +175,8 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
 		handle: data.handle,
 		photoUrl: data.photo_url,
 		isIndonesian: data.is_indonesian,
-		programId: data.program_id,
-		majorId: data.major_id,
+		program: pickName(data.programs),
+    major: pickName(data.majors),
 		level: data.level,
 		yearStart: data.year_start,
 		yearGrad: data.year_grad,

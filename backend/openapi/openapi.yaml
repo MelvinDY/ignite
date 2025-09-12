@@ -1243,8 +1243,8 @@ paths:
                     handle: "janedoe"
                     photoUrl: "https://example.com/profile.jpg"
                     isIndonesian: true
-                    programId: 2
-                    majorId: 5
+                    program: "BE"
+                    major: "Computer Science"
                     level: "undergrad"
                     yearStart: 2020
                     yearGrad: 2024
@@ -1595,7 +1595,7 @@ paths:
                 bad_format: { value: { code: VALIDATION_ERROR } }
         "500":
           $ref: "#/components/responses/InternalError"
-
+          
   /lookup/majors:
     get:
       tags: ["Search"]
@@ -1635,6 +1635,86 @@ paths:
                 not_authenticated:
                   value:
                     code: NOT_AUTHENTICATED
+
+  /lookup/companies:
+    get:
+      tags: ["Search"]
+      summary: Lookup companies for autocomplete
+      description: |
+        Returns a list of companies that appear in user experiences.
+        Supports an optional query parameter `q` for typeahead/autocomplete functionality.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema:
+            type: string
+          description: Optional search term to filter company names (case-insensitive)
+      responses:
+        '200':
+          description: List of companies matching the query or all companies if no query is provided
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Company'
+              examples:
+                some_companies:
+                  value:
+                    - id: 12
+                      name: Google
+                    - id: 13
+                      name: Grab
+                no_companies:
+                  value: []
+        '401':
+          description: Not authenticated or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+                    details: "Invalid or expired token"
+        '500':
+          $ref: "#/components/responses/InternalError"
+  /lookup/work-fields:
+    get:
+      tags: ["Search"]
+      summary: Get predefined list of Fields of Work
+      description: Returns a predefined, alphabetically sorted list of work fields for filter UI.
+      responses:
+        '200':
+          description: List of work fields
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      example: 12
+                    name:
+                      type: string
+                      example: Data Science
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: NOT_AUTHENTICATED
+
+
 
 components:
   securitySchemes:
@@ -2093,12 +2173,12 @@ components:
         isIndonesian:
           type: boolean
           description: Whether the user is Indonesian or not
-        programId:
-          type: integer
-          description: ID of the user's academic program
-        majorId:
-          type: integer
-          description: ID of the user's major
+        program:
+          type: string
+          description: the user's academic program or user's education program
+        major:
+          type: string
+          description: the user's major or user's education major
         level:
           type: string
           description: Academic level
@@ -2156,6 +2236,21 @@ components:
           name:
             type: string
             example: "Software Engineering"
+
+    Company:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          description: Unique identifier of the company
+          example: 12
+        name:
+          type: string
+          description: Name of the company
+          example: Google
 
     UpdateProfileRequest:
       type: object

@@ -126,8 +126,8 @@ export function MyProfilePage() {
     bio: profile.bio,
     year_intake: profile.yearStart,
     level: profile.level,
-    program: '', // TODO: Get from programs lookup table
-    major: '', // TODO: Get from majors lookup table
+    program: profile.program || '',
+    major: profile.major || '',
     is_indonesian: profile.isIndonesian,
     experience: [], // TODO: Add when experience API is implemented
     skills: [] // TODO: Add when skills API is implemented

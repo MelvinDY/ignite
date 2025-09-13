@@ -21,26 +21,20 @@ import { useAuth } from "./hooks/useAuth";
 
 function App() {
   const [, setRefreshKey] = useState(0);
-  const { refreshAuth } = useAuth();
+  const { attemptSessionRestore } = useAuth();
 
   const handleUserAdded = () => {
     setRefreshKey((prev) => prev + 1);
   };
 
-  // Try to refresh auth on app startup
+  // Initialize auth on app startup - attempt to restore session with refresh token cookie
   useEffect(() => {
     const initializeAuth = async () => {
-      try {
-        await refreshAuth();
-        console.log('Session restored successfully');
-      } catch (error) {
-        // Silently handle case where no valid refresh token exists
-        // This is normal for users who haven't logged in or whose sessions expired
-      }
+      await attemptSessionRestore();
     };
     
     initializeAuth();
-  }, [refreshAuth]);
+  }, [attemptSessionRestore]);
 
   return (
     <Routes>

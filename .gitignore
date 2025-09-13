@@ -62,3 +62,6 @@ coverage/
 
 # Claude Code
 .claude/
+
+# Cookie files
+cookies.txt

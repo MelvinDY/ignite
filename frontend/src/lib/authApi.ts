@@ -48,6 +48,7 @@ const RegisterResponseSchema = z.object({
 const RefreshResponseSchema = z.object({
   success: z.literal(true),
   accessToken: z.string(),
+  userId: z.string(),
   expiresIn: z.number(),
 });
 
@@ -271,6 +272,12 @@ class AuthApi {
     return this.request('/auth/refresh', {
       method: 'POST',
     }, RefreshResponseSchema);
+  }
+
+  async logout(): Promise<void> {
+    await this.request('/auth/logout', {
+      method: 'POST',
+    });
   }
 
 

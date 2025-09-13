@@ -198,3 +198,36 @@ export async function setHandle(userId: string, handle: string) {
   if (error) throw error;
   return handleLower;
 }
+
+export async function uploadProfilePicture(
+  userId: string,
+  file: Express.Multer.File
+): Promise<string> {
+  const ext = file.originalname.split(".")[1];
+  const fileName = `${userId}/profile.${ext}`;
+  const filePath = `profiles/${fileName}`;
+
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('profiles')
+    .upload(filePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true, // replace if exists
+    });
+
+  if (uploadError) throw uploadError;
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('profile-pictures')
+    .getPublicUrl(filePath);
+
+  // Update profile with new photo URL
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({ photo_url: publicUrl })
+    .eq('id', userId);
+
+  if (updateError) throw updateError;
+
+  return publicUrl;
+}

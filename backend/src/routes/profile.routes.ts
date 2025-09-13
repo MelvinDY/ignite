@@ -1,12 +1,15 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
+import multer, { MulterError } from "multer";
 import { HandleSchema } from "../validation/profile.schemas";
 import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
+  uploadProfilePicture,
 } from "../services/profile.service";
+import { supabase } from "..";
 
 const router = Router();
 
@@ -174,6 +177,60 @@ router.delete("/profile/skills/:id", async (req, res) => {
     }
     console.error("removeSkillFromProfile.error", err);
     return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * User Story 2.1 - POST /profile/picture
+ * Uploads profile picture
+ */
+
+// Multer middleware
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024
+  },
+  fileFilter: (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
+      cb(null, true);
+    } else {
+      cb(new Error("UNSUPPORTED_MEDIA_TYPE"));
+    }
+  }
+});
+
+router.post("/profile/picture", upload.single("profile_picture"), async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  
+  const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+  const userId = decoded.sub;
+
+  if (!userId) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  const picture = req.file;
+
+  if (!picture) {
+    return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
+  }
+
+  try {
+    const photoUrl = await uploadProfilePicture(userId, picture);
+    return res.status(200).json({
+      success: true,
+      photoUrl: photoUrl
+    });
+  } catch (err) {
+    if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ code: "FILE_TOO_LARGE "});
+    } else {
+      return res.status(500).json({ code: "INTERNAL "});
+    }
   }
 });
 

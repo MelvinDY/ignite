@@ -19,6 +19,15 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => mockUseAuth(),
+  authStateManager: {
+    getState: () => ({
+      accessToken: 'mock-token',
+      userId: 'mock-user-id',
+      expiresAt: Date.now() + 3600000,
+      isAuthenticated: true,
+      isLoading: false,
+    }),
+  },
 }));
 
 const renderNavbar = (isAuthenticated = false) => {

@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { DashboardHeaderAvatar } from "./DashboardHeaderAvatar";
 
 const Navbar = () => {
   const location = useLocation();
@@ -23,56 +24,65 @@ const Navbar = () => {
 
   return (
     <nav className="fixed top-0 p-5 backdrop-blur-sm w-full shadow-2xl z-40">
-      <ul className="flex gap-10">
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/")}
-        >
-          Dashboard
-        </button>
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/about")}
-        >
-          About
-        </button>
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/events")}
-        >
-          Events
-        </button>
-        {isAuthenticated ? (
+      <div className="flex justify-between items-center">
+        <ul className="flex gap-10">
           <button
             className="hover:underline"
-            onClick={handleLogout}
-            data-testid="logout-button"
+            onClick={() => handleNavigation("/")}
           >
-            Logout
+            Dashboard
           </button>
-        ) : (
-          <>
+          <button
+            className="hover:underline"
+            onClick={() => handleNavigation("/about")}
+          >
+            About
+          </button>
+          <button
+            className="hover:underline"
+            onClick={() => handleNavigation("/events")}
+          >
+            Events
+          </button>
+          {isAuthenticated ? (
             <button
               className="hover:underline"
-              onClick={() => handleNavigation("/auth/login")}
+              onClick={handleLogout}
+              data-testid="logout-button"
             >
-              Login
+              Logout
             </button>
-            <button
-              className="hover:underline"
-              onClick={() => handleNavigation("/auth/register")}
-            >
-              Register
-            </button>
-          </>
+          ) : (
+            <>
+              <button
+                className="hover:underline"
+                onClick={() => handleNavigation("/auth/login")}
+              >
+                Login
+              </button>
+              <button
+                className="hover:underline"
+                onClick={() => handleNavigation("/auth/register")}
+              >
+                Register
+              </button>
+            </>
+          )}
+          <button
+            className="hover:underline"
+            onClick={() => handleNavigation("/membership")}
+          >
+            Membership
+          </button>
+        </ul>
+        
+        {/* Avatar */}
+        {isAuthenticated && (
+          <div className="ml-4">
+            <DashboardHeaderAvatar />
+          </div>
         )}
-        <button
-          className="hover:underline"
-          onClick={() => handleNavigation("/membership")}
-        >
-          Membership
-        </button>
-      </ul>
+      </div>
     </nav>
   );
 };

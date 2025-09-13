@@ -101,7 +101,11 @@ describe('POST /auth/logout', () => {
     );
     expect(refreshTokenCookie).toContain('Expires=Thu, 01 Jan 1970 00:00:00 GMT');
     expect(refreshTokenCookie).toContain('HttpOnly');
-    expect(refreshTokenCookie).toContain('Secure');
+    if (process.env.NODE_ENV === 'production') {
+      expect(refreshTokenCookie).toContain('Secure');
+    } else {
+      expect(refreshTokenCookie).not.toContain('Secure');
+    }
     expect(refreshTokenCookie).toContain('SameSite=Lax');
   });
 

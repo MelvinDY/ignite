@@ -388,7 +388,7 @@ router.post("/auth/resend-otp", resendLimiter, async (req, res) => {
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // 100 attempts per window
+  max: 5, // 5 failed attempts per window
   keyGenerator: (req) => `${req.ip}:${(req.body?.email || "").toLowerCase()}`,
 });
 

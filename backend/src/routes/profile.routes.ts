@@ -2,12 +2,17 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import multer, { MulterError } from "multer";
 import { HandleSchema } from "../validation/profile.schemas";
-import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
+import {
+  getProfileSkills,
+  addSkillToProfile,
+  removeSkillFromProfile,
+} from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
   uploadProfilePicture,
+  uploadBannerImage,
 } from "../services/profile.service";
 import { supabase } from "..";
 
@@ -125,15 +130,22 @@ router.post("/profile/skills", async (req, res) => {
   // Validate body
   const { skill } = req.body || {};
   if (!skill || typeof skill !== "string" || !skill.trim()) {
-    return res.status(400).json({ code: "VALIDATION_ERROR", details: { skill: "Skill is required" } });
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      details: { skill: "Skill is required" },
+    });
   }
 
   try {
     const result = await addSkillToProfile(userId, skill);
-    return res.status(201).json({ success: true, id: result.id, name: result.name });
+    return res
+      .status(201)
+      .json({ success: true, id: result.id, name: result.name });
   } catch (err: any) {
     if (err.code === "VALIDATION_ERROR") {
-      return res.status(400).json({ code: "VALIDATION_ERROR", details: err.details });
+      return res
+        .status(400)
+        .json({ code: "VALIDATION_ERROR", details: err.details });
     }
     if (err.code === "NOT_AUTHENTICATED") {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
@@ -158,12 +170,12 @@ router.delete("/profile/skills/:id", async (req, res) => {
   } catch {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
-  
+
   const skillId = Number(req.params.id);
   if (!skillId || isNaN(skillId)) {
     return res.status(404).json({ code: "NOT_FOUND" });
   }
-  
+
   try {
     // Returns true if deleted, false if not found/not owned
     const deleted = await removeSkillFromProfile(userId, skillId);
@@ -188,49 +200,192 @@ router.delete("/profile/skills/:id", async (req, res) => {
 // Multer middleware
 const upload = multer({
   limits: {
-    fileSize: 5 * 1024 * 1024
+    fileSize: 5 * 1024 * 1024,
   },
-  fileFilter: (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype === "image/jpeg" || file.mimetype === "image/png") {
+  fileFilter: (
+    req: Express.Request,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+  ) => {
+    if (file.mimetype === "image/jpg" || file.mimetype === "image/png") {
       cb(null, true);
     } else {
       cb(new Error("UNSUPPORTED_MEDIA_TYPE"));
     }
-  }
+  },
 });
 
-router.post("/profile/picture", upload.single("profile_picture"), async (req, res) => {
+router.post(
+  "/profile/picture",
+  upload.single("profile_picture"),
+  async (req, res) => {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+
+    if (!accessToken) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+
+    if (!userId) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const picture = req.file;
+
+    if (!picture) {
+      return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
+    }
+
+    try {
+      const photoUrl = await uploadProfilePicture(userId, picture);
+      return res.status(200).json({
+        success: true,
+        photoUrl: photoUrl,
+      });
+    } catch (err) {
+      if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ code: "FILE_TOO_LARGE" });
+      } else {
+        return res.status(500).json({ code: "INTERNAL" });
+      }
+    }
+  }
+);
+
+/**
+ * User Story 2.3 - Remove Profile Picture
+ */
+router.delete("/profile/picture", async (req, res) => {
   const accessToken = req.headers.authorization?.split(" ")[1];
 
   if (!accessToken) {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
-  
-  const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-  const userId = decoded.sub;
 
-  if (!userId) {
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+
+    if (!userId) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    // Remove photo URL from profiles table
+    const { error: updateError } = await supabase
+      .from("profiles") // ← Table name
+      .update({ photo_url: null })
+      .eq("id", userId);
+
+    if (updateError) {
+      return res.status(500).json({ code: "INTERNAL_ERROR" });
+    }
+
+    // Delete files from profile-pictures storage bucket
+    const extensions = ["jpg", "png"];
+    const deletePromises = extensions.map((ext) => {
+      const filePath = `profiles/${userId}/profile.${ext}`;
+      return supabase.storage.from("profile-pictures").remove([filePath]);
+    });
+
+    await Promise.allSettled(deletePromises);
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile picture removed successfully",
+    });
+  } catch (err) {
+    console.error("Delete profile picture error:", err);
+    return res.status(500).json({ code: "INTERNAL_ERROR" });
+  }
+});
+
+/**
+ * User story 2.14 - Upload/ replace banner image
+ */
+router.post(
+  "/profile/banner",
+  upload.single("banner_image"),
+  async (req, res) => {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+
+    if (!accessToken) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+
+    if (!userId) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const banner = req.file;
+
+    if (!banner) {
+      return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
+    }
+
+    try {
+      const bannerUrl = await uploadBannerImage(userId, banner);
+      return res.status(200).json({
+        success: true,
+        bannerUrl: bannerUrl,
+      });
+    } catch (err) {
+      if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ code: "FILE_TOO_LARGE" });
+      } else {
+        return res.status(500).json({ code: "INTERNAL" });
+      }
+    }
+  }
+);
+
+/**
+ * User story 2.15 - Remove banner image
+ */
+router.delete("/profile/banner", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
 
-  const picture = req.file;
-
-  if (!picture) {
-    return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
-  }
-
   try {
-    const photoUrl = await uploadProfilePicture(userId, picture);
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded.sub;
+
+    if (!userId) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    // Remove banner URL from profiles table
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ banner_url: null })
+      .eq("id", userId);
+
+    if (updateError) {
+      return res.status(500).json({ code: "INTERNAL_ERROR" });
+    }
+
+    const extensions = ["jpg", "png"];
+    const deletePromises = extensions.map((ext) => {
+      const filePath = `banners/${userId}/banner.${ext}`;
+      return supabase.storage.from("profile-pictures").remove([filePath]);
+    });
+
+    await Promise.allSettled(deletePromises);
+
     return res.status(200).json({
       success: true,
-      photoUrl: photoUrl
+      message: "Banner image removed successfully",
     });
   } catch (err) {
-    if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({ code: "FILE_TOO_LARGE "});
-    } else {
-      return res.status(500).json({ code: "INTERNAL "});
-    }
+    console.error("Delete banner error:", err);
+    return res.status(500).json({ code: "INTERNAL_ERROR" });
   }
 });
 

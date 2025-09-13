@@ -1,13 +1,13 @@
 // src/services/profile.service.ts
-import { supabase } from '../lib/supabase';
-import { ProfileObject } from '../types/Profile';
-import { ensureProgramId, ensureMajorId } from './lookups.service';
+import { supabase } from "../lib/supabase";
+import { ProfileObject } from "../types/Profile";
+import { ensureProgramId, ensureMajorId } from "./lookups.service";
 
 type SignupRow = {
   id: string;
   full_name: string;
   zid: string;
-  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  level: "foundation" | "diploma" | "undergrad" | "postgrad" | "phd";
   year_intake: number;
   is_indonesian: boolean;
   program: string;
@@ -22,7 +22,7 @@ type ProfileRow = {
   handle: string | null;
   photo_url: string | null;
   is_indonesian: boolean;
-  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  level: "foundation" | "diploma" | "undergrad" | "postgrad" | "phd";
   year_start: number;
   year_grad: number | null;
   zid: string;
@@ -39,19 +39,21 @@ type ProfileRow = {
 
 export async function ensureProfileForSignup(userId: string): Promise<string> {
   const { data: s, error: loadErr } = await supabase
-    .from('user_signups')
-    .select('id, full_name, zid, level, year_intake, is_indonesian, program, major, signup_email, profile_id')
-    .eq('id', userId)
+    .from("user_signups")
+    .select(
+      "id, full_name, zid, level, year_intake, is_indonesian, program, major, signup_email, profile_id"
+    )
+    .eq("id", userId)
     .single<SignupRow>();
-  if (loadErr || !s) throw loadErr ?? new Error('SIGNUP_NOT_FOUND');
+  if (loadErr || !s) throw loadErr ?? new Error("SIGNUP_NOT_FOUND");
 
   if (s.profile_id) return s.profile_id;
 
   // Prefer match by zID (your canonical identifier)
   const { data: existing, error: findErr } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('zid', s.zid)
+    .from("profiles")
+    .select("id")
+    .eq("zid", s.zid)
     .maybeSingle<{ id: string }>();
   if (findErr) throw findErr;
 
@@ -60,7 +62,7 @@ export async function ensureProfileForSignup(userId: string): Promise<string> {
   if (!profileId) {
     const insertPayload = {
       full_name: s.full_name,
-      email: s.signup_email,           // <-- store signup email
+      email: s.signup_email, // <-- store signup email
       is_indonesian: s.is_indonesian,
       level: s.level,
       year_start: s.year_intake,
@@ -68,13 +70,13 @@ export async function ensureProfileForSignup(userId: string): Promise<string> {
       zid: s.zid,
       program_id: null as number | null,
       major_id: null as number | null,
-      visibility: 'public' as string,
+      visibility: "public" as string,
     };
 
     const { data: created, error: insErr } = await supabase
-      .from('profiles')
+      .from("profiles")
       .insert(insertPayload)
-      .select('id')
+      .select("id")
       .single<{ id: string }>();
     if (insErr) throw insErr;
 
@@ -82,9 +84,9 @@ export async function ensureProfileForSignup(userId: string): Promise<string> {
   }
 
   const { error: linkErr } = await supabase
-    .from('user_signups')
+    .from("user_signups")
     .update({ profile_id: profileId })
-    .eq('id', userId);
+    .eq("id", userId);
   if (linkErr) throw linkErr;
 
   return profileId;
@@ -101,14 +103,18 @@ export async function applyProgramAndMajorFromSignupToProfile(
 ): Promise<void> {
   // Load staged values + (optional) profile id
   const { data: s, error: sErr } = await supabase
-    .from('user_signups')
-    .select('program, major, profile_id')
-    .eq('id', signupId)
-    .single<{ program: string | null; major: string | null; profile_id: string | null }>();
-  if (sErr || !s) throw sErr ?? new Error('SIGNUP_NOT_FOUND');
+    .from("user_signups")
+    .select("program, major, profile_id")
+    .eq("id", signupId)
+    .single<{
+      program: string | null;
+      major: string | null;
+      profile_id: string | null;
+    }>();
+  if (sErr || !s) throw sErr ?? new Error("SIGNUP_NOT_FOUND");
 
   const pid = profileId ?? s.profile_id;
-  if (!pid) throw new Error('PROFILE_ID_MISSING');
+  if (!pid) throw new Error("PROFILE_ID_MISSING");
 
   // Resolve lookup IDs (lazy Approach A)
   const [programId, majorId] = await Promise.all([
@@ -118,18 +124,22 @@ export async function applyProgramAndMajorFromSignupToProfile(
 
   // Load current values to avoid overwriting existing non-nulls
   const { data: prof, error: pErr } = await supabase
-    .from('profiles')
-    .select('program_id, major_id')
-    .eq('id', pid)
+    .from("profiles")
+    .select("program_id, major_id")
+    .eq("id", pid)
     .single<{ program_id: number | null; major_id: number | null }>();
-  if (pErr || !prof) throw pErr ?? new Error('PROFILE_NOT_FOUND');
+  if (pErr || !prof) throw pErr ?? new Error("PROFILE_NOT_FOUND");
 
   const patch: Record<string, any> = {};
-  if (programId !== null && prof.program_id == null) patch.program_id = programId;
+  if (programId !== null && prof.program_id == null)
+    patch.program_id = programId;
   if (majorId !== null && prof.major_id == null) patch.major_id = majorId;
 
   if (Object.keys(patch).length) {
-    const { error: uErr } = await supabase.from('profiles').update(patch).eq('id', pid);
+    const { error: uErr } = await supabase
+      .from("profiles")
+      .update(patch)
+      .eq("id", pid);
     if (uErr) throw uErr;
   }
 }
@@ -137,10 +147,13 @@ export async function applyProgramAndMajorFromSignupToProfile(
 /**
  * Fetch all profile details for a given profile (user) ID.
  */
-export async function getProfileDetails(profileId: string): Promise<ProfileObject> {
-	const { data, error } = await supabase
-		.from("profiles")
-		.select(`
+export async function getProfileDetails(
+  profileId: string
+): Promise<ProfileObject> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(
+      `
 			id,
       full_name,
       handle,
@@ -159,35 +172,36 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
       updated_at,
       programs:programs!fk_profiles_program ( name ),
       majors:majors!fk_profiles_major     ( name )
-		`)
-		.eq("id", profileId)
-		.single<ProfileRow>();
+		`
+    )
+    .eq("id", profileId)
+    .single<ProfileRow>();
 
-	if (error) throw error;
+  if (error) throw error;
 
-  const pickName = (v: ProfileRow['programs']) =>
+  const pickName = (v: ProfileRow["programs"]) =>
     Array.isArray(v) ? v?.[0]?.name ?? null : v?.name ?? null;
 
-	return {
-		id: data.id,
-		fullName: data.full_name,
-		handle: data.handle,
-		photoUrl: data.photo_url,
-		isIndonesian: data.is_indonesian,
-		program: pickName(data.programs),
+  return {
+    id: data.id,
+    fullName: data.full_name,
+    handle: data.handle,
+    photoUrl: data.photo_url,
+    isIndonesian: data.is_indonesian,
+    program: pickName(data.programs),
     major: pickName(data.majors),
-		level: data.level,
-		yearStart: data.year_start,
-		yearGrad: data.year_grad,
-		zid: data.zid,
-		headline: data.headline,
-		domicileCity: data.domicile_city,
-		domicileCountry: data.domicile_country,
-		bio: data.bio,
-		socialLinks: data.social_links,
-		createdAt: data.created_at,
-		updatedAt: data.updated_at,
-	};
+    level: data.level,
+    yearStart: data.year_start,
+    yearGrad: data.year_grad,
+    zid: data.zid,
+    headline: data.headline,
+    domicileCity: data.domicile_city,
+    domicileCountry: data.domicile_country,
+    bio: data.bio,
+    socialLinks: data.social_links,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function isHandleAvailable(handle: string): Promise<boolean> {
@@ -232,24 +246,57 @@ export async function uploadProfilePicture(
   const filePath = `profiles/${fileName}`;
 
   const { data: uploadData, error: uploadError } = await supabase.storage
-    .from('profiles')
+    .from("profiles")
     .upload(filePath, file.buffer, {
       contentType: file.mimetype,
-      upsert: true, // replace if exists
+      upsert: true,
     });
 
   if (uploadError) throw uploadError;
 
   // Get public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('profile-pictures')
-    .getPublicUrl(filePath);
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
 
   // Update profile with new photo URL
   const { error: updateError } = await supabase
-    .from('profiles')
+    .from("profiles")
     .update({ photo_url: publicUrl })
-    .eq('id', userId);
+    .eq("id", userId);
+
+  if (updateError) throw updateError;
+
+  return publicUrl;
+}
+
+export async function uploadBannerImage(
+  userId: string,
+  file: Express.Multer.File
+): Promise<string> {
+  const ext = file.originalname.split(".").pop() || "jpg";
+  const fileName = `${userId}/banner.${ext}`;
+  const filePath = `banners/${fileName}`;
+
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from("profile-pictures")
+    .upload(filePath, file.buffer, {
+      contentType: file.mimetype,
+      upsert: true,
+    });
+
+  if (uploadError) throw uploadError;
+
+  // Get public URL
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+
+  // Update profile with new banner URL
+  const { error: updateError } = await supabase
+    .from("profiles")
+    .update({ banner_url: publicUrl })
+    .eq("id", userId);
 
   if (updateError) throw updateError;
 

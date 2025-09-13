@@ -1,14 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileApi, type ProfileMe, ProfileApiError } from '../lib/api/profile';
+import { useAuth } from '../hooks/useAuth';
 
 export function DashboardHeaderAvatar() {
   const [profile, setProfile] = useState<ProfileMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
+    // Only fetch profile if user is authenticated
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProfile = async () => {
       try {
         setLoading(true);
@@ -32,7 +40,7 @@ export function DashboardHeaderAvatar() {
     };
 
     fetchProfile();
-  }, []);
+  }, [isAuthenticated]);
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
@@ -60,6 +68,11 @@ export function DashboardHeaderAvatar() {
         Profile error
       </div>
     );
+  }
+
+  // Don't render anything if user is not authenticated
+  if (!isAuthenticated) {
+    return null;
   }
 
   if (loading) {

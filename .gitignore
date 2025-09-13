@@ -46,6 +46,8 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+.backend.pid
+.frontend.pid
 
 # Cache directories
 .cache/

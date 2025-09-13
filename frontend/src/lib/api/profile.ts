@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { authStateManager } from '../../hooks/useAuth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// Prefer configured base URL; fall back to same-origin proxy
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Error Response Schema
 const ErrorResponseSchema = z.object({

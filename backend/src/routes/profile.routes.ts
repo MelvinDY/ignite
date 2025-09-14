@@ -14,6 +14,7 @@ import {
   uploadProfilePicture,
   uploadBannerImage,
 } from "../services/profile.service";
+import { handleMulterErrors } from "../middlewares/handleMulterErrors";
 import { supabase } from "..";
 
 const router = Router();
@@ -207,7 +208,11 @@ const upload = multer({
     file: Express.Multer.File,
     cb: multer.FileFilterCallback
   ) => {
-    if (file.mimetype === "image/jpg" || file.mimetype === "image/png") {
+    if (
+      file.mimetype === "image/jpg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/jpeg"
+    ) {
       cb(null, true);
     } else {
       cb(new Error("UNSUPPORTED_MEDIA_TYPE"));
@@ -225,10 +230,13 @@ router.post(
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
     }
 
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    let userId: string;
 
-    if (!userId) {
+    try {
+      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+      userId = decoded.sub;
+      if (!userId) throw new Error("No userId in token");
+    } catch {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
     }
 
@@ -245,11 +253,7 @@ router.post(
         photoUrl: photoUrl,
       });
     } catch (err) {
-      if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ code: "FILE_TOO_LARGE" });
-      } else {
-        return res.status(500).json({ code: "INTERNAL" });
-      }
+      return res.status(500).json({ code: "INTERNAL" });
     }
   }
 );
@@ -264,26 +268,28 @@ router.delete("/profile/picture", async (req, res) => {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
 
+  let userId: string;
+
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
 
-    if (!userId) {
-      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-    }
-
-    // Remove photo URL from profiles table
+  try {
     const { error: updateError } = await supabase
-      .from("profiles") // ← Table name
+      .from("profiles")
       .update({ photo_url: null })
       .eq("id", userId);
-
+    console.log("SET TO NULL");
     if (updateError) {
+      console.log(updateError);
       return res.status(500).json({ code: "INTERNAL_ERROR" });
     }
 
-    // Delete files from profile-pictures storage bucket
-    const extensions = ["jpg", "png"];
+    const extensions = ["jpg", "jpeg", "png"];
     const deletePromises = extensions.map((ext) => {
       const filePath = `profiles/${userId}/profile.${ext}`;
       return supabase.storage.from("profile-pictures").remove([filePath]);
@@ -293,7 +299,6 @@ router.delete("/profile/picture", async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Profile picture removed successfully",
     });
   } catch (err) {
     console.error("Delete profile picture error:", err);
@@ -314,10 +319,13 @@ router.post(
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
     }
 
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    let userId: string;
 
-    if (!userId) {
+    try {
+      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+      userId = decoded.sub;
+      if (!userId) throw new Error("No userId in token");
+    } catch {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
     }
 
@@ -334,11 +342,7 @@ router.post(
         bannerUrl: bannerUrl,
       });
     } catch (err) {
-      if ((err as MulterError).code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ code: "FILE_TOO_LARGE" });
-      } else {
-        return res.status(500).json({ code: "INTERNAL" });
-      }
+      return res.status(500).json({ code: "INTERNAL" });
     }
   }
 );
@@ -353,22 +357,24 @@ router.delete("/profile/banner", async (req, res) => {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
 
+  let userId: string;
+
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    const userId = decoded.sub;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
 
-    if (!userId) {
-      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-    }
-
-    // Remove banner URL from profiles table
+  try {
     const { error: updateError } = await supabase
       .from("profiles")
       .update({ banner_url: null })
       .eq("id", userId);
 
     if (updateError) {
-      return res.status(500).json({ code: "INTERNAL_ERROR" });
+      return res.status(500).json({ code: "INTERNAL" });
     }
 
     const extensions = ["jpg", "png"];
@@ -385,8 +391,10 @@ router.delete("/profile/banner", async (req, res) => {
     });
   } catch (err) {
     console.error("Delete banner error:", err);
-    return res.status(500).json({ code: "INTERNAL_ERROR" });
+    return res.status(500).json({ code: "INTERNAL" });
   }
 });
+
+router.use(handleMulterErrors);
 
 export default router;

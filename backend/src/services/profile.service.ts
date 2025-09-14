@@ -241,7 +241,7 @@ export async function uploadProfilePicture(
   userId: string,
   file: Express.Multer.File
 ): Promise<string> {
-  const ext = file.originalname.split(".")[1];
+  const ext = file.originalname.split(".").pop() || "jpg";
   const fileName = `${userId}/profile.${ext}`;
   const filePath = `profiles/${fileName}`;
 
@@ -252,12 +252,19 @@ export async function uploadProfilePicture(
       upsert: true,
     });
 
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    console.log("Upload error")
+    throw uploadError;
+  }
+
+  console.log("Checkpoint(1)")
 
   // Get public URL
   const {
     data: { publicUrl },
   } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+
+  console.log("Public url: ", publicUrl);
 
   // Update profile with new photo URL
   const { error: updateError } = await supabase

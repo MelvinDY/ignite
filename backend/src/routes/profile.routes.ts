@@ -9,6 +9,7 @@ import {
   updateProfile,
 } from "../services/profile.service";
 import { getProfileEducations } from "../services/educations.service";
+import { getProfileExperiences } from "../services/experiences.service";
 
 const router = Router();
 
@@ -192,12 +193,12 @@ router.delete("/profile/skills/:id", async (req, res) => {
   } catch {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
-  
+
   const skillId = Number(req.params.id);
   if (!skillId || isNaN(skillId)) {
     return res.status(404).json({ code: "NOT_FOUND" });
   }
-  
+
   try {
     // Returns true if deleted, false if not found/not owned
     const deleted = await removeSkillFromProfile(userId, skillId);
@@ -221,6 +222,7 @@ router.get("/profile/educations", async (req, res) => {
   if (!accessToken) {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
+
   // extract user id from token
   let userId: string;
   try {
@@ -236,6 +238,33 @@ router.get("/profile/educations", async (req, res) => {
     return res.status(200).json(educations);
   } catch (err) {
     console.error("getProfileEducations.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.10 — GET /profile/experiences
+router.get("/profile/experiences", async (req, res) => {
+  // validate access token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+    const experiences = await getProfileExperiences(userId);
+    return res.status(200).json(experiences);
+  } catch (err) {
+    console.error("getProfileExperiences.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

@@ -8,7 +8,7 @@ type SignupRow = {
   id: string;
   full_name: string;
   zid: string;
-  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  level: 'foundation' | 'diploma' | 'undergrad' | 'postgrad' | 'phd';
   year_intake: number;
   is_indonesian: boolean;
   program: string;
@@ -23,7 +23,7 @@ type ProfileRow = {
   handle: string | null;
   photo_url: string | null;
   is_indonesian: boolean;
-  level: 'foundation'|'diploma'|'undergrad'|'postgrad'|'phd';
+  level: 'foundation' | 'diploma' | 'undergrad' | 'postgrad' | 'phd';
   year_start: number;
   year_grad: number | null;
   zid: string;
@@ -139,9 +139,9 @@ export async function applyProgramAndMajorFromSignupToProfile(
  * Fetch all profile details for a given profile (user) ID.
  */
 export async function getProfileDetails(profileId: string): Promise<ProfileObject> {
-	const { data, error } = await supabase
-		.from("profiles")
-		.select(`
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(`
 			id,
       full_name,
       handle,
@@ -161,34 +161,34 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
       programs:programs!fk_profiles_program ( name ),
       majors:majors!fk_profiles_major     ( name )
 		`)
-		.eq("id", profileId)
-		.single<ProfileRow>();
+    .eq("id", profileId)
+    .single<ProfileRow>();
 
-	if (error) throw error;
+  if (error) throw error;
 
   const pickName = (v: ProfileRow['programs']) =>
     Array.isArray(v) ? v?.[0]?.name ?? null : v?.name ?? null;
 
-	return {
-		id: data.id,
-		fullName: data.full_name,
-		handle: data.handle,
-		photoUrl: data.photo_url,
-		isIndonesian: data.is_indonesian,
-		program: pickName(data.programs),
+  return {
+    id: data.id,
+    fullName: data.full_name,
+    handle: data.handle,
+    photoUrl: data.photo_url,
+    isIndonesian: data.is_indonesian,
+    program: pickName(data.programs),
     major: pickName(data.majors),
-		level: data.level,
-		yearStart: data.year_start,
-		yearGrad: data.year_grad,
-		zid: data.zid,
-		headline: data.headline,
-		domicileCity: data.domicile_city,
-		domicileCountry: data.domicile_country,
-		bio: data.bio,
-		socialLinks: data.social_links,
-		createdAt: data.created_at,
-		updatedAt: data.updated_at,
-	};
+    level: data.level,
+    yearStart: data.year_start,
+    yearGrad: data.year_grad,
+    zid: data.zid,
+    headline: data.headline,
+    domicileCity: data.domicile_city,
+    domicileCountry: data.domicile_country,
+    bio: data.bio,
+    socialLinks: data.social_links,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function isHandleAvailable(handle: string): Promise<boolean> {
@@ -231,7 +231,7 @@ export async function updateProfile(profileId: string, updates: UpdateProfileInp
 
   // Build the update object
   const updateData: Record<string, any> = {};
-  
+
   if (updates.fullName !== undefined) updateData.full_name = updates.fullName;
   if (updates.headline !== undefined) updateData.headline = updates.headline;
   if (updates.isIndonesian !== undefined) updateData.is_indonesian = updates.isIndonesian;

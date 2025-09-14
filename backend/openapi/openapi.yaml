@@ -1553,6 +1553,57 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile/experiences:
+    get:
+      tags: ["Profile"]
+      summary: List all experiences for the authenticated user
+      description: |
+        Returns all experiences for the **authenticated** user.
+
+        Sorted by:
+        - `isCurrent` **DESC**
+        - `endYear` **DESC** `NULLS LAST`
+        - `endMonth` **DESC** `NULLS LAST`
+        - `startYear` **DESC**
+        - `startMonth` **DESC**
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Experiences for the current user (returns [] if empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Experience"
+              examples:
+                example:
+                  value:
+                    - id: "exp_123"
+                      title: "Software Engineer"
+                      company: "Acme Corp"
+                      fieldOfWork: "Software Engineering"
+                      startMonth: 2
+                      startYear: 2023
+                      endMonth: null
+                      endYear: null
+                      isCurrent: true
+                      employmentType: "Full Time"
+                      locationCity: "Sydney"
+                      locationCountry: "AU"
+                      locationType: "Hybrid"
+                      description: "Backend APIs and auth services."
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /profile/handle:
     patch:
       tags: ["Handles"]
@@ -2402,3 +2453,27 @@ components:
           maximum: 2100
           description: Year when the education ended
           example: null
+    
+    Experience:
+          type: object
+          required:
+            - id
+            - title
+            - startMonth
+            - startYear
+            - isCurrent
+          properties:
+            id:            { type: string, description: "Experience id (uuid)" }
+            title:         { type: string, description: "Role title" }
+            company:       { type: string, nullable: true }
+            fieldOfWork:   { type: string, nullable: true }
+            startMonth:    { type: integer, minimum: 1, maximum: 12 }
+            startYear:     { type: integer, minimum: 1900, maximum: 2100 }
+            endMonth:      { type: integer, nullable: true, minimum: 1, maximum: 12 }
+            endYear:       { type: integer, nullable: true, minimum: 1900, maximum: 2100 }
+            isCurrent:     { type: boolean, description: "Is currently employed here" }
+            employmentType: { type: string, nullable: true, description: "Full Time, Part Time, Contract, Internship, etc." }
+            locationCity:  { type: string, nullable: true }
+            locationCountry: { type: string, nullable: true, minLength: 2, maxLength: 2 }
+            locationType:  { type: string, nullable: true, description: "Onsite, Remote, Hybrid" }
+            description:   { type: string, nullable: true }

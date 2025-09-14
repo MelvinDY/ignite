@@ -1,21 +1,24 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import multer, { MulterError } from "multer";
-import { HandleSchema } from "../validation/profile.schemas";
 import {
   getProfileSkills,
   addSkillToProfile,
   removeSkillFromProfile,
 } from "../services/skills.service";
+import { HandleSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
 import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
   uploadProfilePicture,
   uploadBannerImage,
+  updateProfile,
+  replaceSocialLinks,
 } from "../services/profile.service";
 import { handleMulterErrors } from "../middlewares/handleMulterErrors";
 import { supabase } from "..";
+import { getProfileEducations } from "../services/educations.service";
 
 const router = Router();
 
@@ -40,6 +43,41 @@ router.get("/profile/me", async (req, res) => {
     return res.status(200).json(profileDetails);
   } catch (err) {
     console.error("get-profile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// PATCH /profile - Update user profile details
+router.patch("/profile", async (req, res) => {
+  // Check for valid token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // Extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // Validate request body
+  const parsed = UpdateProfileSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await updateProfile(userId, parsed.data);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    console.error("updateProfile.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
@@ -306,6 +344,32 @@ router.delete("/profile/picture", async (req, res) => {
   }
 });
 
+// GET  /profile/educations - lists all profile educations
+router.get("/profile/educations", async (req, res) => {
+  // validate access token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+    const educations = await getProfileEducations(userId);
+    return res.status(200).json(educations);
+  } catch (err) {
+    console.error("getProfileEducations.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
 /**
  * User story 2.14 - Upload/ replace banner image
  */
@@ -391,10 +455,40 @@ router.delete("/profile/banner", async (req, res) => {
     });
   } catch (err) {
     console.error("Delete banner error:", err);
+    const educations = await getProfileEducations(userId);
+    return res.status(200).json(educations);
+  }
+});
+
+// 2.6 — PATCH /profile/social-links
+router.patch("/profile/social-links", async (req, res) => {
+  // authentication
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // validate body
+  const parsed = UpdateSocialLinksSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await replaceSocialLinks(userId, parsed.data.socialLinks);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("profile.social-links.update.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
 
 router.use(handleMulterErrors);
-
 export default router;

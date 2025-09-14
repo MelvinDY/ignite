@@ -1270,6 +1270,91 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile:
+    patch:
+      tags: ["Profile"]
+      summary: Update user profile basic details
+      description: |
+        Updates core profile fields for the authenticated user. Only provided fields are updated (partial update).
+        Excludes photoUrl, handle, and socialLinks which have their own dedicated endpoints.
+        
+        **Validation:**
+        - `level`: Must be one of foundation, diploma, undergrad, postgrad, phd
+        - `yearStart`, `yearGrad`: Must be between 2000-2100
+        - `yearGrad`: Must be after `yearStart` if both provided
+        - `domicileCountry`: Must be ISO country code (2 uppercase letters)
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+            examples:
+              full_update:
+                summary: Complete profile update
+                value:
+                  fullName: "Jane Doe"
+                  headline: "Backend Engineer @ Acme | AI/ML"
+                  isIndonesian: true
+                  program: "BE"
+                  major: "Software Engineering"
+                  level: "undergrad"
+                  yearStart: 2022
+                  yearGrad: 2026
+                  domicileCity: "Sydney"
+                  domicileCountry: "AU"
+                  bio: "I ship boring, reliable services."
+              partial_update:
+                summary: Partial update (only some fields)
+                value:
+                  fullName: "Updated Name"
+                  bio: "Updated bio only"
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "400":
+          description: Validation error; Invalid country code, invalid academic level enum, invalid year range
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL 
+
   /profile/skills:
     get:
       tags: ["Profile"]
@@ -1423,6 +1508,95 @@ paths:
                 not_found:
                   value:
                     code: NOT_FOUND
+
+  /profile/educations:
+    get:
+      tags: ["Profile"]
+      summary: List all educations for the authenticated user
+      description: |
+        Returns all educations for the authenticated user, sorted by:
+        endYear DESC NULLS LAST, endMonth DESC NULLS LAST, startYear DESC, startMonth DESC.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Successfully fetch all educations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Education"
+              examples:
+                one_education:
+                  value:
+                    - id: "edu_123"
+                      school: "UNSW"
+                      program: "Bachelor of Engineering"
+                      major: "Software Engineering"
+                      startMonth: 2
+                      startYear: 2022
+                      endMonth: null
+                      endYear: null
+                no_educations:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
+  /profile/social-links:
+    patch:
+      tags: ["Profile"]
+      summary: Update social links
+      description: Replace entire `social_links` JSON with a validated object.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [socialLinks]
+              properties:
+                socialLinks:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    linkedin: { type: string, format: uri, example: "https://www.linkedin.com/in/janedoe" }
+                    github:   { type: string, format: uri, example: "https://github.com/janedoe" }
+                    x:        { type: string, format: uri, example: "https://x.com/janedoe" }
+                    website:  { type: string, format: uri, example: "https://janedoe.dev" }
+      responses:
+        "200":
+          description: Replaced successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+        "500":
+          $ref: "#/components/responses/InternalError"
 
   /profile/handle:
     patch:
@@ -2422,3 +2596,113 @@ components:
           type: string
           description: Name of the company
           example: Google
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          description: User's full name
+          example: "Jane Doe"
+        headline:
+          type: string
+          nullable: true
+          description: Professional headline or tagline
+          example: "Backend Engineer @ Acme | AI/ML"
+        isIndonesian:
+          type: boolean
+          description: Whether the user is Indonesian
+          example: true
+        program:
+          type: string
+          description: The user's academic program
+          example: "BE"
+        major:
+          type: string
+          description: The user's major
+          example: "Software Engineering"
+        level:
+          type: string
+          enum: [foundation, diploma, undergrad, postgrad, phd]
+          description: Academic level
+          example: "undergrad"
+        yearStart:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+          description: Year the user started their studies
+          example: 2022
+        yearGrad:
+          type: integer
+          nullable: true
+          minimum: 2000
+          maximum: 2100
+          description: Year the user graduated or will graduate
+          example: 2026
+        domicileCity:
+          type: string
+          description: User's city of residence
+          example: "Sydney"
+        domicileCountry:
+          type: string
+          pattern: "^[A-Z]{2}$"
+          description: User's country of residence (ISO 3166-1 alpha-2)
+          example: "AU"
+        bio:
+          type: string
+          nullable: true
+          description: User's bio or about section
+          example: "I ship boring, reliable services."
+
+    Education:
+      type: object
+      required:
+        - id
+        - school
+        - program
+        - major
+        - startMonth
+        - startYear
+      properties:
+        id:
+          type: string
+          description: Unique education record identifier
+          example: "edu_123"
+        school:
+          type: string
+          description: Name of the school
+          example: "UNSW"
+        program:
+          type: string
+          description: Name of the academic program
+          example: "Bachelor of Engineering"
+        major:
+          type: string
+          description: Name of the major
+          example: "Software Engineering"
+        startMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Month when the education started
+          example: 2
+        startYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education started
+          example: 2022
+        endMonth:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 12
+          description: Month when the education ended
+          example: null
+        endYear:
+          type: integer
+          nullable: true
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education ended
+          example: null

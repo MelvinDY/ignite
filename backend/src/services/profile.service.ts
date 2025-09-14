@@ -1,7 +1,9 @@
 // src/services/profile.service.ts
-import { supabase } from "../lib/supabase";
-import { ProfileObject } from "../types/Profile";
-import { ensureProgramId, ensureMajorId } from "./lookups.service";
+import { supabase } from '../lib/supabase';
+import { ProfileObject } from '../types/Profile';
+import { ensureProgramId, ensureMajorId } from './lookups.service';
+import { UpdateProfileInput } from '../validation/profile.schemas';
+import { SocialLinksInput } from '../validation/profile.schemas';
 
 type SignupRow = {
   id: string;
@@ -147,13 +149,10 @@ export async function applyProgramAndMajorFromSignupToProfile(
 /**
  * Fetch all profile details for a given profile (user) ID.
  */
-export async function getProfileDetails(
-  profileId: string
-): Promise<ProfileObject> {
+export async function getProfileDetails(profileId: string): Promise<ProfileObject> {
   const { data, error } = await supabase
     .from("profiles")
-    .select(
-      `
+    .select(`
 			id,
       full_name,
       handle,
@@ -172,8 +171,7 @@ export async function getProfileDetails(
       updated_at,
       programs:programs!fk_profiles_program ( name ),
       majors:majors!fk_profiles_major     ( name )
-		`
-    )
+		`)
     .eq("id", profileId)
     .single<ProfileRow>();
 
@@ -308,4 +306,60 @@ export async function uploadBannerImage(
   if (updateError) throw updateError;
 
   return publicUrl;
+}
+
+/**
+ * Update core profile details for a given profile (user) ID.
+ */
+export async function updateProfile(profileId: string, updates: UpdateProfileInput): Promise<void> {
+
+  // Build the update object
+  const updateData: Record<string, any> = {};
+
+  if (updates.fullName !== undefined) updateData.full_name = updates.fullName;
+  if (updates.headline !== undefined) updateData.headline = updates.headline;
+  if (updates.isIndonesian !== undefined) updateData.is_indonesian = updates.isIndonesian;
+  if (updates.level !== undefined) updateData.level = updates.level;
+  if (updates.yearStart !== undefined) updateData.year_start = updates.yearStart;
+  if (updates.yearGrad !== undefined) updateData.year_grad = updates.yearGrad;
+  if (updates.domicileCity !== undefined) updateData.domicile_city = updates.domicileCity;
+  if (updates.domicileCountry !== undefined) updateData.domicile_country = updates.domicileCountry;
+  if (updates.bio !== undefined) updateData.bio = updates.bio;
+
+  if (updates.program !== undefined) {
+    const programId = await ensureProgramId(updates.program);
+    if (programId !== null) updateData.program_id = programId;
+  }
+
+  if (updates.major !== undefined) {
+    const majorId = await ensureMajorId(updates.major);
+    if (majorId !== null) updateData.major_id = majorId;
+  }
+
+  // Only proceed if there are updates to apply
+  if (Object.keys(updateData).length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', profileId);
+
+  if (error) throw error;
+}
+
+export async function replaceSocialLinks(
+  profileId: string,
+  socialLinks: SocialLinksInput
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      social_links: socialLinks,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', profileId);
+
+  if (error) throw error;
 }

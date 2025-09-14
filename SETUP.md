@@ -24,6 +24,12 @@ This setup provides a complete self-hosted Supabase instance for your team's dev
 
 ## Quick Start
 
+### Using Make (recommended)
+```bash
+make bootstrap   # copies envs, installs deps
+make dev         # starts Supabase (if CLI installed), backend, frontend
+```
+
 ### 1. Clone the Repository
 ```bash
 git clone <your-repo-url>

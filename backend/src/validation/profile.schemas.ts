@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { hostIs, HttpsUrl } from "../utils/socialLink.js";
 
 export const HandleSchema = z.object({
   handle: z.string().regex(/^[a-z0-9_.-]{3,30}$/),
@@ -27,5 +28,29 @@ export const UpdateProfileSchema = z.object({
   path: ["yearGrad"]
 });
 
+export const SocialLinksSchema = z
+  .object({
+    linkedin: HttpsUrl.refine(
+      u => hostIs(u, ["linkedin.com"]),
+      { message: "Must be a linkedin.com URL" }
+    ).optional(),
+    github: HttpsUrl.refine(
+      u => hostIs(u, ["github.com"]),
+      { message: "Must be a github.com URL" }
+    ).optional(),
+    x: HttpsUrl.refine(
+      u => hostIs(u, ["x.com", "twitter.com"]),
+      { message: "Must be an x.com or twitter.com URL" }
+    ).optional(),
+    website: HttpsUrl.optional(), // any https URL allowed
+  })
+  .strict(); // reject unknown keys
+
+export const UpdateSocialLinksSchema = z.object({
+  socialLinks: SocialLinksSchema, // allow empty object to "clear" links
+});
+
 export type HandleInput = z.infer<typeof HandleSchema>;
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
+export type SocialLinksInput = z.infer<typeof SocialLinksSchema>;
+export type UpdateSocialLinksInput = z.infer<typeof UpdateSocialLinksSchema>;

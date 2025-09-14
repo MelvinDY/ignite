@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { ProfileObject } from '../types/Profile';
 import { ensureProgramId, ensureMajorId } from './lookups.service';
 import { UpdateProfileInput } from '../validation/profile.schemas';
+import { SocialLinksInput } from '../validation/profile.schemas';
 
 type SignupRow = {
   id: string;
@@ -260,6 +261,21 @@ export async function updateProfile(profileId: string, updates: UpdateProfileInp
   const { error } = await supabase
     .from('profiles')
     .update(updateData)
+    .eq('id', profileId);
+
+  if (error) throw error;
+}
+
+export async function replaceSocialLinks(
+  profileId: string,
+  socialLinks: SocialLinksInput
+): Promise<void> {
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      social_links: socialLinks,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', profileId);
 
   if (error) throw error;

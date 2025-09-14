@@ -1,12 +1,13 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { HandleSchema, UpdateProfileSchema } from "../validation/profile.schemas";
+import { HandleSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
 import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
   updateProfile,
+  replaceSocialLinks
 } from "../services/profile.service";
 import { getProfileEducations } from "../services/educations.service";
 import { getProfileExperiences } from "../services/experiences.service";
@@ -238,6 +239,36 @@ router.get("/profile/educations", async (req, res) => {
     return res.status(200).json(educations);
   } catch (err) {
     console.error("getProfileEducations.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.6 — PATCH /profile/social-links
+router.patch("/profile/social-links", async (req, res) => {
+  // authentication
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // validate body
+  const parsed = UpdateSocialLinksSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await replaceSocialLinks(userId, parsed.data.socialLinks);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("profile.social-links.update.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

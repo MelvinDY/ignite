@@ -1553,13 +1553,57 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile/social-links:
+    patch:
+      tags: ["Profile"]
+      summary: Update social links
+      description: Replace entire `social_links` JSON with a validated object.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [socialLinks]
+              properties:
+                socialLinks:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    linkedin: { type: string, format: uri, example: "https://www.linkedin.com/in/janedoe" }
+                    github:   { type: string, format: uri, example: "https://github.com/janedoe" }
+                    x:        { type: string, format: uri, example: "https://x.com/janedoe" }
+                    website:  { type: string, format: uri, example: "https://janedoe.dev" }
+      responses:
+        "200":
+          description: Replaced successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, example: true }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /profile/experiences:
     get:
       tags: ["Profile"]
       summary: List all experiences for the authenticated user
       description: |
         Returns all experiences for the **authenticated** user.
-
         Sorted by:
         - `isCurrent` **DESC**
         - `endYear` **DESC** `NULLS LAST`

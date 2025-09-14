@@ -1553,6 +1553,79 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+    post:
+      tags: ["Profile"]
+      summary: Add an education to the authenticated user's profile
+      description: |
+        Creates a new education record for the authenticated user. 
+        
+        **Validation:**
+        - `school`: Required, 1-30 characters
+        - `startMonth`: Required, 1-12
+        - `startYear`: Required, 1900-2100
+        - `endMonth`, `endYear`: Both must be provided or both must be null
+        - End date must be same as or after start date
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddEducationRequest"
+            examples:
+              complete_education:
+                summary: Current student (no end date)
+                value:
+                  school: "UNSW"
+                  program: "Bachelor of Engineering"
+                  major: "Software Engineering"
+                  startMonth: 2
+                  startYear: 2022
+                  endMonth: 2
+                  endYear: 2026
+      responses:
+        "201":
+          description: Education added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, id]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  id:
+                    type: string
+                    description: Unique education record identifier
+                    example: "edu_456"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      school: ["Required"]
+                      endMonth: ["If either endMonth or endYear is provided, both must be present"]
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
   /profile/handle:
     patch:
       tags: ["Handles"]
@@ -2349,6 +2422,58 @@ components:
           nullable: true
           description: User's bio or about section
           example: "I ship boring, reliable services."
+
+    AddEducationRequest:
+      type: object
+      required:
+        - school
+        - program
+        - major
+        - startMonth
+        - startYear
+      properties:
+        school:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Name of the school
+          example: "UNSW"
+        program:
+          type: string
+          minLength: 1
+          description: Name of the academic program
+          example: "Bachelor of Engineering"
+        major:
+          type: string
+          minLength: 1
+          description: Name of the major
+          example: "Software Engineering"
+        startMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Month when the education started
+          example: 2
+        startYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education started
+          example: 2022
+        endMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: Month when the education ended
+          example: null
+        endYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          nullable: true
+          description: Year when the education ended
+          example: null
 
     Education:
       type: object

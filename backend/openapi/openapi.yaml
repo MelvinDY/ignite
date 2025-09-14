@@ -1625,6 +1625,262 @@ paths:
                   code:
                     type: string
                     example: NOT_AUTHENTICATED
+  /profile/picture:
+    post:
+      tags: ["Profile"]
+      summary: Upload or replace profile picture
+      description: |
+        Upload a new profile picture or replace the existing one for the authenticated user.
+        
+        **File Requirements:**
+        - Maximum file size: 5MB
+        - Supported formats: JPEG, PNG, JPG
+        - File is stored in profile-pictures bucket under profiles/{userId}/
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - profile_picture
+              properties:
+                profile_picture:
+                  type: string
+                  format: binary
+                  description: Profile picture file (JPEG/PNG, max 5MB)
+      responses:
+        "200":
+          description: Profile picture uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, photoUrl]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  photoUrl:
+                    type: string
+                    description: URL of the uploaded profile picture
+                    example: "https://example.com/profile-pictures/profiles/550e8400-e29b-41d4-a716-446655440000/profile.jpg"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                file_too_large:
+                  value:
+                    code: FILE_TOO_LARGE
+        "415":
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                unsupported_media:
+                  value:
+                    code: UNSUPPORTED_MEDIA_TYPE
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL
+
+    delete:
+      tags: ["Profile"]
+      summary: Remove profile picture
+      description: |
+        Remove the current profile picture for the authenticated user. Sets the photo_url to null in the database and attempts to delete the file from storage.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile picture removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL_ERROR
+
+  /profile/banner:
+    post:
+      tags: ["Profile"]
+      summary: Upload or replace banner image
+      description: |
+        Upload a new banner image or replace the existing one for the authenticated user.
+        
+        **File Requirements:**
+        - Maximum file size: 5MB
+        - Supported formats: JPEG, PNG, JPG
+        - File is stored in profile-pictures bucket under banners/{userId}/
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - banner_image
+              properties:
+                banner_image:
+                  type: string
+                  format: binary
+                  description: Banner image file (JPEG/PNG, max 5MB)
+      responses:
+        "200":
+          description: Banner image uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, bannerUrl]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  bannerUrl:
+                    type: string
+                    description: URL of the uploaded banner image
+                    example: "https://example.com/profile-pictures/banners/550e8400-e29b-41d4-a716-446655440000/banner.jpg"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                file_too_large:
+                  value:
+                    code: FILE_TOO_LARGE
+        "415":
+          description: Unsupported media type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                unsupported_media:
+                  value:
+                    code: UNSUPPORTED_MEDIA_TYPE
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL
+
+    delete:
+      tags: ["Profile"]
+      summary: Remove banner image
+      description: |
+        Remove the current banner image for the authenticated user. Sets the banner_url to null in the database and attempts to delete the file from storage.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Banner image removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Banner image removed successfully"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL
 
 
 
@@ -1974,6 +2230,9 @@ components:
             - TOO_MANY_REQUESTS
             - INTERNAL
             - HANDLE_TAKEN
+            - FILE_TOO_LARGE              
+            - UNSUPPORTED_MEDIA_TYPE      
+            - INTERNAL_ERROR
 
         details:
           type: string

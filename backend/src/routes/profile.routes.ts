@@ -1,7 +1,16 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { HandleSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
-import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
+import {
+  HandleSchema,
+  UpdateProfileSchema,
+  UpdateSocialLinksSchema,
+  CreateExperienceSchema
+} from "../validation/profile.schemas";
+import {
+  getProfileSkills,
+  addSkillToProfile,
+  removeSkillFromProfile
+} from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
@@ -10,7 +19,7 @@ import {
   replaceSocialLinks
 } from "../services/profile.service";
 import { getProfileEducations } from "../services/educations.service";
-import { getProfileExperiences } from "../services/experiences.service";
+import { getProfileExperiences, createExperience } from "../services/experiences.service";
 
 const router = Router();
 
@@ -299,5 +308,36 @@ router.get("/profile/experiences", async (req, res) => {
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
+
+// 2.11 — POST /profile/experiences
+router.post("/profile/experiences", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  const parsed = CreateExperienceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    const id = await createExperience(userId, parsed.data);
+    return res.status(201).json({ success: true, id });
+  } catch (err) {
+    console.error("profile.experiences.create.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
 
 export default router;

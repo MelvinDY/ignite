@@ -39,7 +39,7 @@ let rows: Row[] = [];
 let errorOnSelect = false;
 
 beforeEach(async () => {
-  await vi.resetModules();
+  vi.resetModules();
 
   mockJwtVerify.mockReset();
   errorOnSelect = false;

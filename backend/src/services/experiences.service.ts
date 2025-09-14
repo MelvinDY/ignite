@@ -2,6 +2,8 @@
 import { supabase } from '../lib/supabase';
 import { ExperienceObject } from '../types/Experience';
 import { pickName } from '../utils/experience';
+import { CreateExperienceInput } from '../validation/profile.schemas';
+import { ensureCompanyId, ensureFieldOfWorkId } from './lookups.service';
 
 export type ExperienceRow = {
   id: string;
@@ -83,4 +85,45 @@ export async function getProfileExperiences(
     locationType: r.location_type ?? null,
     description: r.description ?? null,
   }));
+}
+
+/**
+ * Create a new experience for the given profile.
+ * Returns the new experience ID.
+ */
+export async function createExperience(
+  profileId: string,
+  input: CreateExperienceInput
+): Promise<string> {
+  const companyId = await ensureCompanyId(input.company);
+  const fieldOfWorkId = await ensureFieldOfWorkId(input.fieldOfWork);
+
+  const payload = {
+    profile_id: profileId,
+    role_title: input.roleTitle,
+    company_id: companyId,
+    field_of_work_id: fieldOfWorkId,
+
+    employment_type: input.employmentType ?? null,
+    location_city: input.locationCity ?? null,
+    location_country: input.locationCountry ?? null,
+    location_type: input.locationType ?? null,
+
+    start_year: input.startYear,
+    start_month: input.startMonth,
+    end_year: input.isCurrent ? null : input.endYear!,
+    end_month: input.isCurrent ? null : input.endMonth!,
+    is_current: input.isCurrent,
+
+    description: input.description ?? null,
+  };
+
+  const { data, error } = await supabase
+    .from('experiences')
+    .insert(payload)
+    .select('id')
+    .single<{ id: string }>();
+
+  if (error) throw error;
+  return data.id;
 }

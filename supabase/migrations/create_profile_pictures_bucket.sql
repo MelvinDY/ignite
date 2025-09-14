@@ -1,5 +1,3 @@
--- migrations/001_create_profile_pictures_bucket.sql
-
 DO $$
 BEGIN
   -- Create bucket if it doesn't exist
@@ -10,7 +8,7 @@ BEGIN
       'profile-pictures',
       true,
       5242880, -- 5MB
-      ARRAY['image/jpeg', 'image/png']
+      ARRAY['image/jpeg', 'image/png', 'image/jpg']
     );
   END IF;
 END $$;

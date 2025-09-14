@@ -9,6 +9,7 @@ import {
   updateProfile,
   replaceSocialLinks
 } from "../services/profile.service";
+import { getProfileEducations } from "../services/educations.service";
 
 const router = Router();
 
@@ -210,6 +211,32 @@ router.delete("/profile/skills/:id", async (req, res) => {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
     }
     console.error("removeSkillFromProfile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// GET  /profile/educations - lists all profile educations
+router.get("/profile/educations", async (req, res) => {
+  // validate access token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+    const educations = await getProfileEducations(userId);
+    return res.status(200).json(educations);
+  } catch (err) {
+    console.error("getProfileEducations.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

@@ -1509,6 +1509,50 @@ paths:
                   value:
                     code: NOT_FOUND
 
+  /profile/educations:
+    get:
+      tags: ["Profile"]
+      summary: List all educations for the authenticated user
+      description: |
+        Returns all educations for the authenticated user, sorted by:
+        endYear DESC NULLS LAST, endMonth DESC NULLS LAST, startYear DESC, startMonth DESC.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Successfully fetch all educations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Education"
+              examples:
+                one_education:
+                  value:
+                    - id: "edu_123"
+                      school: "UNSW"
+                      program: "Bachelor of Engineering"
+                      major: "Software Engineering"
+                      startMonth: 2
+                      startYear: 2022
+                      endMonth: null
+                      endYear: null
+                no_educations:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
   /profile/social-links:
     patch:
       tags: ["Profile"]
@@ -2350,3 +2394,56 @@ components:
           nullable: true
           description: User's bio or about section
           example: "I ship boring, reliable services."
+
+    Education:
+      type: object
+      required:
+        - id
+        - school
+        - program
+        - major
+        - startMonth
+        - startYear
+      properties:
+        id:
+          type: string
+          description: Unique education record identifier
+          example: "edu_123"
+        school:
+          type: string
+          description: Name of the school
+          example: "UNSW"
+        program:
+          type: string
+          description: Name of the academic program
+          example: "Bachelor of Engineering"
+        major:
+          type: string
+          description: Name of the major
+          example: "Software Engineering"
+        startMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Month when the education started
+          example: 2
+        startYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education started
+          example: 2022
+        endMonth:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 12
+          description: Month when the education ended
+          example: null
+        endYear:
+          type: integer
+          nullable: true
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education ended
+          example: null

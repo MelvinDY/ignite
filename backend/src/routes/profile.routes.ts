@@ -1,7 +1,17 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { AddEducationSchema, HandleSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
-import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
+import {
+  AddEducationSchema,
+  HandleSchema,
+  UpdateProfileSchema,
+  UpdateSocialLinksSchema,
+  CreateExperienceSchema
+} from "../validation/profile.schemas";
+import {
+  getProfileSkills,
+  addSkillToProfile,
+  removeSkillFromProfile
+} from "../services/skills.service";
 import {
   isHandleAvailable,
   setHandle,
@@ -10,6 +20,7 @@ import {
   replaceSocialLinks
 } from "../services/profile.service";
 import { addEducationToProfile, getProfileEducations } from "../services/educations.service";
+import { getProfileExperiences, createExperience } from "../services/experiences.service";
 
 const router = Router();
 
@@ -193,12 +204,12 @@ router.delete("/profile/skills/:id", async (req, res) => {
   } catch {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
-  
+
   const skillId = Number(req.params.id);
   if (!skillId || isNaN(skillId)) {
     return res.status(404).json({ code: "NOT_FOUND" });
   }
-  
+
   try {
     // Returns true if deleted, false if not found/not owned
     const deleted = await removeSkillFromProfile(userId, skillId);
@@ -222,6 +233,7 @@ router.get("/profile/educations", async (req, res) => {
   if (!accessToken) {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
+
   // extract user id from token
   let userId: string;
   try {
@@ -291,9 +303,9 @@ router.post("/profile/educations", async (req, res) => {
   // Validate request body
   const parsed = AddEducationSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ 
-      code: "VALIDATION_ERROR", 
-      details: parsed.error.flatten().fieldErrors 
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      details: parsed.error.flatten().fieldErrors
     });
   }
 
@@ -305,6 +317,63 @@ router.post("/profile/educations", async (req, res) => {
       return res.status(400).json({ code: "VALIDATION_ERROR" });
     }
     console.error("addEducation.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.10 — GET /profile/experiences
+router.get("/profile/experiences", async (req, res) => {
+  // validate access token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+    const experiences = await getProfileExperiences(userId);
+    return res.status(200).json(experiences);
+  } catch (err) {
+    console.error("getProfileExperiences.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.11 — POST /profile/experiences
+router.post("/profile/experiences", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  const parsed = CreateExperienceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    const id = await createExperience(userId, parsed.data);
+    return res.status(201).json({ success: true, id });
+  } catch (err) {
+    console.error("profile.experiences.create.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

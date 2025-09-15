@@ -10,7 +10,7 @@ const clean = (s: string | null | undefined) =>
  * Returns the row id.
  */
 async function upsertByName(
-  table: 'programs' | 'majors' | 'companies' | 'fields_of_work',
+  table: 'programs' | 'majors' | 'schools' | 'companies' | 'fields_of_work',
   name: string
 ): Promise<number> {
   const label = clean(name);
@@ -59,4 +59,9 @@ export async function ensureFieldOfWorkId(name?: string | null): Promise<number 
   const label = clean(name);
   if (!label) return null;
   return upsertByName('fields_of_work', label);
+}
+
+export async function ensureSchoolId(name?: string | null) {
+  if (!clean(name)) return null;
+  return upsertByName('schools', name!);
 }

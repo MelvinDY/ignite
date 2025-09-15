@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { profileApi, type ProfileMe, ProfileApiError } from '../../lib/api/profile';
+import { profileApi, type ProfileMe, type Education, ProfileApiError } from '../../lib/api/profile';
 import { ProfileHeader } from '../../components/ProfileHeader';
 import { ProfileExperience } from '../../components/ProfileExperience';
 import { ProfileSkills } from '../../components/ProfileSkills';
 import { EventsSidebar } from '../../components/EventsSidebar';
+import { ProfileEducation } from '../../components/ProfileEducation';
 
 export function MyProfilePage() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [educations, setEducations] = useState<Education[]>([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -24,8 +26,15 @@ export function MyProfilePage() {
           navigate('/profile/handle-setup');
           return;
         }
+
+        // Fetch the education and other things in the future
+        const [educationData] = await Promise.all([
+          profileApi.getProfileEducations(),
+          // Add more calls here
+        ])
         
         setProfile(profileData);
+        setEducations(educationData);
       } catch (err) {
         if (err instanceof ProfileApiError && err.code === 'NOT_AUTHENTICATED') {
           navigate('/auth/login');
@@ -145,6 +154,7 @@ export function MyProfilePage() {
             <div className="xl:col-span-3 lg:col-span-2 space-y-4 md:space-y-6">
               <ProfileHeader profile={profileForDisplay} />
               <ProfileExperience experience={profileForDisplay.experience} />
+              <ProfileEducation educations={educations}/>
               <ProfileSkills />
             </div>
             

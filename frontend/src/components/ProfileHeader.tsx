@@ -33,9 +33,9 @@ export function ProfileHeader({ profile }: ProfileHeaderProps) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-[#3E000C] to-[#8B1538] rounded-lg mx-4 sm:mx-0 p-4 md:p-6 lg:p-8 text-white shadow-xl">
-      {/* Banner Background Pattern */}
-      <div className="absolute inset-0 opacity-10 rounded-lg">
+    <div className="relative bg-gradient-to-r from-[#3E000C] to-[#8B1538] rounded-lg mx-4 sm:mx-0 p-4 md:p-6 lg:p-8 text-white shadow-xl">
+      {/* Banner Background Pattern (non-interactive; constrained to header) */}
+      <div className="absolute inset-0 opacity-10 rounded-lg pointer-events-none">
         <div className="w-full h-full bg-gradient-to-br from-white/5 to-transparent rounded-lg"></div>
       </div>
       

@@ -5,7 +5,7 @@ const clean = (s: string | null | undefined) =>
 
 /** Upsert a single-row lookup by case-insensitive name, return its id. */
 async function upsertByName(
-  table: 'programs' | 'majors',
+  table: 'programs' | 'majors' | 'schools',
   name: string
 ): Promise<number> {
   const label = name.trim().replace(/\s+/g, ' ');
@@ -29,4 +29,9 @@ export async function ensureProgramId(name?: string | null) {
 export async function ensureMajorId(name?: string | null) {
   if (!clean(name)) return null;
   return upsertByName('majors', name!);
+}
+
+export async function ensureSchoolId(name?: string | null) {
+  if (!clean(name)) return null;
+  return upsertByName('schools', name!);
 }

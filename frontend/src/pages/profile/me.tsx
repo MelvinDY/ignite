@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileApi, type ProfileMe, type Education, ProfileApiError } from '../../lib/api/profile';
 import { ProfileHeader } from '../../components/ProfileHeader';
@@ -13,6 +13,15 @@ export function MyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [educations, setEducations] = useState<Education[]>([]);
+
+  const refetchEducations = useCallback(async () => {
+    try {
+      const data = await profileApi.getProfileEducations();
+      setEducations(data);
+    } catch (err) {
+      // swallow refetch errors silently for now
+    }
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -154,7 +163,13 @@ export function MyProfilePage() {
             <div className="xl:col-span-3 lg:col-span-2 space-y-4 md:space-y-6">
               <ProfileHeader profile={profileForDisplay} />
               <ProfileExperience experience={profileForDisplay.experience} />
-              <ProfileEducation educations={educations}/>
+              <ProfileEducation
+                educations={educations}
+                onEducationAdded={(e) => {
+                  setEducations((prev) => [e, ...prev]);
+                  refetchEducations();
+                }}
+              />
               <ProfileSkills />
             </div>
             

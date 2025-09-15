@@ -46,8 +46,8 @@ export function ProfileEducation({ educations, onEducationAdded }: ProfileEducat
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<AddEducationRequest>({
     school: "",
-    program: null, 
-    major: null,   
+    program: "",
+    major: "",
     startMonth: 1,
     startYear: new Date().getFullYear(),
     endMonth: null,
@@ -60,8 +60,8 @@ export function ProfileEducation({ educations, onEducationAdded }: ProfileEducat
   const resetModal = () => {
     setForm({
       school: "",
-      program: null,
-      major: null,
+      program: "",
+      major: "",
       startMonth: 1,
       startYear: new Date().getFullYear(),
       endMonth: null,

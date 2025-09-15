@@ -57,7 +57,7 @@ export function EducationModal({
           )}
 
           <div>
-            <label className="block font-medium text-black">School</label>
+            <label className="block font-medium text-black">School <span className="text-red-600">*</span></label>
             <input
               type="text"
               required
@@ -71,23 +71,23 @@ export function EducationModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block font-medium text-black">Program</label>
+              <label className="block font-medium text-black">Program <span className="text-red-600">*</span></label>
               <input
                 type="text"
-                value={form.program ?? ""} // null-safe display
-                onChange={(e) =>
-                  handleChange("program", e.target.value.trim() === "" ? null : e.target.value)
-                } // convert "" -> null
+                required
+                value={form.program}
+                onChange={(e) => handleChange("program", e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-[#ffbe32]"
               />
               {fieldErrors.program && <p className="mt-1 text-xs text-red-600">{fieldErrors.program[0]}</p>}
             </div>
             <div>
-              <label className="block font-medium text-black">Major</label>
+              <label className="block font-medium text-black">Major <span className="text-red-600">*</span></label>
               <input
                 type="text"
-                value={form.major ?? ""} // null-safe display
-                onChange={(e) => handleChange("major", e.target.value.trim() === "" ? null : e.target.value)}
+                required
+                value={form.major}
+                onChange={(e) => handleChange("major", e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-black focus:outline-none focus:ring-2 focus:ring-[#ffbe32]"
               />
               {fieldErrors.major && <p className="mt-1 text-xs text-red-600">{fieldErrors.major[0]}</p>}
@@ -96,7 +96,7 @@ export function EducationModal({
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block font-medium text-black">Start Month</label>
+              <label className="block font-medium text-black">Start Month <span className="text-red-600">*</span></label>
               <select
                 value={form.startMonth}
                 onChange={(e) => handleChange("startMonth", Number(e.target.value))}
@@ -109,7 +109,7 @@ export function EducationModal({
               {fieldErrors.startMonth && <p className="mt-1 text-xs text-red-600">{fieldErrors.startMonth[0]}</p>}
             </div>
             <div>
-              <label className="block font-medium text-black">Start Year</label>
+              <label className="block font-medium text-black">Start Year <span className="text-red-600">*</span></label>
               <input
                 type="number"
                 value={form.startYear}

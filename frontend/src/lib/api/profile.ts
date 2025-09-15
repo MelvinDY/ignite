@@ -64,8 +64,8 @@ const ProfileEducationResponseSchema = z.array(EducationSchema);
 
 const AddEducationRequestSchema = z.object({
   school: z.string().min(1).max(30),
-  program: z.string().transform(v => v.trim()).transform(v => (v === "" ? null : v)).nullable(),
-  major: z.string().transform(v => v.trim()).transform(v => (v === "" ? null : v)).nullable(),
+  program: z.string().min(1).transform(v => v.trim()),
+  major: z.string().min(1).transform(v => v.trim()),
   startMonth: z.number().int().min(1).max(12),
   startYear: z.number().int().min(1900).max(2100),
   endMonth: z.number().int().min(1).max(12).nullable(),

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { AddEducationSchema, HandleSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
+import { AddEducationSchema, HandleSchema, UpdateEducationSchema, UpdateProfileSchema, UpdateSocialLinksSchema } from "../validation/profile.schemas";
 import { getProfileSkills, addSkillToProfile, removeSkillFromProfile } from "../services/skills.service";
 import {
   isHandleAvailable,
@@ -9,7 +9,8 @@ import {
   updateProfile,
   replaceSocialLinks
 } from "../services/profile.service";
-import { addEducationToProfile, getProfileEducations } from "../services/educations.service";
+import { addEducationToProfile, getProfileEducations, updateProfileEducation } from "../services/educations.service";
+import { supabase } from "..";
 
 const router = Router();
 
@@ -305,6 +306,50 @@ router.post("/profile/educations", async (req, res) => {
       return res.status(400).json({ code: "VALIDATION_ERROR" });
     }
     console.error("addEducation.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// PATCH /profile/educations/:id
+router.patch("/profile/educations/:id", async (req, res) => {
+  // validate access token
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+  // extract user id from token
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // Validate request body
+  const parsed = UpdateEducationSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  // Get education id
+  const eduId = req.params.id;
+  if (!eduId) {
+    return res.status(404).json({ code: "NOT_FOUND" });
+  }
+
+  try {
+    await updateProfileEducation(userId, eduId, parsed.data);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    console.error("updateEducation.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

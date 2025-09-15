@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import { AddEducationInput } from "../validation/profile.schemas";
+import { AddEducationInput, UpdateEducationInput } from "../validation/profile.schemas";
 import { ensureProgramId, ensureMajorId, ensureSchoolId } from "./lookups.service";
 
 export interface Education {
@@ -93,4 +93,72 @@ export async function addEducationToProfile(profileId: string, eduInput: AddEduc
   }
 
   return `edu_${data.id}`;
+}
+
+export async function updateProfileEducation(profileId: string, eduId: string, updates: UpdateEducationInput): Promise<void> {
+  // First, check if the education exists and belongs to the user
+  const { data: existingEducation, error: fetchError } = await supabase
+    .from('educations')
+    .select('id, profile_id, start_month, start_year')
+    .eq('id', eduId.replace('edu_', ''))
+    .eq('profile_id', profileId)
+    .single();
+
+  if (fetchError || !existingEducation) {
+    throw { code: "NOT_FOUND" };
+  }
+
+  // Validate date logic if endMonth/endYear are being updated
+  if ((updates.endMonth !== undefined || updates.endYear !== undefined) && 
+      updates.endMonth !== null && updates.endYear !== null) {
+    const startYear = existingEducation.start_year;
+    const startMonth = existingEducation.start_month;
+    
+    // If end year is before start year, invalid
+    if (updates.endYear !== undefined && updates.endYear < startYear) {
+      throw { code: "VALIDATION_ERROR" };
+    }
+    // If same year, end month must be >= start month
+    if (updates.endYear !== undefined && updates.endMonth !== undefined && 
+        updates.endYear === startYear && updates.endMonth < startMonth) {
+      throw { code: "VALIDATION_ERROR" };
+    }
+  }
+
+  // Build the update object
+  const updateData: Record<string, any> = {};
+
+  if (updates.school !== undefined) {
+    // Lookup school (create if needed)
+    const schoolId = await ensureSchoolId(updates.school);
+    if (schoolId !== null) updateData.school_id = schoolId;
+  }
+
+  if (updates.program !== undefined) {
+    // Lookup program (create if needed)
+    const programId = await ensureProgramId(updates.program);
+    if (programId !== null) updateData.program_id = programId;
+  }
+
+  if (updates.major !== undefined) {
+    // Lookup major (create if needed)
+    const majorId = await ensureMajorId(updates.major);
+    if (majorId !== null) updateData.major_id = majorId;
+  }
+
+  if (updates.endYear !== undefined) updateData.end_year = updates.endYear;
+  if (updates.endMonth !== undefined) updateData.end_month = updates.endMonth;
+
+  // Only proceed if there are updates to apply
+  if (Object.keys(updateData).length === 0) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from('educations')
+    .update(updateData)
+    .eq('id', eduId.replace('edu_', ''))
+    .eq('profile_id', profileId);
+
+  if (error) throw error;
 }

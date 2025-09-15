@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/api
+  - url: http://localhost:5000/docs
     description: Local dev
 
 security:
@@ -1783,6 +1783,119 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorSimple" }
               examples:
                 no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/experiences/{id}:
+    patch:
+      tags: ["Profile"]
+      summary: Update one existing experience for the authenticated user
+      description: |
+        Partial update for a single experience owned by the authenticated user.
+
+        **Validation**
+        - Same rules as create:
+          - If `isCurrent` is **true**, `endMonth` and `endYear` must be omitted.
+          - If `isCurrent` is **false**, both `endMonth` and `endYear` are required.
+          - `(endYear, endMonth)` must be the same month or after `(startYear, startMonth)`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, description: "Experience id (uuid)" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperienceUpdateRequest"
+            examples:
+              sample:
+                value:
+                  roleTitle: "Senior Backend Developer"
+                  isCurrent: true
+                  endMonth: null
+                  endYear: null
+                  employmentType: "full_time"
+                  locationType: "hybrid"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+              examples:
+                ok: { value: { success: true } }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Experience not found or not owned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: ["Profile"]
+      summary: Delete one experience for the authenticated user
+      description: >
+        Deletes an experience by `id` if it belongs to the authenticated user.
+
+        Idempotent: deleting an already-deleted `id` still returns 200.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, description: "Experience id (uuid)" }
+      responses:
+        "200":
+          description: Deleted (or already deleted)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+              examples:
+                ok: { value: { success: true } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Not found or not owned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
         "500":
           $ref: "#/components/responses/InternalError"
 

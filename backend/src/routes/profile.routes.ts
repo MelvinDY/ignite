@@ -1,11 +1,12 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
   AddEducationSchema,
   HandleSchema,
   UpdateProfileSchema,
   UpdateSocialLinksSchema,
-  CreateExperienceSchema
+  CreateExperienceSchema,
+  UpdateExperienceSchema
 } from "../validation/profile.schemas";
 import {
   getProfileSkills,
@@ -20,26 +21,39 @@ import {
   replaceSocialLinks
 } from "../services/profile.service";
 import { addEducationToProfile, getProfileEducations } from "../services/educations.service";
-import { getProfileExperiences, createExperience } from "../services/experiences.service";
+import {
+  getProfileExperiences,
+  createExperience,
+  updateExperience,
+  deleteExperience
+} from "../services/experiences.service";
 
 const router = Router();
 
+const authenticateUser: (req: Request, res: Response) => string | null = (req, res) => {
+  // Check for valid token
+  const accessToken = req.headers.authorization?.split(' ')[1];
+  if (!accessToken) {
+    res.status(401).json({ code: 'NOT_AUTHENTICATED' });
+    return null;
+  }
+  try {
+    // Extract user id from token
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    const userId = decoded?.sub;
+    if (!userId) throw new Error('No userId in token');
+    return userId;
+  } catch {
+    res.status(401).json({ code: 'NOT_AUTHENTICATED' });
+    return null;
+  }
+};
+
 // GET /profile/me - Get user profile details
 router.get("/profile/me", async (req, res) => {
-  // Check for valid token
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  // Extract user id from token
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
   try {
     const profileDetails = await getProfileDetails(userId);
     return res.status(200).json(profileDetails);
@@ -51,20 +65,8 @@ router.get("/profile/me", async (req, res) => {
 
 // PATCH /profile - Update user profile details
 router.patch("/profile", async (req, res) => {
-  // Check for valid token
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  // Extract user id from token
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // Validate request body
   const parsed = UpdateProfileSchema.safeParse(req.body);
@@ -102,17 +104,8 @@ router.get("/handles/check", async (req, res) => {
 
 // 2.7 — PATCH /profile/handle
 router.patch("/profile/handle", async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   const parsed = HandleSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -132,18 +125,9 @@ router.patch("/profile/handle", async (req, res) => {
 });
 
 router.get("/profile/skills", async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
   try {
     const skills = await getProfileSkills(userId);
     return res.status(200).json(skills);
@@ -155,18 +139,8 @@ router.get("/profile/skills", async (req, res) => {
 
 // POST /profile/skills - Add a skill to the user's profile
 router.post("/profile/skills", async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // Validate body
   const { skill } = req.body || {};
@@ -191,19 +165,8 @@ router.post("/profile/skills", async (req, res) => {
 
 // DELETE /profile/skills/:id - Remove a skill from the user's profile
 router.delete("/profile/skills/:id", async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  let userId: string;
-
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   const skillId = Number(req.params.id);
   if (!skillId || isNaN(skillId)) {
@@ -228,21 +191,8 @@ router.delete("/profile/skills/:id", async (req, res) => {
 
 // GET  /profile/educations - lists all profile educations
 router.get("/profile/educations", async (req, res) => {
-  // validate access token
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  // extract user id from token
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   try {
     const educations = await getProfileEducations(userId);
@@ -255,18 +205,8 @@ router.get("/profile/educations", async (req, res) => {
 
 // 2.6 — PATCH /profile/social-links
 router.patch("/profile/social-links", async (req, res) => {
-  // authentication
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // validate body
   const parsed = UpdateSocialLinksSchema.safeParse(req.body);
@@ -285,20 +225,8 @@ router.patch("/profile/social-links", async (req, res) => {
 
 // POST  /profile/educations - add an education for a profile
 router.post("/profile/educations", async (req, res) => {
-  // validate access token
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-  // extract user id from token
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // Validate request body
   const parsed = AddEducationSchema.safeParse(req.body);
@@ -323,21 +251,8 @@ router.post("/profile/educations", async (req, res) => {
 
 // 2.10 — GET /profile/experiences
 router.get("/profile/experiences", async (req, res) => {
-  // validate access token
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  // extract user id from token
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   try {
     const experiences = await getProfileExperiences(userId);
@@ -350,19 +265,8 @@ router.get("/profile/experiences", async (req, res) => {
 
 // 2.11 — POST /profile/experiences
 router.post("/profile/experiences", async (req, res) => {
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   const parsed = CreateExperienceSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -375,6 +279,59 @@ router.post("/profile/experiences", async (req, res) => {
   } catch (err) {
     console.error("profile.experiences.create.error", err);
     return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.12 — PATCH /profile/experiences/:id
+router.patch("/profile/experiences/:id", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const experienceId = String(req.params.id || "");
+  if (!experienceId) return res.status(404).json({ code: "NOT_FOUND" });
+
+  // Validate body (partial)
+  const parsed = UpdateExperienceSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await updateExperience(userId, experienceId, parsed.data);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    console.error("update-experience.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// 2.13 — DELETE /profile/experiences/:id
+router.delete('/profile/experiences/:id', async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const experienceId = String(req.params.id || '').trim();
+  if (!experienceId) {
+    return res.status(404).json({ code: 'NOT_FOUND' });
+  }
+
+  try {
+    const result = await deleteExperience(userId, experienceId);
+
+    if (result === 'NOT_OWNED') {
+      return res.status(404).json({ code: 'NOT_FOUND' });
+    }
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('deleteExperience.error', err);
+    return res.status(500).json({ code: 'INTERNAL' });
   }
 });
 

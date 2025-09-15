@@ -142,9 +142,33 @@ export const CreateExperienceSchema = z.object({
   }
 });
 
+export const UpdateExperienceSchema = z.object({
+  roleTitle: z.string().min(1).max(120).optional(),
+  company: z.string().min(1).max(120).optional(),
+  fieldOfWork: z.string().min(1).max(120).optional(),
+
+  employmentType: z.enum([
+    'full_time', 'part_time', 'contract', 'internship', 'temporary', 'volunteer', 'freelance'
+  ]).optional(),
+
+  locationCity: z.string().optional(),
+  locationCountry: z.string().regex(/^[A-Z]{2}$/).optional(), // ISO-3166-1 alpha-2
+  locationType: z.enum(['on_site', 'remote', 'hybrid']).optional(),
+
+  startMonth: z.number().int().min(1).max(12).optional(),
+  startYear: z.number().int().min(1900).max(2100).optional(),
+
+  endMonth: z.number().int().min(1).max(12).nullable().optional(),
+  endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+
+  isCurrent: z.boolean().optional(),
+  description: z.string().max(2000).optional(),
+});
+
 export type HandleInput = z.infer<typeof HandleSchema>;
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
 export type SocialLinksInput = z.infer<typeof SocialLinksSchema>;
 export type UpdateSocialLinksInput = z.infer<typeof UpdateSocialLinksSchema>;
 export type AddEducationInput = z.infer<typeof AddEducationSchema>;
 export type CreateExperienceInput = z.infer<typeof CreateExperienceSchema>;
+export type UpdateExperienceInput = z.infer<typeof UpdateExperienceSchema>;

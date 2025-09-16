@@ -1,3 +1,8 @@
+export type Skill = {
+  id: number;
+  name: string;
+};
+
 export interface FormData {
   emailAddress: string;
   fullName: string;
@@ -8,10 +13,10 @@ export interface FormData {
   major: string;
   level: string;
   program: string;
-  skills: string[];
+  skills: Skill[];
 }
 
 export interface EditProfileFormProps {
   formData: FormData;
-  changeFormData: (field: string, value: string | boolean | string[]) => void;
+  changeFormData: (field: string, value: any) => void;
 }

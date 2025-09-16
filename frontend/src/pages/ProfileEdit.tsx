@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BatikBackground } from "../components/BatikBackground";
 import { GlassCard } from "../components/ui/GlassCard";
 import { Button } from "../components/ui/Button";
@@ -6,6 +6,8 @@ import { Pencil } from "lucide-react";
 import { AccountDetailsForm } from "../components/profile-edit/AccountDetailsForm";
 import { twMerge } from "tailwind-merge";
 import { DashboardForm } from "../components/profile-edit/DashboardForm";
+import { profileApi, ProfileApiError } from "../lib/api/profile";
+import { type FormData } from "../components/profile-edit/formTypes";
 
 interface MenuItem {
   label: string;
@@ -15,26 +17,71 @@ interface MenuItem {
 const ProfileEdit = () => {
   const [menu, setMenu] = useState(0);
   const [showSaveButton, setShowSaveButton] = useState(false);
-  const [initialFormData, setInitialFormData] = useState({
-    emailAddress: "z1234567@ad.unsw.edu.au",
-    fullName: "Andrew Garfield",
-    zid: "z1234567",
-    isIndonesian: false,
-    bio: "Hello! I'm Andrew, a passionate actor and philanthropist. I love exploring new cultures and cuisines. In my free time, I enjoy hiking and photography.",
-    headline: "Aspiring Actor and Culture Enthusiast",
-    major: "Computer Science",
-    level: "undergrad",
-    program: "Bachelor of Science (Computer Science)",
-    skills: ["JavaScript", "React", "Node.js"],
-  });
-  const [formData, setFormData] = useState(initialFormData);
+  const [initialFormData, setInitialFormData] = useState<FormData>(
+    {} as FormData
+  );
+  const [formData, setFormData] = useState<FormData>(initialFormData);
 
   const changeFormData = (
     field: string,
-    value: string | boolean | string[]
+    value: any // TODO: improve type
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     setShowSaveButton(true);
+  };
+
+  const updateSkills = async () => {
+    const skillsToAdd = formData.skills.filter(
+      (newSkill) => newSkill.id === -1
+    );
+
+    for (const skillToAdd of skillsToAdd) {
+      if (!initialFormData.skills.includes(skillToAdd)) {
+        try {
+          console.log("Adding skill:", skillToAdd.name);
+          const resp = await profileApi.addSkills(skillToAdd.name);
+          const newId = resp.id;
+          setFormData((currentData) => {
+            const updatedSkills = currentData.skills.map((s) => {
+              // If this is the skill we just added, return a new object with the ID
+              if (s.name === skillToAdd.name) {
+                return { ...s, id: newId };
+              }
+              return s;
+            });
+
+            // Return a whole new state object
+            return { ...currentData, skills: updatedSkills };
+          });
+        } catch (error) {
+          if (error instanceof ProfileApiError) {
+            console.error("Profile API Error:", error.message);
+          } else {
+            console.error("Unexpected Error:", error);
+          }
+        }
+      }
+    }
+
+    const skillsToRemove = initialFormData.skills.filter(
+      (oldSkill) =>
+        !formData.skills.some((newSkill) => newSkill.name === oldSkill.name)
+    );
+
+    for (const skill of skillsToRemove) {
+      try {
+        console.log("Removing skill:", skill.name);
+        // You'll need an API method that can remove a skill, likely by its ID
+        await profileApi.deleteSkill(skill.id);
+      } catch (error) {
+        console.error(`Failed to remove skill: ${skill.name}`, error);
+      }
+    }
+  };
+
+  const updateData = async () => {
+    updateSkills();
+    // TODO: update other fields
   };
 
   const menuItems: MenuItem[] = [
@@ -62,6 +109,38 @@ const ProfileEdit = () => {
       component: <></>,
     },
   ];
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await profileApi.getMyProfile();
+        const skills = await profileApi.getSkills();
+        const data = {
+          emailAddress: "TODO",
+          fullName: profileData.fullName,
+          zid: profileData.zid,
+          isIndonesian: profileData.isIndonesian,
+          bio: profileData.bio ?? "",
+          headline: profileData.headline ?? "",
+          major: profileData.major ?? "",
+          level: profileData.level,
+          program: profileData.program ?? "",
+          skills: skills,
+        };
+        setInitialFormData(data);
+        setFormData(data);
+        console.log(data);
+      } catch (error) {
+        if (error instanceof ProfileApiError) {
+          console.error("Profile API Error:", error.message);
+        } else {
+          console.error("Unexpected Error:", error);
+        }
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   return (
     <div className="w-full flex flex-col justify-center items-center min-h-screen p-8">
@@ -126,6 +205,7 @@ const ProfileEdit = () => {
                   onClick={() => {
                     setInitialFormData(formData);
                     setShowSaveButton(false);
+                    updateData();
                   }}
                 />
               </div>

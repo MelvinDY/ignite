@@ -1,13 +1,14 @@
 import { twMerge } from "tailwind-merge";
 import { Badge } from "../ui/Badge";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { type Skill } from "./formTypes";
 
 interface SkillsContainerProps {
   id: string;
   label?: string;
-  value: string[];
+  value: Skill[];
   className?: string;
-  onChange: (value: string[]) => void;
+  onChange: (value: Skill[]) => void;
 }
 
 const SkillsContainer = ({
@@ -29,8 +30,8 @@ const SkillsContainer = ({
   };
 
   const addSkill = (skill: string) => {
-    if (skill && !value.includes(skill)) {
-      onChange([...value, skill]);
+    if (skill && !value.find((s) => s.name === skill)) {
+      onChange([...value, { name: skill, id: -1 }]);
       setInputValue("");
     }
   };
@@ -64,7 +65,7 @@ const SkillsContainer = ({
           {value.map((skill, index) => (
             <Badge
               key={index}
-              text={skill}
+              text={skill.name}
               onRemove={() => removeSkill(index)}
             />
           ))}

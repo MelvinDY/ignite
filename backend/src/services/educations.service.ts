@@ -162,3 +162,41 @@ export async function updateProfileEducation(profileId: string, eduId: string, u
 
   if (error) throw error;
 }
+
+/**
+ * Delete one education if owned by the given profileId.
+ * Returns:
+ * - 'DELETED'   → row existed and belonged to user; now removed
+ * - 'NOT_OWNED' → row exists but belongs to someone else
+ * - 'NOOP'      → row does not exist
+ */
+export async function deleteEducation(
+  profileId: string,
+  eduId: string
+): Promise<'DELETED' | 'NOT_OWNED' | 'NOOP'> {
+  // 1) Load ownership
+  const { data: row, error: selErr } = await supabase
+    .from('educations')
+    .select('id, profile_id')
+    .eq('id', eduId)
+    .maybeSingle<{ id: string; profile_id: string }>();
+
+  if (selErr) throw selErr;
+
+  if (!row) return 'NOOP';
+
+  if (row.profile_id !== profileId) {
+    return 'NOT_OWNED';
+  }
+
+  // 2) Delete (scoped by owner to be safe)
+  const { error: delErr } = await supabase
+    .from('educations')
+    .delete()
+    .eq('id', eduId)
+    .eq('profile_id', profileId);
+
+  if (delErr) throw delErr;
+
+  return 'DELETED';
+}

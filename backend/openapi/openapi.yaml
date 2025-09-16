@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/docs
+  - url: http://localhost:5000/api
     description: Local dev
 
 security:
@@ -1704,6 +1704,55 @@ paths:
                 $ref: "#/components/schemas/ErrorSimple"
               examples:
                 not_found:
+                  value:
+                    code: NOT_FOUND
+    delete:
+      tags: ["Profile"]
+      summary: Delete an education record
+      description: |
+        Deletes an education record owned by the authenticated user.
+        
+        **Idempotent:** Returns 200 if education is already deleted.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Education record ID to delete
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Education deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Not found / not owned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
                   value:
                     code: NOT_FOUND
 

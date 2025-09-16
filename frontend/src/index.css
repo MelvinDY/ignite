@@ -13,7 +13,7 @@
 
 @layer utilities {
   .white-card {
-      @apply rounded-xl bg-white shadow-sm border border-gray-200 text-black;
+      @apply rounded-lg bg-white shadow-sm border border-gray-200 text-black;
   }
   
   .flex-between {
@@ -66,6 +66,10 @@
 
   .search-btn {
     @apply size-[50px] rounded-full bg-black flex justify-center items-center !important;
+  }
+
+  .flex-inline-center {
+    @apply inline-flex justify-center items-center
   }
 }
 

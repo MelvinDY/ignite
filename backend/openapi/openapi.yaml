@@ -7,7 +7,7 @@ info:
     passwordless resume tokens, login, and token refresh.
 
 servers:
-  - url: http://localhost:5000/docs
+  - url: http://localhost:5000/api
     description: Local dev
 
 security:
@@ -1626,6 +1626,136 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+  /profile/educations/{id}:
+    patch:
+      tags: ["Profile"]
+      summary: Update an education record
+      description: |
+        Updates an existing education record for the authenticated user.
+        Only provided fields are updated (partial update).
+        
+        **Validation:**
+        - `school`: 1-30 characters
+        - `program`: valid string
+        - `major`: valid string
+        - `endMonth`, `endYear`: Both must be provided or both must be null
+        - End date must be same as or after start date if both start and end are provided
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Education record ID to update
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEducationRequest"
+            examples:
+              complete_update:
+                value:
+                  school: "University of Sydney"
+                  program: "Master of Information Technology"
+                  major: "Cybersecurity"
+                  endMonth: 12
+                  endYear: 2024
+      responses:
+        "200":
+          description: Education updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Education record not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
+    delete:
+      tags: ["Profile"]
+      summary: Delete an education record
+      description: |
+        Deletes an education record owned by the authenticated user.
+        
+        **Idempotent:** Returns 200 if education is already deleted.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Education record ID to delete
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Education deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Not found / not owned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_FOUND
+
   /profile/social-links:
     patch:
       tags: ["Profile"]
@@ -2747,6 +2877,35 @@ components:
           nullable: true
           description: Year when the education ended
           example: null
+
+    UpdateEducationRequest:
+      type: object
+      properties:
+        school:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Name of the school
+        program:
+          type: string
+          minLength: 1
+          description: Name of the academic program
+        major:
+          type: string
+          minLength: 1
+          description: Name of the major
+        endMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: Month when the education ended
+        endYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          nullable: true
+          description: Year when the education ended
 
     Education:
       type: object

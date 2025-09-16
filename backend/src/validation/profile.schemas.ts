@@ -79,6 +79,21 @@ export const AddEducationSchema = z.object({
   path: ["endYear"]
 });
 
+export const UpdateEducationSchema = z.object({
+  school: z.string().min(1).max(30).optional(),
+  program: z.string().min(1).optional(),
+  major: z.string().min(1).optional(),
+  endMonth: z.number().int().min(1).max(12).nullable().optional(),
+  endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+}).refine((data) => {
+  if (data.endMonth !== null && data.endYear === null) return false;
+  if (data.endYear !== null && data.endMonth === null) return false;
+  return true;
+}, {
+  message: "If either endMonth or endYear is provided, both must be present",
+  path: ["endMonth"]
+});
+
 export const CreateExperienceSchema = z.object({
   roleTitle: z.string().min(1).max(120),
   company: z.string().min(1).max(120),
@@ -172,3 +187,4 @@ export type UpdateSocialLinksInput = z.infer<typeof UpdateSocialLinksSchema>;
 export type AddEducationInput = z.infer<typeof AddEducationSchema>;
 export type CreateExperienceInput = z.infer<typeof CreateExperienceSchema>;
 export type UpdateExperienceInput = z.infer<typeof UpdateExperienceSchema>;
+export type UpdateEducationInput = z.infer<typeof UpdateEducationSchema>;

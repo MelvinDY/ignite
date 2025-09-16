@@ -16,6 +16,7 @@ interface ProfileMenuProps {
     name: string;
     avatarUrl?: string | null;
     email?: string;
+    handle?: string | null;
   };
   variant?: "default" | "navbar";
 }

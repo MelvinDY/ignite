@@ -245,7 +245,7 @@ export const FeedPage = () => {
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
       {/* Top bar */}
-      <TopBar imgSrc={userProfile.photoUrl} initials={getInitials(userProfile.fullName)}/>
+      <TopBar imgSrc={userProfile.photoUrl} initials={getInitials(userProfile.fullName)} handle={userProfile.handle ?? undefined}/>
 
       {/* Content grid */}
       <div className="mx-auto max-w-6xl px-4 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_300px] gap-6">

@@ -106,7 +106,8 @@ export function DashboardHeaderAvatar() {
       user={{
         name: profile.fullName,
         avatarUrl: profile.photoUrl,
-        email: profile.email
+        email: (profile as any).email,
+        handle: profile.handle ?? undefined,
       }}
       variant="navbar"
     />

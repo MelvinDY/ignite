@@ -5,7 +5,7 @@ import { DashboardHeaderAvatar } from "./DashboardHeaderAvatar";
 const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const handleNavigation = (path: string) => {
     if (location.pathname === path) {
@@ -17,10 +17,6 @@ const Navbar = () => {
     navigate(path);
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/auth/login");
-  };
 
   return (
     <nav className="fixed top-0 p-5 backdrop-blur-sm w-full shadow-2xl z-40">
@@ -44,15 +40,13 @@ const Navbar = () => {
           >
             Events
           </button>
-          {isAuthenticated ? (
-            <button
-              className="hover:underline"
-              onClick={handleLogout}
-              data-testid="logout-button"
-            >
-              Logout
-            </button>
-          ) : (
+          <button
+            className="hover:underline"
+            onClick={() => handleNavigation("/feed")}
+          >
+            Feed
+          </button>
+          {!isAuthenticated && (
             <>
               <button
                 className="hover:underline"

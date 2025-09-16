@@ -22,6 +22,11 @@ const backendPort = loadBackendPort()
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "./src"),
+    },
+  },
   server: {
     port: 3000,
     proxy: {

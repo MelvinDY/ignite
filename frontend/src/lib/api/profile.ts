@@ -49,12 +49,69 @@ const UpdateHandleResponseSchema = z.object({
   handle: z.string(),
 });
 
+const EducationSchema = z.object ({
+  id: z.string(),
+  school: z.string(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
+  startMonth: z.number().int().min(1).max(12),
+  startYear: z.number().int(),
+  endMonth: z.number().int().min(1).max(12).nullable(),
+  endYear: z.number().int().nullable(),
+});
+
+const ProfileEducationResponseSchema = z.array(EducationSchema);
+
+const AddEducationRequestSchema = z.object({
+  school: z.string().min(1).max(30),
+  program: z.string().min(1).transform(v => v.trim()),
+  major: z.string().min(1).transform(v => v.trim()),
+  startMonth: z.number().int().min(1).max(12),
+  startYear: z.number().int().min(1900).max(2100),
+  endMonth: z.number().int().min(1).max(12).nullable(),
+  endYear: z.number().int().min(1900).max(2100).nullable(),
+}).superRefine((v, ctx) => {
+  // both endMonth/endYear must be present or both null
+  const bothOrNeither =
+    (v.endMonth == null && v.endYear == null) ||
+    (v.endMonth != null && v.endYear != null);
+  if (!bothOrNeither) {
+    ctx.addIssue({
+      code: "custom",                         // <- use string literal
+      message: "If either endMonth or endYear is provided, both must be present",
+      path: ["endMonth"],
+    });
+  }
+
+  // if provided, end must be >= start
+  if (v.endMonth != null && v.endYear != null) {
+    const start = v.startYear * 12 + (v.startMonth - 1);
+    const end   = v.endYear  * 12 + (v.endMonth  - 1);
+    if (end < start) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End date must be same as or after start date",
+        path: ["endYear"],
+      });
+    }
+  }
+});
+
+const AddEducationResponseSchema = z.object({
+  success: z.literal(true),
+  id: z.string(),
+})
+
 
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
 export type HandleCheckResponse = z.infer<typeof HandleCheckResponseSchema>;
 export type UpdateHandleRequest = z.infer<typeof UpdateHandleRequestSchema>;
 export type UpdateHandleResponse = z.infer<typeof UpdateHandleResponseSchema>;
+export type Education = z.infer<typeof EducationSchema>;
+export type ProfileEducationResponse = z.infer<typeof ProfileEducationResponseSchema>;
+export type AddEducationRequest = z.infer<typeof AddEducationRequestSchema>;
+export type AddEducationResponse = z.infer<typeof AddEducationResponseSchema>;
 
 // Error types
 export type ProfileError = {
@@ -171,6 +228,39 @@ class ProfileApi {
       method: 'PATCH',
       body: JSON.stringify({ handle }),
     }, UpdateHandleResponseSchema);
+  }
+
+  async getProfileEducations(): Promise<ProfileEducationResponse> {
+    return this.request('/profile/educations', {
+      method: 'GET',
+    }, ProfileEducationResponseSchema);
+  }
+
+  async addEducations(input: AddEducationRequest): Promise<AddEducationResponse> {
+    const parsed = AddEducationRequestSchema.safeParse(input);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {};
+      const formErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key) {
+          (fieldErrors[key] ??= []).push(issue.message);
+        } else {
+          formErrors.push(issue.message);
+        }
+      }
+      throw new ProfileApiError(
+        'VALIDATION_ERROR',
+        0,
+        'Invalid education payload',
+        { fieldErrors, formErrors }
+      );
+    }
+
+    return this.request('/profile/educations', {
+      method: 'POST',
+      body: JSON.stringify(parsed.data),
+    }, AddEducationResponseSchema);
   }
 
 }

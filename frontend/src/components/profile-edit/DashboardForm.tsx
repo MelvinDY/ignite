@@ -4,6 +4,7 @@ import { Select } from "../ui/Select";
 import { TextArea } from "../ui/TextArea";
 import { TextInput } from "../ui/TextInput";
 import type { EditProfileFormProps } from "./formTypes";
+import { SkillsContainer } from "./SkillsContainer";
 
 // Get program and major options from the data service
 const PROGRAM_OPTIONS = programDataService
@@ -20,77 +21,95 @@ const MAJOR_OPTIONS = programDataService.searchMajors("").map((major) => ({
 
 const DashboardForm = ({ formData, changeFormData }: EditProfileFormProps) => {
   return (
-    <div className="space-y-4 pr-2 w-full">
-      <Select
-        id="level"
-        label="Level"
-        value={formData.level}
-        onChange={(value) => changeFormData("level", value)}
-        options={[
-          { value: "foundation", label: "Foundation" },
-          { value: "diploma", label: "Diploma" },
-          { value: "undergrad", label: "Undergraduate" },
-          { value: "postgrad", label: "Postgraduate" },
-          { value: "phd", label: "PhD" },
-        ]}
-        placeholder="Select your level of study"
-        // error={errors.level}
-        required
-      />
+    <div className="space-y-8 pr-3 w-full">
+      {/* Education Information */}
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Education</h2>
+        <div>
+          <Select
+            id="level"
+            label="Level"
+            value={formData.level}
+            onChange={(value) => changeFormData("level", value)}
+            options={[
+              { value: "foundation", label: "Foundation" },
+              { value: "diploma", label: "Diploma" },
+              { value: "undergrad", label: "Undergraduate" },
+              { value: "postgrad", label: "Postgraduate" },
+              { value: "phd", label: "PhD" },
+            ]}
+            placeholder="Select your level of study"
+            // error={errors.level}
+            required
+          />
 
-      <SearchableSelect
-        id="program"
-        label="Program"
-        value={formData.program}
-        onChange={(value) => changeFormData("program", value)}
-        options={PROGRAM_OPTIONS}
-        placeholder="Type to search UNSW programs..."
-        // error={errors.program}
-        required
-        searchFunction={(query) => {
-          const results = programDataService.searchPrograms(query);
-          return results.map((p) => ({ value: p.value, label: p.label }));
-        }}
-        popularOptions={programDataService
-          .getPopularPrograms()
-          .map((p) => ({ value: p.value, label: p.label }))}
-      />
+          <SearchableSelect
+            id="program"
+            label="Program"
+            value={formData.program}
+            onChange={(value) => changeFormData("program", value)}
+            options={PROGRAM_OPTIONS}
+            placeholder="Type to search UNSW programs..."
+            // error={errors.program}
+            required
+            searchFunction={(query) => {
+              const results = programDataService.searchPrograms(query);
+              return results.map((p) => ({ value: p.value, label: p.label }));
+            }}
+            popularOptions={programDataService
+              .getPopularPrograms()
+              .map((p) => ({ value: p.value, label: p.label }))}
+          />
 
-      <SearchableSelect
-        id="major"
-        label="Major"
-        value={formData.major}
-        onChange={(value) => changeFormData("major", value)}
-        options={MAJOR_OPTIONS}
-        placeholder="Type to search majors/specializations..."
-        // error={errors.major}
-        required
-        searchFunction={(query) =>
-          programDataService
-            .searchMajors(query)
-            .map((m) => ({ value: m.value, label: m.label }))
-        }
-        popularOptions={programDataService
-          .getPopularMajors()
-          .map((m) => ({ value: m.value, label: m.label }))}
-      />
+          <SearchableSelect
+            id="major"
+            label="Major"
+            value={formData.major}
+            onChange={(value) => changeFormData("major", value)}
+            options={MAJOR_OPTIONS}
+            placeholder="Type to search majors/specializations..."
+            // error={errors.major}
+            required
+            searchFunction={(query) =>
+              programDataService
+                .searchMajors(query)
+                .map((m) => ({ value: m.value, label: m.label }))
+            }
+            popularOptions={programDataService
+              .getPopularMajors()
+              .map((m) => ({ value: m.value, label: m.label }))}
+          />
+        </div>
+      </section>
 
-      <TextInput
-        id="headline"
-        label="Headline"
-        placeholder="Enter your headline"
-        value={formData.headline}
-        onChange={(value) => changeFormData("headline", value)}
-        required
-      />
-      <TextArea
-        id="bio"
-        label="Bio"
-        placeholder="Tell us about yourself"
-        value={formData.bio}
-        onChange={(value) => changeFormData("bio", value)}
-        className="w-full h-52"
-      />
+      {/* Profile Information */}
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Profile Information</h2>
+        <div>
+          <TextInput
+            id="headline"
+            label="Headline"
+            placeholder="Enter your headline"
+            value={formData.headline}
+            onChange={(value) => changeFormData("headline", value)}
+            required
+          />
+          <TextArea
+            id="bio"
+            label="Bio"
+            placeholder="Tell us about yourself"
+            value={formData.bio}
+            onChange={(value) => changeFormData("bio", value)}
+            className="w-full h-52"
+          />
+          <SkillsContainer
+            id="skills"
+            label="Skills"
+            value={formData.skills}
+            onChange={(value) => changeFormData("skills", value)}
+          />
+        </div>
+      </section>
 
       {/* Skills */}
     </div>

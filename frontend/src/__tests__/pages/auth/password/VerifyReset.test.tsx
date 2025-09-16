@@ -55,6 +55,7 @@ describe('VerifyReset', () => {
       register: vi.fn(),
       logout: vi.fn(),
       refreshAuth: vi.fn(),
+      attemptSessionRestore: vi.fn(),
       clearAuth: vi.fn(),
       requestPasswordReset: vi.fn(),
       resetPassword: vi.fn(),

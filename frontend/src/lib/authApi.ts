@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// Prefer configured base URL; fall back to same-origin proxy
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Error Response Schema
 const ErrorResponseSchema = z.object({
@@ -47,6 +48,7 @@ const RegisterResponseSchema = z.object({
 const RefreshResponseSchema = z.object({
   success: z.literal(true),
   accessToken: z.string(),
+  userId: z.string(),
   expiresIn: z.number(),
 });
 
@@ -270,6 +272,12 @@ class AuthApi {
     return this.request('/auth/refresh', {
       method: 'POST',
     }, RefreshResponseSchema);
+  }
+
+  async logout(): Promise<void> {
+    await this.request('/auth/logout', {
+      method: 'POST',
+    });
   }
 
 

@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { authStateManager } from '../../hooks/useAuth';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+// Prefer configured base URL; fall back to same-origin proxy
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 // Error Response Schema
 const ErrorResponseSchema = z.object({
@@ -11,15 +12,15 @@ const ErrorResponseSchema = z.object({
   details: z.any().optional(),
 });
 
-// Profile Me Response Schema (matches backend ProfileObject)
+// Profile Me Response Schema (matches backend ProfileObject and OpenAPI spec)
 const ProfileMeResponseSchema = z.object({
   id: z.string(),
   fullName: z.string(),
   handle: z.string().nullable(),
   photoUrl: z.string().nullable(),
   isIndonesian: z.boolean(),
-  programId: z.number().nullable(),
-  majorId: z.number().nullable(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
   level: z.enum(['foundation', 'diploma', 'undergrad', 'postgrad', 'phd']),
   yearStart: z.number(),
   yearGrad: z.number().nullable(),

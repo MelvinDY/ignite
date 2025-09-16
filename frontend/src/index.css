@@ -12,6 +12,10 @@
 }
 
 @layer utilities {
+  .white-card {
+      @apply rounded-xl bg-white shadow-sm border border-gray-200 text-black;
+  }
+  
   .flex-between {
     @apply flex justify-between items-center;
   }

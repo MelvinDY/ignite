@@ -2,6 +2,53 @@ import { http, HttpResponse } from 'msw';
 
 const API_BASE_URL = 'http://localhost:3001/api';
 
+// Mock profile data - matches ProfileMe schema
+const mockProfile = {
+  id: 'profile-123',
+  fullName: 'John Doe',
+  handle: 'john.doe',
+  photoUrl: null,
+  isIndonesian: true,
+  program: 'Computer Science',
+  major: 'Software Engineering',
+  level: 'undergrad',
+  yearStart: 2022,
+  yearGrad: null,
+  zid: 'z1234567',
+  headline: null,
+  domicileCity: null,
+  domicileCountry: null,
+  bio: 'Computer Science student passionate about technology and innovation.',
+  socialLinks: {},
+  createdAt: '2023-01-01T00:00:00Z',
+  updatedAt: '2023-01-01T00:00:00Z',
+  experience: [
+    {
+      id: 'exp-1',
+      title: 'Software Engineering Intern',
+      company: 'Tech Corp',
+      description: 'Worked on developing web applications using React and Node.js.',
+      start_date: '2023-06-01T00:00:00Z',
+      end_date: '2023-08-31T00:00:00Z',
+      is_current: false,
+    },
+    {
+      id: 'exp-2',
+      title: 'Frontend Developer',
+      company: 'Startup Inc',
+      description: 'Currently working on building user interfaces for mobile applications.',
+      start_date: '2023-09-01T00:00:00Z',
+      end_date: null,
+      is_current: true,
+    },
+  ],
+  skills: [
+    { id: 'skill-1', name: 'React', category: 'Framework' },
+    { id: 'skill-2', name: 'TypeScript', category: 'Programming' },
+    { id: 'skill-3', name: 'Node.js', category: 'Technical' },
+  ],
+};
+
 export const handlers = [
   // Login success
   http.post(`${API_BASE_URL}/auth/login`, async ({ request }) => {
@@ -272,6 +319,66 @@ export const handlers = [
       },
       { status: 401 }
     );
+  }),
+
+  // Profile endpoints
+  http.get(`${API_BASE_URL}/profile/me`, () => {
+    return HttpResponse.json(mockProfile);
+  }),
+
+  http.get(`${API_BASE_URL}/profile/:handle`, ({ params }) => {
+    const { handle } = params;
+    
+    if (handle === 'john.doe') {
+      return HttpResponse.json({
+        success: true,
+        profile: mockProfile,
+      });
+    }
+    
+    if (handle === 'nonexistent') {
+      return HttpResponse.json(
+        { code: 'PROFILE_NOT_FOUND', message: 'Profile not found' },
+        { status: 404 }
+      );
+    }
+
+    return HttpResponse.json({
+      success: true,
+      profile: { ...mockProfile, handle: handle as string },
+    });
+  }),
+
+  http.get(`${API_BASE_URL}/handle/check`, ({ request }) => {
+    const url = new URL(request.url);
+    const handle = url.searchParams.get('handle');
+    
+    const takenHandles = ['admin', 'test', 'john.doe', 'taken'];
+    const available = handle ? !takenHandles.includes(handle) : false;
+    
+    return HttpResponse.json({
+      success: true,
+      available,
+    });
+  }),
+
+  http.patch(`${API_BASE_URL}/profile/handle`, async ({ request }) => {
+    const body = await request.json() as any;
+    const { handle } = body;
+
+    const takenHandles = ['admin', 'test', 'taken'];
+    
+    if (takenHandles.includes(handle)) {
+      return HttpResponse.json(
+        { code: 'HANDLE_TAKEN', message: 'Handle already taken' },
+        { status: 409 }
+      );
+    }
+
+    return HttpResponse.json({
+      success: true,
+      message: 'Handle updated successfully',
+    });
   }),
 ];
 

@@ -57,8 +57,10 @@ beforeEach(async () => {
 			website: 'https://testuser.dev'
 		},
 		created_at: '2024-01-15T10:30:00Z',
-		updated_at: '2024-03-20T14:45:00Z'
-	};
+		updated_at: '2024-03-20T14:45:00Z',
+		programs: [{ name: 'BE' }],
+		majors:   [{ name: 'Software Engineering' }],
+		};
 
 	// Custom supabase mock for profiles table
 	vi.doMock('../src/lib/supabase', () => ({
@@ -106,8 +108,8 @@ describe('GET /api/profile/me', () => {
 			handle: 'testuser',
 			photoUrl: 'https://example.com/photo.jpg',
 			isIndonesian: true,
-			programId: 2,
-			majorId: 5,
+			program: 'BE',
+			major: 'Software Engineering',
 			level: 'undergrad',
 			yearStart: 2020,
 			yearGrad: 2024,

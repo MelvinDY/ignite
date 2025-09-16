@@ -12,8 +12,9 @@ interface AuthState {
 interface AuthContextType extends AuthState {
   login: (credentials: LoginRequest) => Promise<void>;
   register: (userData: RegisterRequest) => Promise<{ resumeToken: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  attemptSessionRestore: () => Promise<boolean>;
   clearAuth: () => void;
   // Password reset helpers
   requestPasswordReset: (email: string) => Promise<{ message: string }>;
@@ -25,16 +26,42 @@ interface AuthContextType extends AuthState {
 
 // Create a singleton auth state to persist across component rerenders
 class AuthStateManager {
-  private state: AuthState = {
-    accessToken: null,
-    userId: null,
-    expiresAt: null,
-    isAuthenticated: false,
-    isLoading: false,
-  };
-
+  private state: AuthState;
   private listeners: Set<() => void> = new Set();
   private refreshTimer: NodeJS.Timeout | null = null;
+  private readonly STORAGE_KEY = 'auth_state';
+
+  constructor() {
+    // Load state from localStorage or use default
+    const storedState = this.loadFromStorage();
+    this.state = storedState || {
+      accessToken: null,
+      userId: null,
+      expiresAt: null,
+      isAuthenticated: false,
+      isLoading: false,
+    };
+
+    // If we have valid auth state from storage, schedule refresh
+    if (this.state.isAuthenticated && this.state.expiresAt && this.state.accessToken) {
+      const timeUntilExpiry = this.state.expiresAt - Date.now();
+      if (timeUntilExpiry > 60000) { // Only if more than 1 minute left
+        this.scheduleRefresh(timeUntilExpiry / 1000);
+      } else {
+        // Token expired or expiring soon, but don't clear auth immediately
+        // Let the app attempt session restoration with refresh token cookie
+        console.log('Stored token expired or expiring soon, will attempt refresh token restoration');
+        this.state = {
+          accessToken: null,
+          userId: null,
+          expiresAt: null,
+          isAuthenticated: false,
+          isLoading: false, // Will be set to true when App.tsx calls refreshAuth
+        };
+        this.clearStorage(); // Clear invalid localStorage data
+      }
+    }
+  }
 
   getState(): AuthState {
     return { ...this.state };
@@ -42,6 +69,7 @@ class AuthStateManager {
 
   setState(newState: Partial<AuthState>) {
     this.state = { ...this.state, ...newState };
+    this.saveToStorage();
     this.notifyListeners();
   }
 
@@ -74,6 +102,7 @@ class AuthStateManager {
       isAuthenticated: false,
       isLoading: false,
     });
+    this.clearStorage();
     this.cancelRefresh();
   }
 
@@ -89,12 +118,16 @@ class AuthStateManager {
   }
 
   private async performRefresh() {
+    //Setting loading to true when refreshing
+    this.setLoading(true);
     try {
       const response = await authApi.refresh();
-      this.setAuth(response.accessToken, this.state.userId!, response.expiresIn);
+      this.setAuth(response.accessToken, response.userId, response.expiresIn);
     } catch (error) {
       console.error('Token refresh failed:', error);
       this.clearAuth();
+    } finally {
+      this.setLoading(false);
     }
   }
 
@@ -106,7 +139,85 @@ class AuthStateManager {
   }
 
   setLoading(isLoading: boolean) {
-    this.setState({ isLoading });
+    // Don't persist loading state to localStorage
+    this.state = { ...this.state, isLoading };
+    this.notifyListeners();
+  }
+
+  private loadFromStorage(): AuthState | null {
+    try {
+      const stored = localStorage.getItem(this.STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Validate that the stored state has the expected structure and valid data
+        if (parsed && 
+            typeof parsed === 'object' && 
+            parsed.accessToken && 
+            parsed.userId && 
+            parsed.expiresAt && 
+            typeof parsed.expiresAt === 'number' &&
+            parsed.expiresAt > Date.now()) {
+          return {
+            ...parsed,
+            isLoading: false, // Never persist loading state
+          };
+        } else {
+          // Invalid or expired stored data, clear it
+          console.log('Invalid or expired auth data in localStorage, clearing');
+          this.clearStorage();
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load auth state from localStorage:', error);
+      this.clearStorage();
+    }
+    return null;
+  }
+
+  private saveToStorage() {
+    try {
+      // Only save persistent state (exclude loading)
+      const { isLoading, ...persistentState } = this.state;
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(persistentState));
+    } catch (error) {
+      console.error('Failed to save auth state to localStorage:', error);
+    }
+  }
+
+  private clearStorage() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to clear auth state from localStorage:', error);
+    }
+  }
+
+  // Check if we should attempt session restoration on app startup
+  shouldAttemptRestore(): boolean {
+    // Only attempt if we're not already authenticated and not currently loading
+    return !this.state.isAuthenticated && !this.state.isLoading;
+  }
+
+  // Attempt session restoration - this will be called by App.tsx on startup
+  async attemptSessionRestore(): Promise<boolean> {
+    if (!this.shouldAttemptRestore()) {
+      console.log('Skipping session restore - already authenticated or loading');
+      return this.state.isAuthenticated;
+    }
+
+    this.setLoading(true);
+    try {
+      console.log('Attempting to restore session from refresh token cookie...');
+      const response = await authApi.refresh();
+      this.setAuth(response.accessToken, response.userId, response.expiresIn);
+      console.log('Session restored successfully from refresh token');
+      return true;
+    } catch (error) {
+      console.log('No valid refresh token found - user needs to log in');
+      // Clear any remaining auth state to ensure clean slate
+      this.clearAuth();
+      return false;
+    }
   }
 }
 
@@ -155,20 +266,37 @@ export function useAuth(): AuthContextType {
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    // Clear frontend auth state immediately for responsive UI
     authStateManager.clearAuth();
+    
+    // Call backend logout to clear HttpOnly cookie
+    // Don't await or handle errors - if this fails, the frontend is still logged out
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Backend logout failed:', error);
+      // Frontend state is already cleared, so this is not critical
+    }
   }, []);
 
   const refreshAuth = useCallback(async (): Promise<void> => {
+    //Set loading to true when refreshing auth
+    authStateManager.setLoading(true);
     try {
       const response = await authApi.refresh();
-      const currentUserId = authStateManager.getState().userId;
-      authStateManager.setAuth(response.accessToken, currentUserId!, response.expiresIn);
+      authStateManager.setAuth(response.accessToken, response.userId, response.expiresIn);
     } catch (error) {
       console.error('Manual refresh failed:', error);
       authStateManager.clearAuth();
       throw error;
+    } finally {
+      authStateManager.setLoading(false);
     }
+  }, []);
+
+  const attemptSessionRestore = useCallback(async (): Promise<boolean> => {
+    return await authStateManager.attemptSessionRestore();
   }, []);
 
   const clearAuth = useCallback(() => {
@@ -207,6 +335,7 @@ export function useAuth(): AuthContextType {
     register,
     logout,
     refreshAuth,
+    attemptSessionRestore,
     clearAuth,
     requestPasswordReset,
     verifyPasswordOtp,

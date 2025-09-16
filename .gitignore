@@ -46,6 +46,8 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+.backend.pid
+.frontend.pid
 
 # Cache directories
 .cache/
@@ -60,3 +62,6 @@ coverage/
 
 # Claude Code
 .claude/
+
+# Cookie files
+cookies.txt

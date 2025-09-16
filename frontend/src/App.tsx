@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
 import AddUser from "./components/AddUser";
 import { Route, Routes } from "react-router-dom";
@@ -14,13 +14,27 @@ import { VerifyReset } from "./pages/auth/password/VerifyReset";
 import { ResetPassword } from "./pages/auth/password/ResetPassword";
 import { ProfileEdit } from "./pages/ProfileEdit";
 import { FeedPage } from "./pages/FeedPage";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { HandleSetupPage } from "./pages/profile/handle-setup";
+import { MyProfilePage } from "./pages/profile/me";
+import { useAuth } from "./hooks/useAuth";
 
 function App() {
   const [, setRefreshKey] = useState(0);
+  const { attemptSessionRestore } = useAuth();
 
   const handleUserAdded = () => {
     setRefreshKey((prev) => prev + 1);
   };
+
+  // Initialize auth on app startup - attempt to restore session with refresh token cookie
+  useEffect(() => {
+    const initializeAuth = async () => {
+      await attemptSessionRestore();
+    };
+    
+    initializeAuth();
+  }, [attemptSessionRestore]);
 
   return (
     <Routes>
@@ -33,7 +47,10 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
-      <Route path="/feed" element={<FeedPage />} />
+      <Route path="/feed" element={<ProtectedRoute><FeedPage/></ProtectedRoute>}/>
+      <Route path="/profile/handle-setup" element={<HandleSetupPage />} />
+      <Route path="/profile/me" element={<MyProfilePage />} />
+      <Route path="/feed" element={<FeedPage/>}/>
 
       {/* App routes - with navbar/footer */}
       <Route

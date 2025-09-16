@@ -11,7 +11,7 @@ const SearchBar = ({query}: {query? : string}) => {
         autoComplete="off"
         />
         
-        <button type="submit" className=" text-gray-500 hover:text-blue-600">
+        <button type="submit" className=" text-white hover:text-[#fbbf39]">
             <Search className="size-5" />
         </button>
     </div>

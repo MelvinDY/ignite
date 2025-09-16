@@ -170,7 +170,7 @@ export async function updateProfileEducation(profileId: string, eduId: string, u
  * - 'NOT_OWNED' → row exists but belongs to someone else
  * - 'NOOP'      → row does not exist
  */
-export async function deleteEducation(
+export async function deleteProfileEducation(
   profileId: string,
   eduId: string
 ): Promise<'DELETED' | 'NOT_OWNED' | 'NOOP'> {

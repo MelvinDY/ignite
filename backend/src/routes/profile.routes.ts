@@ -25,7 +25,7 @@ import {
   addEducationToProfile,
   getProfileEducations,
   updateProfileEducation,
-  deleteEducation
+  deleteProfileEducation
 } from "../services/educations.service";
 import {
   getProfileExperiences,
@@ -346,16 +346,15 @@ router.patch("/profile/educations/:id", async (req, res) => {
   const userId = authenticateUser(req, res);
   if (!userId) return;
 
+  const eduId = String(req.params.id || '').trim();
+  if (!eduId) {
+    return res.status(404).json({ code: 'NOT_FOUND' });
+  }
+
   // Validate request body
   const parsed = UpdateEducationSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ code: "VALIDATION_ERROR" });
-  }
-
-  // Get education id
-  const eduId = req.params.id;
-  if (!eduId) {
-    return res.status(404).json({ code: "NOT_FOUND" });
   }
 
   try {
@@ -384,7 +383,7 @@ router.delete('/profile/educations/:id', async (req, res) => {
   }
 
   try {
-    const result = await deleteEducation(userId, eduId);
+    const result = await deleteProfileEducation(userId, eduId);
 
     if (result === 'NOT_OWNED') {
       return res.status(404).json({ code: 'NOT_FOUND' });

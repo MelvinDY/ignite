@@ -94,9 +94,97 @@ export const UpdateEducationSchema = z.object({
   path: ["endMonth"]
 });
 
+export const CreateExperienceSchema = z.object({
+  roleTitle: z.string().min(1).max(120),
+  company: z.string().min(1).max(120),
+  fieldOfWork: z.string().min(1).max(120).optional(),
+
+  employmentType: z.enum([
+    'full_time', 'part_time', 'contract', 'internship', 'temporary', 'volunteer', 'freelance'
+  ]).optional(),
+
+  locationCity: z.string().optional(),
+  locationCountry: z.string().regex(/^[A-Z]{2}$/).optional(), // ISO-3166-1 alpha-2
+  locationType: z.enum(['on_site', 'remote', 'hybrid']).optional(),
+
+  startMonth: z.number().int().min(1).max(12),
+  startYear: z.number().int().min(1900).max(2100),
+
+  endMonth: z.number().int().min(1).max(12).nullable().optional(),
+  endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+
+  isCurrent: z.boolean(),
+  description: z.string().max(2000).optional(),
+}).superRefine((v, ctx) => {
+  const endProvided = v.endMonth != null || v.endYear != null;
+
+  if (v.isCurrent) {
+    if (endProvided) {
+      ctx.addIssue({
+        code: 'custom',
+        message: "When isCurrent is true, endMonth/endYear must be omitted",
+        path: ['endMonth']
+      });
+      ctx.addIssue({
+        code: 'custom',
+        message: "When isCurrent is true, endMonth/endYear must be omitted",
+        path: ['endYear']
+      });
+    }
+    return;
+  }
+
+  // isCurrent = false → both endMonth & endYear required
+  if (v.endMonth == null || v.endYear == null) {
+    if (v.endMonth == null) {
+      ctx.addIssue({ code: 'custom', message: "endMonth is required when isCurrent is false", path: ['endMonth'] });
+    }
+    if (v.endYear == null) {
+      ctx.addIssue({ code: 'custom', message: "endYear is required when isCurrent is false", path: ['endYear'] });
+    }
+    return;
+  }
+
+  // chronological check
+  const startNum = v.startYear * 12 + (v.startMonth - 1);
+  const endNum = v.endYear * 12 + (v.endMonth - 1);
+  if (endNum < startNum) {
+    ctx.addIssue({
+      code: 'custom',
+      message: "End date must be same month or after start date",
+      path: ['endYear']
+    });
+  }
+});
+
+export const UpdateExperienceSchema = z.object({
+  roleTitle: z.string().min(1).max(120).optional(),
+  company: z.string().min(1).max(120).optional(),
+  fieldOfWork: z.string().min(1).max(120).optional(),
+
+  employmentType: z.enum([
+    'full_time', 'part_time', 'contract', 'internship', 'temporary', 'volunteer', 'freelance'
+  ]).optional(),
+
+  locationCity: z.string().optional(),
+  locationCountry: z.string().regex(/^[A-Z]{2}$/).optional(), // ISO-3166-1 alpha-2
+  locationType: z.enum(['on_site', 'remote', 'hybrid']).optional(),
+
+  startMonth: z.number().int().min(1).max(12).optional(),
+  startYear: z.number().int().min(1900).max(2100).optional(),
+
+  endMonth: z.number().int().min(1).max(12).nullable().optional(),
+  endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+
+  isCurrent: z.boolean().optional(),
+  description: z.string().max(2000).optional(),
+});
+
 export type HandleInput = z.infer<typeof HandleSchema>;
 export type UpdateProfileInput = z.infer<typeof UpdateProfileSchema>;
 export type SocialLinksInput = z.infer<typeof SocialLinksSchema>;
 export type UpdateSocialLinksInput = z.infer<typeof UpdateSocialLinksSchema>;
 export type AddEducationInput = z.infer<typeof AddEducationSchema>;
+export type CreateExperienceInput = z.infer<typeof CreateExperienceSchema>;
+export type UpdateExperienceInput = z.infer<typeof UpdateExperienceSchema>;
 export type UpdateEducationInput = z.infer<typeof UpdateEducationSchema>;

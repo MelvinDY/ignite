@@ -1553,6 +1553,209 @@ paths:
                   value:
                     code: NOT_AUTHENTICATED
 
+    post:
+      tags: ["Profile"]
+      summary: Add an education to the authenticated user's profile
+      description: |
+        Creates a new education record for the authenticated user. 
+        
+        **Validation:**
+        - `school`: Required, 1-30 characters
+        - `startMonth`: Required, 1-12
+        - `startYear`: Required, 1900-2100
+        - `endMonth`, `endYear`: Both must be provided or both must be null
+        - End date must be same as or after start date
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddEducationRequest"
+            examples:
+              complete_education:
+                summary: Current student (no end date)
+                value:
+                  school: "UNSW"
+                  program: "Bachelor of Engineering"
+                  major: "Software Engineering"
+                  startMonth: 2
+                  startYear: 2022
+                  endMonth: 2
+                  endYear: 2026
+      responses:
+        "201":
+          description: Education added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, id]
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  id:
+                    type: string
+                    description: Unique education record identifier
+                    example: "edu_456"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidationError"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    details:
+                      school: ["Required"]
+                      endMonth: ["If either endMonth or endYear is provided, both must be present"]
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+
+  /profile/educations/{id}:
+    patch:
+      tags: ["Profile"]
+      summary: Update an education record
+      description: |
+        Updates an existing education record for the authenticated user.
+        Only provided fields are updated (partial update).
+        
+        **Validation:**
+        - `school`: 1-30 characters
+        - `program`: valid string
+        - `major`: valid string
+        - `endMonth`, `endYear`: Both must be provided or both must be null
+        - End date must be same as or after start date if both start and end are provided
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Education record ID to update
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEducationRequest"
+            examples:
+              complete_update:
+                value:
+                  school: "University of Sydney"
+                  program: "Master of Information Technology"
+                  major: "Cybersecurity"
+                  endMonth: 12
+                  endYear: 2024
+      responses:
+        "200":
+          description: Education updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Education record not found or not owned by user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
+    delete:
+      tags: ["Profile"]
+      summary: Delete an education record
+      description: |
+        Deletes an education record owned by the authenticated user.
+        
+        **Idempotent:** Returns 200 if education is already deleted.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Education record ID to delete
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Education deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Not found / not owned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_FOUND
+
   /profile/social-links:
     patch:
       tags: ["Profile"]
@@ -1595,6 +1798,234 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorSimple" }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/experiences:
+    get:
+      tags: ["Profile"]
+      summary: List all experiences for the authenticated user
+      description: |
+        Returns all experiences for the **authenticated** user.
+        Sorted by:
+        - `isCurrent` **DESC**
+        - `endYear` **DESC** `NULLS LAST`
+        - `endMonth` **DESC** `NULLS LAST`
+        - `startYear` **DESC**
+        - `startMonth` **DESC**
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Experiences for the current user (returns [] if empty)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Experience"
+              examples:
+                example:
+                  value:
+                    - id: "exp_123"
+                      title: "Software Engineer"
+                      company: "Acme Corp"
+                      fieldOfWork: "Software Engineering"
+                      startMonth: 2
+                      startYear: 2023
+                      endMonth: null
+                      endYear: null
+                      isCurrent: true
+                      employmentType: "Full Time"
+                      locationCity: "Sydney"
+                      locationCountry: "AU"
+                      locationType: "Hybrid"
+                      description: "Backend APIs and auth services."
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      tags: ["Profile"]
+      summary: Add a new experience for the authenticated user
+      description: |
+        Create a new work/volunteer experience for the authenticated user.
+
+        **Date rules**
+        - If `isCurrent` is **true**, `endMonth` and `endYear` must be omitted.
+        - If `isCurrent` is **false**, both `endMonth` and `endYear` are required.
+        - `(endYear, endMonth)` must be the same month or after `(startYear, startMonth)`.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperienceCreateRequest"
+            examples:
+              valid:
+                value:
+                  roleTitle: "Backend Developer"
+                  company: "Techify"
+                  fieldOfWork: "Software Engineering"
+                  employmentType: "internship"
+                  locationCity: "Jakarta"
+                  locationCountry: "ID"
+                  locationType: "on_site"
+                  startMonth: 6
+                  startYear: 2022
+                  endMonth: 1
+                  endYear: 2023
+                  isCurrent: false
+                  description: "Worked on authentication and session services."
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, id]
+                properties:
+                  success: { type: boolean }
+                  id: { type: string, description: "Experience id (uuid)" }
+              examples:
+                created:
+                  value: { success: true, id: "exp_456" }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad_payload: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /profile/experiences/{id}:
+    patch:
+      tags: ["Profile"]
+      summary: Update one existing experience for the authenticated user
+      description: |
+        Partial update for a single experience owned by the authenticated user.
+
+        **Validation**
+        - Same rules as create:
+          - If `isCurrent` is **true**, `endMonth` and `endYear` must be omitted.
+          - If `isCurrent` is **false**, both `endMonth` and `endYear` are required.
+          - `(endYear, endMonth)` must be the same month or after `(startYear, startMonth)`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, description: "Experience id (uuid)" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperienceUpdateRequest"
+            examples:
+              sample:
+                value:
+                  roleTitle: "Senior Backend Developer"
+                  isCurrent: true
+                  endMonth: null
+                  endYear: null
+                  employmentType: "full_time"
+                  locationType: "hybrid"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+              examples:
+                ok: { value: { success: true } }
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                bad: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Experience not found or not owned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    delete:
+      tags: ["Profile"]
+      summary: Delete one experience for the authenticated user
+      description: >
+        Deletes an experience by `id` if it belongs to the authenticated user.
+
+        Idempotent: deleting an already-deleted `id` still returns 200.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, description: "Experience id (uuid)" }
+      responses:
+        "200":
+          description: Deleted (or already deleted)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean }
+              examples:
+                ok: { value: { success: true } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Not found or not owned
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -2654,6 +3085,87 @@ components:
           description: User's bio or about section
           example: "I ship boring, reliable services."
 
+    AddEducationRequest:
+      type: object
+      required:
+        - school
+        - program
+        - major
+        - startMonth
+        - startYear
+      properties:
+        school:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Name of the school
+          example: "UNSW"
+        program:
+          type: string
+          minLength: 1
+          description: Name of the academic program
+          example: "Bachelor of Engineering"
+        major:
+          type: string
+          minLength: 1
+          description: Name of the major
+          example: "Software Engineering"
+        startMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          description: Month when the education started
+          example: 2
+        startYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          description: Year when the education started
+          example: 2022
+        endMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: Month when the education ended
+          example: null
+        endYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          nullable: true
+          description: Year when the education ended
+          example: null
+
+    UpdateEducationRequest:
+      type: object
+      properties:
+        school:
+          type: string
+          minLength: 1
+          maxLength: 30
+          description: Name of the school
+        program:
+          type: string
+          minLength: 1
+          description: Name of the academic program
+        major:
+          type: string
+          minLength: 1
+          description: Name of the major
+        endMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: Month when the education ended
+        endYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+          nullable: true
+          description: Year when the education ended
+
     Education:
       type: object
       required:
@@ -2706,3 +3218,95 @@ components:
           maximum: 2100
           description: Year when the education ended
           example: null
+    
+    Experience:
+          type: object
+          required:
+            - id
+            - title
+            - startMonth
+            - startYear
+            - isCurrent
+          properties:
+            id:            { type: string, description: "Experience id (uuid)" }
+            title:         { type: string, description: "Role title" }
+            company:       { type: string, nullable: true }
+            fieldOfWork:   { type: string, nullable: true }
+            startMonth:    { type: integer, minimum: 1, maximum: 12 }
+            startYear:     { type: integer, minimum: 1900, maximum: 2100 }
+            endMonth:      { type: integer, nullable: true, minimum: 1, maximum: 12 }
+            endYear:       { type: integer, nullable: true, minimum: 1900, maximum: 2100 }
+            isCurrent:     { type: boolean, description: "Is currently employed here?" }
+            employmentType: { type: string, nullable: true, description: "Full Time, Part Time, Contract, Internship, etc." }
+            locationCity:  { type: string, nullable: true }
+            locationCountry: { type: string, nullable: true, minLength: 2, maxLength: 2 }
+            locationType:  { type: string, nullable: true, description: "Onsite, Remote, Hybrid" }
+            description:   { type: string, nullable: true }
+
+    ExperienceCreateRequest:
+      type: object
+      required:
+        - roleTitle
+        - company
+        - startMonth
+        - startYear
+        - isCurrent
+      properties:
+        roleTitle:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: "maps to experiences.role_title"
+        company:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: "lookup → companies.id"
+        fieldOfWork:
+          type: string
+          minLength: 1
+          maxLength: 120
+          nullable: true
+          description: "lookup → fields_of_work.id (optional)"
+        employmentType:
+          type: string
+          nullable: true
+          enum: [full_time, part_time, contract, internship, temporary, volunteer, freelance]
+        locationCity:
+          type: string
+          nullable: true
+        locationCountry:
+          type: string
+          nullable: true
+          minLength: 2
+          maxLength: 2
+          pattern: '^[A-Z]{2}$'
+        locationType:
+          type: string
+          nullable: true
+          enum: [on_site, remote, hybrid]
+        startMonth:
+          type: integer
+          minimum: 1
+          maximum: 12
+        startYear:
+          type: integer
+          minimum: 1900
+          maximum: 2100
+        endMonth:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 12
+        endYear:
+          type: integer
+          nullable: true
+          minimum: 1900
+          maximum: 2100
+        isCurrent:
+          type: boolean
+          description: "Is currently employed here?"
+        description:
+          type: string
+          nullable: true
+          maxLength: 2000

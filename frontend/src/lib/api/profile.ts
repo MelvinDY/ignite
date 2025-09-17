@@ -34,6 +34,23 @@ const ProfileMeResponseSchema = z.object({
   updatedAt: z.string(),
 });
 
+// Public profile (by slug/handle)
+const PublicProfileResponseSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  handle: z.string(),
+  photoUrl: z.string().nullable(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
+  level: z.enum(["foundation", "diploma", "undergrad", "postgrad", "phd"]),
+  yearStart: z.number(),
+  yearGrad: z.number().nullable(),
+  headline: z.string().nullable(),
+  domicileCity: z.string().nullable(),
+  bio: z.string().nullable(),
+  socialLinks: z.any(),
+});
+
 // Handle Check Response Schema
 const HandleCheckResponseSchema = z.object({
   available: z.boolean(),
@@ -121,6 +138,7 @@ const AddEducationResponseSchema = z.object({
 
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
+export type PublicProfile = z.infer<typeof PublicProfileResponseSchema>;
 export type HandleCheckResponse = z.infer<typeof HandleCheckResponseSchema>;
 export type UpdateHandleRequest = z.infer<typeof UpdateHandleRequestSchema>;
 export type UpdateHandleResponse = z.infer<typeof UpdateHandleResponseSchema>;
@@ -261,6 +279,20 @@ class ProfileApi {
       ProfileMeResponseSchema
     );
   }
+
+  async getPublicProfile(handle: string): Promise<PublicProfile> {
+    return this.request(
+      `/profile/public/${encodeURIComponent(handle)}`,
+      {
+        method: "GET",
+      },
+      PublicProfileResponseSchema
+    );
+  }
+
+  // No public-by-handle endpoint; slug route reuses getMyProfile()
+
+  // Removed public profile endpoint; use getMyProfile for authenticated users
 
   async checkHandleAvailability(handle: string): Promise<boolean> {
     const response = await this.request(

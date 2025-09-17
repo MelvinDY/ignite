@@ -16,6 +16,7 @@ import { ProfileEdit } from "./pages/ProfileEdit";
 import { FeedPage } from "./pages/feed/FeedPage";
 import { HandleSetupPage } from "./pages/profile/handle-setup";
 import { MyProfilePage } from "./pages/profile/me";
+import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
       <Route path="/feed" element={<FeedPage/>}/>
       <Route path="/profile/handle-setup" element={<HandleSetupPage />} />
       <Route path="/profile/me" element={<MyProfilePage />} />
+      <Route path="/profile/:slug" element={<PublicProfilePage />} />
       <Route path="/feed" element={<FeedPage/>}/>
 
       {/* App routes - with navbar/footer */}

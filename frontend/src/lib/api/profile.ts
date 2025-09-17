@@ -1,8 +1,8 @@
-import { z } from 'zod';
-import { authStateManager } from '../../hooks/useAuth';
+import { z } from "zod";
+import { authStateManager } from "../../hooks/useAuth";
 
 // Prefer configured base URL; fall back to same-origin proxy
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 // Error Response Schema
 const ErrorResponseSchema = z.object({
@@ -21,7 +21,7 @@ const ProfileMeResponseSchema = z.object({
   isIndonesian: z.boolean(),
   program: z.string().nullable(),
   major: z.string().nullable(),
-  level: z.enum(['foundation', 'diploma', 'undergrad', 'postgrad', 'phd']),
+  level: z.enum(["foundation", "diploma", "undergrad", "postgrad", "phd"]),
   yearStart: z.number(),
   yearGrad: z.number().nullable(),
   zid: z.string(),
@@ -34,6 +34,23 @@ const ProfileMeResponseSchema = z.object({
   updatedAt: z.string(),
 });
 
+// Public profile (by slug/handle)
+const PublicProfileResponseSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  handle: z.string(),
+  photoUrl: z.string().nullable(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
+  level: z.enum(["foundation", "diploma", "undergrad", "postgrad", "phd"]),
+  yearStart: z.number(),
+  yearGrad: z.number().nullable(),
+  headline: z.string().nullable(),
+  domicileCity: z.string().nullable(),
+  bio: z.string().nullable(),
+  socialLinks: z.any(),
+});
+
 // Handle Check Response Schema
 const HandleCheckResponseSchema = z.object({
   available: z.boolean(),
@@ -41,7 +58,11 @@ const HandleCheckResponseSchema = z.object({
 
 // Update Handle Request Schema
 const UpdateHandleRequestSchema = z.object({
-  handle: z.string().min(3).max(30).regex(/^[a-z0-9._-]+$/),
+  handle: z
+    .string()
+    .min(3)
+    .max(30)
+    .regex(/^[a-z0-9._-]+$/),
 });
 
 const UpdateHandleResponseSchema = z.object({
@@ -49,34 +70,114 @@ const UpdateHandleResponseSchema = z.object({
   handle: z.string(),
 });
 
+const SkillsResponseSchema = z.array(
+  z.object({
+    id: z.number(),
+    name: z.string(),
+  })
+);
+
+const UpdateSkillsResponseSchema = z.object({
+  success: z.literal(true),
+  id: z.number().int(),
+  name: z.string(),
+});
+
+const EducationSchema = z.object ({
+  id: z.string(),
+  school: z.string(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
+  startMonth: z.number().int().min(1).max(12),
+  startYear: z.number().int(),
+  endMonth: z.number().int().min(1).max(12).nullable(),
+  endYear: z.number().int().nullable(),
+});
+
+const ProfileEducationResponseSchema = z.array(EducationSchema);
+
+const AddEducationRequestSchema = z.object({
+  school: z.string().min(1).max(30),
+  program: z.string().min(1).transform(v => v.trim()),
+  major: z.string().min(1).transform(v => v.trim()),
+  startMonth: z.number().int().min(1).max(12),
+  startYear: z.number().int().min(1900).max(2100),
+  endMonth: z.number().int().min(1).max(12).nullable(),
+  endYear: z.number().int().min(1900).max(2100).nullable(),
+}).superRefine((v, ctx) => {
+  // both endMonth/endYear must be present or both null
+  const bothOrNeither =
+    (v.endMonth == null && v.endYear == null) ||
+    (v.endMonth != null && v.endYear != null);
+  if (!bothOrNeither) {
+    ctx.addIssue({
+      code: "custom",                         // <- use string literal
+      message: "If either endMonth or endYear is provided, both must be present",
+      path: ["endMonth"],
+    });
+  }
+
+  // if provided, end must be >= start
+  if (v.endMonth != null && v.endYear != null) {
+    const start = v.startYear * 12 + (v.startMonth - 1);
+    const end   = v.endYear  * 12 + (v.endMonth  - 1);
+    if (end < start) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End date must be same as or after start date",
+        path: ["endYear"],
+      });
+    }
+  }
+});
+
+const AddEducationResponseSchema = z.object({
+  success: z.literal(true),
+  id: z.string(),
+})
 
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
+export type PublicProfile = z.infer<typeof PublicProfileResponseSchema>;
 export type HandleCheckResponse = z.infer<typeof HandleCheckResponseSchema>;
 export type UpdateHandleRequest = z.infer<typeof UpdateHandleRequestSchema>;
 export type UpdateHandleResponse = z.infer<typeof UpdateHandleResponseSchema>;
+export type ProfileSkills = z.infer<typeof SkillsResponseSchema>;
+export type UpdateSkillsResponse = z.infer<typeof UpdateSkillsResponseSchema>;
+export type Education = z.infer<typeof EducationSchema>;
+export type ProfileEducationResponse = z.infer<typeof ProfileEducationResponseSchema>;
+export type AddEducationRequest = z.infer<typeof AddEducationRequestSchema>;
+export type AddEducationResponse = z.infer<typeof AddEducationResponseSchema>;
 
 // Error types
 export type ProfileError = {
   success: false;
-  code: 'HANDLE_TAKEN' | 'HANDLE_INVALID' | 'PROFILE_NOT_FOUND' | 'NOT_AUTHENTICATED' | 'UNAUTHORIZED' | 'VALIDATION_ERROR' | 'NETWORK_ERROR' | 'UNKNOWN_ERROR';
+  code:
+    | "HANDLE_TAKEN"
+    | "HANDLE_INVALID"
+    | "PROFILE_NOT_FOUND"
+    | "NOT_AUTHENTICATED"
+    | "UNAUTHORIZED"
+    | "VALIDATION_ERROR"
+    | "NETWORK_ERROR"
+    | "UNKNOWN_ERROR";
   message: string;
   details?: any;
 };
 
 export class ProfileApiError extends Error {
-  public readonly code: ProfileError['code'];
+  public readonly code: ProfileError["code"];
   public readonly status: number;
   public readonly details?: any;
 
   constructor(
-    code: ProfileError['code'],
+    code: ProfileError["code"],
     status: number,
     message: string,
     details?: any
   ) {
     super(message);
-    this.name = 'ProfileApiError';
+    this.name = "ProfileApiError";
     this.code = code;
     this.status = status;
     this.details = details;
@@ -87,23 +188,23 @@ class ProfileApi {
   private getAuthHeaders(): HeadersInit {
     // Get access token from auth state manager
     const authState = authStateManager.getState();
-    const token = authState.accessToken || '';
+    const token = authState.accessToken || "";
     return {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     };
   }
 
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {},
     responseSchema?: z.ZodSchema<T>
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     const config: RequestInit = {
-      credentials: 'include',
+      credentials: "include",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...this.getAuthHeaders(),
         ...options.headers,
       },
@@ -112,32 +213,44 @@ class ProfileApi {
 
     try {
       const response = await fetch(url, config);
-      
+
       let data: unknown;
       try {
         data = await response.json();
       } catch {
-        throw new ProfileApiError('NETWORK_ERROR', response.status, 'Invalid JSON response');
+        throw new ProfileApiError(
+          "NETWORK_ERROR",
+          response.status,
+          "Invalid JSON response"
+        );
       }
 
       if (!response.ok) {
         const errorResult = ErrorResponseSchema.safeParse(data);
         if (errorResult.success) {
           throw new ProfileApiError(
-            errorResult.data.code as ProfileError['code'],
+            errorResult.data.code as ProfileError["code"],
             response.status,
             errorResult.data.message || `Error: ${errorResult.data.code}`,
             errorResult.data.details
           );
         }
-        throw new ProfileApiError('UNKNOWN_ERROR', response.status, 'Unknown error occurred');
+        throw new ProfileApiError(
+          "UNKNOWN_ERROR",
+          response.status,
+          "Unknown error occurred"
+        );
       }
 
       if (responseSchema) {
         const result = responseSchema.safeParse(data);
         if (!result.success) {
-          console.error('Response validation failed:', result.error);
-          throw new ProfileApiError('UNKNOWN_ERROR', 200, 'Invalid response format');
+          console.error("Response validation failed:", result.error);
+          throw new ProfileApiError(
+            "UNKNOWN_ERROR",
+            200,
+            "Invalid response format"
+          );
         }
         return result.data;
       }
@@ -147,32 +260,125 @@ class ProfileApi {
       if (error instanceof ProfileApiError) {
         throw error;
       }
-      
+
       // Network or other errors
-      throw new ProfileApiError('NETWORK_ERROR', 0, 'Unable to connect to server');
+      throw new ProfileApiError(
+        "NETWORK_ERROR",
+        0,
+        "Unable to connect to server"
+      );
     }
   }
 
   async getMyProfile(): Promise<ProfileMe> {
-    return this.request('/profile/me', {
-      method: 'GET',
-    }, ProfileMeResponseSchema);
+    return this.request(
+      "/profile/me",
+      {
+        method: "GET",
+      },
+      ProfileMeResponseSchema
+    );
   }
 
+  async getPublicProfile(handle: string): Promise<PublicProfile> {
+    return this.request(
+      `/profile/public/${encodeURIComponent(handle)}`,
+      {
+        method: "GET",
+      },
+      PublicProfileResponseSchema
+    );
+  }
+
+  // No public-by-handle endpoint; slug route reuses getMyProfile()
+
+  // Removed public profile endpoint; use getMyProfile for authenticated users
+
   async checkHandleAvailability(handle: string): Promise<boolean> {
-    const response = await this.request(`/handles/check?handle=${encodeURIComponent(handle)}`, {
-      method: 'GET',
-    }, HandleCheckResponseSchema);
+    const response = await this.request(
+      `/handles/check?handle=${encodeURIComponent(handle)}`,
+      {
+        method: "GET",
+      },
+      HandleCheckResponseSchema
+    );
     return response.available;
   }
 
   async updateHandle(handle: string): Promise<UpdateHandleResponse> {
-    return this.request('/profile/handle', {
-      method: 'PATCH',
-      body: JSON.stringify({ handle }),
-    }, UpdateHandleResponseSchema);
+    return this.request(
+      "/profile/handle",
+      {
+        method: "PATCH",
+        body: JSON.stringify({ handle }),
+      },
+      UpdateHandleResponseSchema
+    );
   }
 
+  async getSkills(): Promise<ProfileSkills> {
+    return this.request(
+      "/profile/skills",
+      {
+        method: "GET",
+      },
+      SkillsResponseSchema
+    );
+  }
+
+  async addSkills(skill: string): Promise<UpdateSkillsResponse> {
+    return this.request(
+      "/profile/skills",
+      {
+        method: "POST",
+        body: JSON.stringify({ skill: skill }),
+      },
+      UpdateSkillsResponseSchema
+    );
+  }
+
+  async deleteSkill(skillId: number): Promise<{ success: true }> {
+    return this.request(
+      `/profile/skills/${skillId}`,
+      {
+        method: "DELETE",
+      },
+      z.object({ success: z.literal(true) })
+    );
+  }
+
+  async getProfileEducations(): Promise<ProfileEducationResponse> {
+    return this.request('/profile/educations', {
+      method: 'GET',
+    }, ProfileEducationResponseSchema);
+  }
+
+  async addEducations(input: AddEducationRequest): Promise<AddEducationResponse> {
+    const parsed = AddEducationRequestSchema.safeParse(input);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {};
+      const formErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key) {
+          (fieldErrors[key] ??= []).push(issue.message);
+        } else {
+          formErrors.push(issue.message);
+        }
+      }
+      throw new ProfileApiError(
+        'VALIDATION_ERROR',
+        0,
+        'Invalid education payload',
+        { fieldErrors, formErrors }
+      );
+    }
+
+    return this.request('/profile/educations', {
+      method: 'POST',
+      body: JSON.stringify(parsed.data),
+    }, AddEducationResponseSchema);
+  }
 }
 
 export const profileApi = new ProfileApi();

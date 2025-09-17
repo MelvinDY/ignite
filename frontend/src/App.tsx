@@ -13,10 +13,10 @@ import { RequestReset } from "./pages/auth/password/RequestReset";
 import { VerifyReset } from "./pages/auth/password/VerifyReset";
 import { ResetPassword } from "./pages/auth/password/ResetPassword";
 import { ProfileEdit } from "./pages/ProfileEdit";
-import { FeedPage } from "./pages/FeedPage";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { FeedPage } from "./pages/feed/FeedPage";
 import { HandleSetupPage } from "./pages/profile/handle-setup";
 import { MyProfilePage } from "./pages/profile/me";
+import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 
 function App() {
@@ -47,9 +47,10 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
-      <Route path="/feed" element={<ProtectedRoute><FeedPage/></ProtectedRoute>}/>
+      <Route path="/feed" element={<FeedPage/>}/>
       <Route path="/profile/handle-setup" element={<HandleSetupPage />} />
       <Route path="/profile/me" element={<MyProfilePage />} />
+      <Route path="/profile/:slug" element={<PublicProfilePage />} />
       <Route path="/feed" element={<FeedPage/>}/>
 
       {/* App routes - with navbar/footer */}

@@ -23,6 +23,7 @@ import {
   uploadBannerImage,
   updateProfile,
   replaceSocialLinks,
+  deleteProfilePicture,
 } from "../services/profile.service";
 import { handleMulterErrors } from "../middlewares/handleMulterErrors";
 import { supabase } from "..";
@@ -293,30 +294,14 @@ router.delete("/profile/picture", async (req, res) => {
   }
 
   try {
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ photo_url: null })
-      .eq("id", userId);
-    console.log("SET TO NULL");
-    if (updateError) {
-      console.log(updateError);
-      return res.status(500).json({ code: "INTERNAL_ERROR" });
-    }
-
-    const extensions = ["jpg", "jpeg", "png"];
-    const deletePromises = extensions.map((ext) => {
-      const filePath = `profiles/${userId}/profile.${ext}`;
-      return supabase.storage.from("profile-pictures").remove([filePath]);
-    });
-
-    await Promise.allSettled(deletePromises);
+    await deleteProfilePicture(userId);
 
     return res.status(200).json({
       success: true,
     });
   } catch (err) {
     console.error("Delete profile picture error:", err);
-    return res.status(500).json({ code: "INTERNAL_ERROR" });
+    return res.status(500).json({ code: "INTERNAL" });
   }
 });
 
@@ -396,16 +381,12 @@ router.delete("/profile/banner", async (req, res) => {
   }
 
   try {
-    const { error: updateError } = await supabase
+    await supabase
       .from("profiles")
       .update({ banner_url: null })
       .eq("id", userId);
 
-    if (updateError) {
-      return res.status(500).json({ code: "INTERNAL" });
-    }
-
-    const extensions = ["jpg", "png"];
+    const extensions = ["jpg", "jpeg", "png"];
     const deletePromises = extensions.map((ext) => {
       const filePath = `banners/${userId}/banner.${ext}`;
       return supabase.storage.from("profile-pictures").remove([filePath]);
@@ -419,8 +400,7 @@ router.delete("/profile/banner", async (req, res) => {
     });
   } catch (err) {
     console.error("Delete banner error:", err);
-    const educations = await getProfileEducations(userId);
-    return res.status(200).json(educations);
+    return res.status(500).json({ code: "INTERNAL" });
   }
 });
 

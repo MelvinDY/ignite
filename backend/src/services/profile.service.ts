@@ -255,8 +255,6 @@ export async function uploadProfilePicture(
     throw uploadError;
   }
 
-  console.log("Checkpoint(1)")
-
   // Get public URL
   const {
     data: { publicUrl },
@@ -273,6 +271,15 @@ export async function uploadProfilePicture(
   if (updateError) throw updateError;
 
   return publicUrl;
+}
+
+export async function deleteProfilePicture(
+  userId: string
+): Promise<void> {
+  await supabase
+    .from("profiles")
+    .update({ photo_url: null })
+    .eq("id", userId);
 }
 
 export async function uploadBannerImage(
@@ -306,6 +313,15 @@ export async function uploadBannerImage(
   if (updateError) throw updateError;
 
   return publicUrl;
+}
+
+export async function deleteBannerImage(
+  userId: string
+): Promise<void> {
+  await supabase
+    .from("profiles")
+    .update({ banner_url: null })
+    .eq("id", userId);
 }
 
 /**

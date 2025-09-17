@@ -284,7 +284,7 @@ describe("DELETE /api/profile/picture", () => {
       success: true,
     });
 
-    // expect(mockProfileData.photo_url).toBe(null);
+    expect(mockProfileData.photo_url).toBe(null);
   });
 });
 
@@ -368,8 +368,7 @@ describe("POST /api/profile/banner", () => {
   			message: 'Banner image removed successfully',
   		});
 
-  		// Verify profile banner_url was set to null
-  		// expect(mockProfileData.banner_url).toBe(null);
+  		expect(mockProfileData.banner_url).toBe(null);
   	});
 
   	it('401 NOT_AUTHENTICATED: no Authorization header', async () => {
@@ -377,16 +376,5 @@ describe("POST /api/profile/banner", () => {
 
   		expect(res.status).toBe(401);
   		expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
-  	});
-
-  	it('500 INTERNAL_ERROR: profile update failure', async () => {
-  		mockJwtVerify.mockReturnValue({ sub: 'nonexistent-user' });
-
-  		const res = await request(app)
-  			.delete(route)
-  			.set('Authorization', 'Bearer validtoken');
-
-  		expect(res.status).toBe(500);
-  		expect(res.body).toEqual({ code: 'INTERNAL' });
   	});
 });

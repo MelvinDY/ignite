@@ -24,9 +24,9 @@ import {
   updateProfile,
   replaceSocialLinks,
   deleteProfilePicture,
+  deleteBannerImage,
 } from "../services/profile.service";
 import { handleMulterErrors } from "../middlewares/handleMulterErrors";
-import { supabase } from "..";
 import {
   addEducationToProfile,
   getProfileEducations,
@@ -381,19 +381,8 @@ router.delete("/profile/banner", async (req, res) => {
   }
 
   try {
-    await supabase
-      .from("profiles")
-      .update({ banner_url: null })
-      .eq("id", userId);
 
-    const extensions = ["jpg", "jpeg", "png"];
-    const deletePromises = extensions.map((ext) => {
-      const filePath = `banners/${userId}/banner.${ext}`;
-      return supabase.storage.from("profile-pictures").remove([filePath]);
-    });
-
-    await Promise.allSettled(deletePromises);
-
+    await deleteBannerImage(userId);
     return res.status(200).json({
       success: true,
       message: "Banner image removed successfully",

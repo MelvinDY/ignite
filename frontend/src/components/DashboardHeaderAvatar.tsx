@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { profileApi, type ProfileMe, ProfileApiError } from '../lib/api/profile';
-import { useAuth } from '../hooks/useAuth';
-import { ProfileMenu } from './ProfileMenu';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  profileApi,
+  type ProfileMe,
+  ProfileApiError,
+} from "../lib/api/profile";
+import { useAuth } from "../hooks/useAuth";
+import { ProfileMenu } from "./ProfileMenu";
 
 export function DashboardHeaderAvatar() {
   const [profile, setProfile] = useState<ProfileMe | null>(null);
@@ -25,15 +29,15 @@ export function DashboardHeaderAvatar() {
         setProfile(profileData);
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch profile:', err);
+        console.error("Failed to fetch profile:", err);
         if (err instanceof ProfileApiError) {
-          if (err.code === 'NOT_AUTHENTICATED') {
-            setError('Please log in to view your profile');
+          if (err.code === "NOT_AUTHENTICATED") {
+            setError("Please log in to view your profile");
           } else {
             setError(`Error: ${err.code}`);
           }
         } else {
-          setError('Failed to load profile');
+          setError("Failed to load profile");
         }
       } finally {
         setLoading(false);
@@ -44,11 +48,11 @@ export function DashboardHeaderAvatar() {
   }, [isAuthenticated]);
 
   const getInitials = (name: string | null) => {
-    if (!name) return 'U';
+    if (!name) return "U";
     return name
-      .split(' ')
-      .map(part => part.charAt(0))
-      .join('')
+      .split(" ")
+      .map((part) => part.charAt(0))
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -57,8 +61,8 @@ export function DashboardHeaderAvatar() {
   if (profile && profile.handle === null) {
     return (
       <button
-        onClick={() => navigate('/profile/handle-setup')}
-        className="w-8 h-8 rounded-full border-2 border-white/20 hover:border-white/40 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-[#3E000C]"
+        onClick={() => navigate("/profile/handle-setup")}
+        className="w-8 h-8 rounded-full border-2 border-white/20 hover:border-white/40 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-[var(--dark-red)]"
         aria-label="Complete profile setup"
       >
         {profile.photoUrl ? (
@@ -78,7 +82,10 @@ export function DashboardHeaderAvatar() {
 
   if (error) {
     return (
-      <div className="flex items-center text-sm text-red-500" aria-label="Profile loading error">
+      <div
+        className="flex items-center text-sm text-red-500"
+        aria-label="Profile loading error"
+      >
         Profile error
       </div>
     );

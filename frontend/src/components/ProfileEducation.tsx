@@ -10,7 +10,21 @@ interface ProfileEducationProps {
   onEducationAdded?: (edu: Education) => void;
 }
 
-const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 function fmtMonthYear(month: number, year: number) {
   return `${MONTHS[month]} ${year}`;
@@ -37,11 +51,16 @@ function labelDuration(e: Education) {
   const years = Math.floor(months / 12);
   const rem = months % 12;
   return rem
-    ? `${years} year${years === 1 ? "" : "s"} ${rem} month${rem === 1 ? "" : "s"}`
+    ? `${years} year${years === 1 ? "" : "s"} ${rem} month${
+        rem === 1 ? "" : "s"
+      }`
     : `${years} year${years === 1 ? "" : "s"}`;
 }
 
-export function ProfileEducation({ educations, onEducationAdded }: ProfileEducationProps) {
+export function ProfileEducation({
+  educations,
+  onEducationAdded,
+}: ProfileEducationProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<AddEducationRequest>({
@@ -78,7 +97,10 @@ export function ProfileEducation({ educations, onEducationAdded }: ProfileEducat
   };
   const closeModal = () => setOpen(false);
 
-  const handleChange = (key: keyof AddEducationRequest, value: string | number | null) => {
+  const handleChange = (
+    key: keyof AddEducationRequest,
+    value: string | number | null
+  ) => {
     setForm((f) => ({ ...f, [key]: value as any }));
   };
 
@@ -193,21 +215,35 @@ export function ProfileEducation({ educations, onEducationAdded }: ProfileEducat
               <div className="flex items-start space-x-4">
                 <div
                   className={`w-8 h-8 rounded-full border-2 flex-center flex-shrink-0 ${
-                    isCurrent ? "border-[#3E000C] bg-[#3E000C]" : "border-gray-300 bg-white"
+                    isCurrent
+                      ? "border-[var(--dark-red)] bg-[var(--dark-red)]"
+                      : "border-gray-300 bg-white"
                   }`}
                 >
-                  {isCurrent && <div className="w-2 h-2 bg-white rounded-full" />}
+                  {isCurrent && (
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{edu.school}</h3>
-                      {headline && <p className="text-[#3E000C] font-medium">{headline}</p>}
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {edu.school}
+                      </h3>
+                      {headline && (
+                        <p className="text-[var(--dark-red)] font-medium">
+                          {headline}
+                        </p>
+                      )}
                     </div>
                     <div className="mt-2 sm:mt-0 sm:text-right">
-                      <p className=" text-gray-600 font-medium">{labelRange(edu)}</p>
-                      <p className="text-sm text-gray-500">{labelDuration(edu)}</p>
+                      <p className=" text-gray-600 font-medium">
+                        {labelRange(edu)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {labelDuration(edu)}
+                      </p>
                     </div>
                   </div>
                 </div>

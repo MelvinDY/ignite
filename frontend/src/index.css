@@ -57,9 +57,9 @@
 
 @layer utilities {
   .white-card {
-      @apply rounded-lg bg-white shadow-sm border border-gray-200 text-black;
+    @apply rounded-lg bg-white shadow-sm border border-gray-200 text-black;
   }
-  
+
   .flex-between {
     @apply flex justify-between items-center;
   }
@@ -113,7 +113,7 @@
   }
 
   .flex-inline-center {
-    @apply inline-flex justify-center items-center
+    @apply inline-flex justify-center items-center;
   }
 }
 

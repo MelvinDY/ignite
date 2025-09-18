@@ -4,37 +4,41 @@ import ProfileCard from "../../components/ui/ProfileCardFeed";
 import PostCard from "../../components/ui/PostsCardFeed";
 import TopBar from "../../components/ui/TopBar";
 import { useNavigate } from "react-router-dom";
-import { profileApi, ProfileApiError, type ProfileMe } from "../../lib/api/profile";
+import {
+  profileApi,
+  ProfileApiError,
+  type ProfileMe,
+} from "../../lib/api/profile";
 
 type User = {
-    name: string;
-    title: string;
-    location: string;
-    avatarUrl?: string;
+  name: string;
+  title: string;
+  location: string;
+  avatarUrl?: string;
 };
 
 type Post = {
-    id: string;
-    author: User;
-    createdAt: string;
-    text: string;
-    mediaUrl?: string;
-    views: number;
-    likes: number;
+  id: string;
+  author: User;
+  createdAt: string;
+  text: string;
+  mediaUrl?: string;
+  views: number;
+  likes: number;
 };
 
 function NavItem({ label }: { label: string }) {
-    let Icon;
-    if (label.toLowerCase() === 'connections') {
-        Icon = Users;
-    } else if (label.toLowerCase() === 'bookmarks') {
-        Icon = Bookmark;
-    } else if (label.toLowerCase().startsWith('event')) {
-        Icon = Calendar;
-    } else {
-        Icon = Bookmark;
-    }
-    
+  let Icon;
+  if (label.toLowerCase() === "connections") {
+    Icon = Users;
+  } else if (label.toLowerCase() === "bookmarks") {
+    Icon = Bookmark;
+  } else if (label.toLowerCase().startsWith("event")) {
+    Icon = Calendar;
+  } else {
+    Icon = Bookmark;
+  }
+
   return (
     <li className="flex items-center gap-2 px-4 h-11 hover:bg-gray-50 cursor-pointer">
       <Icon className="size-4 text-gray-700" />
@@ -54,7 +58,7 @@ export const FeedPage = () => {
     name: "Degus Sudarmawan",
     title: "2nd Year Computer Science Student",
     location: "Surry Hills, New South Wales",
-    avatarUrl: "https://placehold.co/400"
+    avatarUrl: "https://placehold.co/400",
   };
 
   // This is just sample data
@@ -62,7 +66,11 @@ export const FeedPage = () => {
     () => [
       {
         id: "p1",
-        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
+        author: {
+          name: "degus sudarmawan",
+          title: "Software Engineer • Google",
+          location: "",
+        },
         createdAt: "2 hr",
         text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiatshfsofsojfsojfsjofjsjfosofjsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         mediaUrl: "https://placehold.co/600x400",
@@ -71,7 +79,11 @@ export const FeedPage = () => {
       },
       {
         id: "p2",
-        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
+        author: {
+          name: "degus sudarmawan",
+          title: "Software Engineer • Google",
+          location: "",
+        },
         createdAt: "2 hr",
         text: `Dengan bangga saya mengumumkan bahwa saya telah menyelesaikan program pelatihan \"Fundamental of Machine Learning\" dari Digital Talent Scholarship melalui platform DQLab.
               Selama pelatihan ini, saya mempelajari berbagai materi penting antara lain :
@@ -103,7 +115,11 @@ export const FeedPage = () => {
       },
       {
         id: "p3",
-        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
+        author: {
+          name: "degus sudarmawan",
+          title: "Software Engineer • Google",
+          location: "",
+        },
         createdAt: "2 hr",
         text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiat...",
         mediaUrl: "https://placehold.co/600x400",
@@ -122,16 +138,19 @@ export const FeedPage = () => {
         const profileData = await profileApi.getMyProfile();
 
         if (profileData.handle === null) {
-          navigate('/profile/handle-setup');
+          navigate("/profile/handle-setup");
           return;
         }
 
         setProfile(profileData);
       } catch (err) {
-        if (err instanceof ProfileApiError && err.code === 'NOT_AUTHENTICATED') {
-          navigate('/auth/login');
+        if (
+          err instanceof ProfileApiError &&
+          err.code === "NOT_AUTHENTICATED"
+        ) {
+          navigate("/auth/login");
         } else {
-          setError('Failed to load profile. Please try again later.');
+          setError("Failed to load profile. Please try again later.");
         }
       } finally {
         setLoading(false);
@@ -140,7 +159,7 @@ export const FeedPage = () => {
 
     checkAuth();
   }, [navigate]);
-  
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f8f9fa]">
@@ -204,15 +223,27 @@ export const FeedPage = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
           <div className="text-red-500 mb-4">
-            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            <svg
+              className="w-12 h-12 mx-auto"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Feed</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Error Loading Feed
+          </h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={() => navigate('/')}
-            className="px-4 py-2 bg-[#3E000C] text-white rounded-md hover:bg-[#3E000C]/90 transition-colors"
+            onClick={() => navigate("/")}
+            className="px-4 py-2 bg-[var(--dark-red)] text-white rounded-md hover:bg-[var(--dark-red)]/90 transition-colors"
           >
             Go Back Home
           </button>
@@ -231,13 +262,13 @@ export const FeedPage = () => {
     domicileCity: profile.domicileCity,
     domicileCountry: profile.domicileCountry,
     bio: profile.bio,
-  }
+  };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(part => part.charAt(0))
-      .join('')
+      .split(" ")
+      .map((part) => part.charAt(0))
+      .join("")
       .toUpperCase()
       .slice(0, 2);
   };
@@ -245,13 +276,16 @@ export const FeedPage = () => {
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
       {/* Top bar */}
-      <TopBar imgSrc={userProfile.photoUrl} initials={getInitials(userProfile.fullName)} handle={userProfile.handle ?? undefined}/>
+      <TopBar
+        imgSrc={userProfile.photoUrl}
+        initials={getInitials(userProfile.fullName)}
+        handle={userProfile.handle ?? undefined}
+      />
 
       {/* Content grid */}
       <div className="mx-auto max-w-6xl px-4 grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_300px] gap-6">
         {/* Left rail (profile) */}
         <aside className="md:sticky md:top-20 h-fit">
-          
           <ProfileCard user={userProfile} />
 
           <nav className="mt-4 overflow-hidden white-card">
@@ -275,11 +309,15 @@ export const FeedPage = () => {
           <div className="h-[520px] flex flex-col white-card">
             <div className="flex items-center gap-2 p-5">
               <Calendar className="size-5 text-gray-700" />
-              <span className="text-black font-semibold text-lg">Upcoming Events</span>
+              <span className="text-black font-semibold text-lg">
+                Upcoming Events
+              </span>
             </div>
             <div className="h-full flex-center flex-col p-5 pb-7">
               <Calendar className="w-20 h-20 text-gray-300 mb-4" />
-              <span className="text-gray-500 text-lg font-medium">No upcoming events</span>
+              <span className="text-gray-500 text-lg font-medium">
+                No upcoming events
+              </span>
             </div>
           </div>
         </aside>

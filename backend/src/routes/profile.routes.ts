@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import multer, { MulterError } from "multer";
 import {
   AddEducationSchema,
   HandleSchema,
@@ -18,9 +19,14 @@ import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
+  uploadProfilePicture,
+  uploadBannerImage,
   updateProfile,
-  replaceSocialLinks
+  replaceSocialLinks,
+  deleteProfilePicture,
+  deleteBannerImage,
 } from "../services/profile.service";
+import { handleMulterErrors } from "../middlewares/handleMulterErrors";
 import {
   addEducationToProfile,
   getProfileEducations,
@@ -151,15 +157,22 @@ router.post("/profile/skills", async (req, res) => {
   // Validate body
   const { skill } = req.body || {};
   if (!skill || typeof skill !== "string" || !skill.trim()) {
-    return res.status(400).json({ code: "VALIDATION_ERROR", details: { skill: "Skill is required" } });
+    return res.status(400).json({
+      code: "VALIDATION_ERROR",
+      details: { skill: "Skill is required" },
+    });
   }
 
   try {
     const result = await addSkillToProfile(userId, skill);
-    return res.status(201).json({ success: true, id: result.id, name: result.name });
+    return res
+      .status(201)
+      .json({ success: true, id: result.id, name: result.name });
   } catch (err: any) {
     if (err.code === "VALIDATION_ERROR") {
-      return res.status(400).json({ code: "VALIDATION_ERROR", details: err.details });
+      return res
+        .status(400)
+        .json({ code: "VALIDATION_ERROR", details: err.details });
     }
     if (err.code === "NOT_AUTHENTICATED") {
       return res.status(401).json({ code: "NOT_AUTHENTICATED" });
@@ -195,6 +208,103 @@ router.delete("/profile/skills/:id", async (req, res) => {
   }
 });
 
+/**
+ * User Story 2.1 - POST /profile/picture
+ * Uploads profile picture
+ */
+
+// Multer middleware
+const upload = multer({
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (
+    req: Express.Request,
+    file: Express.Multer.File,
+    cb: multer.FileFilterCallback
+  ) => {
+    if (
+      file.mimetype === "image/jpg" ||
+      file.mimetype === "image/png" ||
+      file.mimetype === "image/jpeg"
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error("UNSUPPORTED_MEDIA_TYPE"));
+    }
+  },
+});
+
+router.post(
+  "/profile/picture",
+  upload.single("profile_picture"),
+  async (req, res) => {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+
+    if (!accessToken) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    let userId: string;
+
+    try {
+      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+      userId = decoded.sub;
+      if (!userId) throw new Error("No userId in token");
+    } catch {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const picture = req.file;
+
+    if (!picture) {
+      return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
+    }
+
+    try {
+      const photoUrl = await uploadProfilePicture(userId, picture);
+      return res.status(200).json({
+        success: true,
+        photoUrl: photoUrl,
+      });
+    } catch (err) {
+      return res.status(500).json({ code: "INTERNAL" });
+    }
+  }
+);
+
+/**
+ * User Story 2.3 - Remove Profile Picture
+ */
+router.delete("/profile/picture", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  let userId: string;
+
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+    await deleteProfilePicture(userId);
+
+    return res.status(200).json({
+      success: true,
+    });
+  } catch (err) {
+    console.error("Delete profile picture error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
 // GET  /profile/educations - lists all profile educations
 router.get("/profile/educations", async (req, res) => {
   const userId = authenticateUser(req, res);
@@ -205,6 +315,80 @@ router.get("/profile/educations", async (req, res) => {
     return res.status(200).json(educations);
   } catch (err) {
     console.error("getProfileEducations.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * User story 2.14 - Upload/ replace banner image
+ */
+router.post(
+  "/profile/banner",
+  upload.single("banner_image"),
+  async (req, res) => {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+
+    if (!accessToken) {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    let userId: string;
+
+    try {
+      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+      userId = decoded.sub;
+      if (!userId) throw new Error("No userId in token");
+    } catch {
+      return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    const banner = req.file;
+
+    if (!banner) {
+      return res.status(415).json({ code: "UNSUPPORTED_MEDIA_TYPE" });
+    }
+
+    try {
+      const bannerUrl = await uploadBannerImage(userId, banner);
+      return res.status(200).json({
+        success: true,
+        bannerUrl: bannerUrl,
+      });
+    } catch (err) {
+      return res.status(500).json({ code: "INTERNAL" });
+    }
+  }
+);
+
+/**
+ * User story 2.15 - Remove banner image
+ */
+router.delete("/profile/banner", async (req, res) => {
+  const accessToken = req.headers.authorization?.split(" ")[1];
+
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  let userId: string;
+
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  try {
+
+    await deleteBannerImage(userId);
+    return res.status(200).json({
+      success: true,
+      message: "Banner image removed successfully",
+    });
+  } catch (err) {
+    console.error("Delete banner error:", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
@@ -395,5 +579,7 @@ router.delete('/profile/educations/:id', async (req, res) => {
     return res.status(500).json({ code: 'INTERNAL' });
   }
 });
+
+router.use(handleMulterErrors);
 
 export default router;

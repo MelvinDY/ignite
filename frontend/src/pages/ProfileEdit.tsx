@@ -30,57 +30,7 @@ const ProfileEdit = () => {
     setShowSaveButton(true);
   };
 
-  const updateSkills = async () => {
-    const skillsToAdd = formData.skills.filter(
-      (newSkill) => newSkill.id === -1
-    );
-
-    for (const skillToAdd of skillsToAdd) {
-      if (!initialFormData.skills.includes(skillToAdd)) {
-        try {
-          console.log("Adding skill:", skillToAdd.name);
-          const resp = await profileApi.addSkills(skillToAdd.name);
-          const newId = resp.id;
-          setFormData((currentData) => {
-            const updatedSkills = currentData.skills.map((s) => {
-              // If this is the skill we just added, return a new object with the ID
-              if (s.name === skillToAdd.name) {
-                return { ...s, id: newId };
-              }
-              return s;
-            });
-
-            // Return a whole new state object
-            return { ...currentData, skills: updatedSkills };
-          });
-        } catch (error) {
-          if (error instanceof ProfileApiError) {
-            console.error("Profile API Error:", error.message);
-          } else {
-            console.error("Unexpected Error:", error);
-          }
-        }
-      }
-    }
-
-    const skillsToRemove = initialFormData.skills.filter(
-      (oldSkill) =>
-        !formData.skills.some((newSkill) => newSkill.name === oldSkill.name)
-    );
-
-    for (const skill of skillsToRemove) {
-      try {
-        console.log("Removing skill:", skill.name);
-        // You'll need an API method that can remove a skill, likely by its ID
-        await profileApi.deleteSkill(skill.id);
-      } catch (error) {
-        console.error(`Failed to remove skill: ${skill.name}`, error);
-      }
-    }
-  };
-
   const updateData = async () => {
-    updateSkills();
     // TODO: update other fields
   };
 

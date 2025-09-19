@@ -131,6 +131,27 @@ const PasswordResetCancelResponseSchema = z.object({
   message: z.string(),
 });
 
+// Change Email Pre-Verify (Pending)
+const ChangeEmailPreVerifyRequestSchema = z.object({
+  resumeToken: z.string(),
+  newEmail: z.string().email(),
+});
+
+const ChangeEmailPreVerifyResponseSchema = z.object({
+  success: z.literal(true),
+  resumeToken: z.string(),
+});
+
+// Pending Context
+const PendingContextResponseSchema = z.object({
+  emailMasked: z.string(),
+  status: z.string(),
+  resend: z.object({
+    cooldownSeconds: z.number(),
+    remainingToday: z.number(),
+  }),
+});
+
 // Types
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 export type LoginResponse = z.infer<typeof LoginResponseSchema>;
@@ -163,6 +184,11 @@ export type PasswordResetResendOtpResponse = z.infer<typeof PasswordResetResendO
 
 export type PasswordResetCancelRequest = z.infer<typeof PasswordResetCancelRequestSchema>;
 export type PasswordResetCancelResponse = z.infer<typeof PasswordResetCancelResponseSchema>;
+
+export type ChangeEmailPreVerifyRequest = z.infer<typeof ChangeEmailPreVerifyRequestSchema>;
+export type ChangeEmailPreVerifyResponse = z.infer<typeof ChangeEmailPreVerifyResponseSchema>;
+
+export type PendingContextResponse = z.infer<typeof PendingContextResponseSchema>;
 
 // Error types for discriminated unions
 export type AuthError = {
@@ -328,6 +354,19 @@ class AuthApi {
       method: 'POST',
       body: JSON.stringify({ email }),
     }, PasswordResetCancelResponseSchema);
+  }
+
+  async changeEmailPreVerify(request: ChangeEmailPreVerifyRequest): Promise<ChangeEmailPreVerifyResponse> {
+    return this.request('/auth/pending/email', {
+      method: 'PATCH',
+      body: JSON.stringify(request),
+    }, ChangeEmailPreVerifyResponseSchema);
+  }
+
+  async getPendingContext(resumeToken: string): Promise<PendingContextResponse> {
+    return this.request(`/auth/pending/context?resumeToken=${encodeURIComponent(resumeToken)}`, {
+      method: 'GET',
+    }, PendingContextResponseSchema);
   }
 }
 

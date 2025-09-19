@@ -3,11 +3,12 @@ import SearchBar from "./SearchBar"
 import { Bell } from "lucide-react"
 
 interface TopBarProps {
-	imgSrc: string | null;
-	initials: string;
+  imgSrc: string | null;
+  initials: string;
+  handle?: string | null;
 }
 
-const TopBar = ({imgSrc, initials}: TopBarProps) => {
+const TopBar = ({imgSrc, initials, handle}: TopBarProps) => {
   return (
     <header className="sticky top-0 z-20 w-full bg-[#7C0B2B] border-b border-gray-200">
         <div className="mx-auto max-w-6xl px-4 h-16 flex-between gap-2">

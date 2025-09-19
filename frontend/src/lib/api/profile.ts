@@ -34,6 +34,23 @@ const ProfileMeResponseSchema = z.object({
   updatedAt: z.string(),
 });
 
+// Public profile (by slug/handle)
+const PublicProfileResponseSchema = z.object({
+  id: z.string(),
+  fullName: z.string(),
+  handle: z.string(),
+  photoUrl: z.string().nullable(),
+  program: z.string().nullable(),
+  major: z.string().nullable(),
+  level: z.enum(["foundation", "diploma", "undergrad", "postgrad", "phd"]),
+  yearStart: z.number(),
+  yearGrad: z.number().nullable(),
+  headline: z.string().nullable(),
+  domicileCity: z.string().nullable(),
+  bio: z.string().nullable(),
+  socialLinks: z.any(),
+});
+
 // Handle Check Response Schema
 const HandleCheckResponseSchema = z.object({
   available: z.boolean(),
@@ -121,6 +138,7 @@ const AddEducationResponseSchema = z.object({
 
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
+export type PublicProfile = z.infer<typeof PublicProfileResponseSchema>;
 export type HandleCheckResponse = z.infer<typeof HandleCheckResponseSchema>;
 export type UpdateHandleRequest = z.infer<typeof UpdateHandleRequestSchema>;
 export type UpdateHandleResponse = z.infer<typeof UpdateHandleResponseSchema>;
@@ -179,7 +197,8 @@ class ProfileApi {
   private async request<T>(
     endpoint: string,
     options: RequestInit = {},
-    responseSchema?: z.ZodSchema<T>
+    responseSchema?: z.ZodSchema<T>,
+    isRetry: boolean = false
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
@@ -210,6 +229,33 @@ class ProfileApi {
       if (!response.ok) {
         const errorResult = ErrorResponseSchema.safeParse(data);
         if (errorResult.success) {
+          // If we get a 401 and haven't already retried, attempt token refresh
+          if (response.status === 401 && !isRetry && errorResult.data.code === "NOT_AUTHENTICATED") {
+            try {
+              console.log("Access token expired, attempting refresh...");
+              // Import authApi here to avoid circular dependency
+              const { authApi } = await import("../authApi");
+              const refreshResponse = await authApi.refresh();
+
+              // Update the auth state with new token
+              authStateManager.setAuth(refreshResponse.accessToken, refreshResponse.userId, refreshResponse.expiresIn);
+              console.log("Token refreshed successfully, retrying original request");
+
+              // Retry the original request with new token
+              return this.request(endpoint, options, responseSchema, true);
+            } catch (refreshError) {
+              console.log("Token refresh failed, clearing auth state");
+              // Refresh failed, clear auth state and throw original error
+              authStateManager.clearAuth();
+              throw new ProfileApiError(
+                errorResult.data.code as ProfileError["code"],
+                response.status,
+                errorResult.data.message || `Error: ${errorResult.data.code}`,
+                errorResult.data.details
+              );
+            }
+          }
+
           throw new ProfileApiError(
             errorResult.data.code as ProfileError["code"],
             response.status,
@@ -261,6 +307,20 @@ class ProfileApi {
       ProfileMeResponseSchema
     );
   }
+
+  async getPublicProfile(handle: string): Promise<PublicProfile> {
+    return this.request(
+      `/profile/${encodeURIComponent(handle)}`,
+      {
+        method: "GET",
+      },
+      PublicProfileResponseSchema
+    );
+  }
+
+  // No public-by-handle endpoint; slug route reuses getMyProfile()
+
+  // Removed public profile endpoint; use getMyProfile for authenticated users
 
   async checkHandleAvailability(handle: string): Promise<boolean> {
     const response = await this.request(

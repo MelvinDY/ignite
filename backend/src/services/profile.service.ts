@@ -280,3 +280,66 @@ export async function replaceSocialLinks(
 
   if (error) throw error;
 }
+/**
+ * Get public profile by handle (no authentication required)
+ * Returns profile without sensitive data like zid
+ */
+export async function getPublicProfileByHandle(handle: string): Promise<Omit<ProfileObject, 'zid'>> {
+  const handleLower = handle.toLowerCase();
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select(`
+      id,
+      full_name,
+      handle,
+      photo_url,
+      is_indonesian,
+      level,
+      year_start,
+      year_grad,
+      headline,
+      domicile_city,
+      domicile_country,
+      bio,
+      social_links,
+      created_at,
+      updated_at,
+      programs:programs!fk_profiles_program ( name ),
+      majors:majors!fk_profiles_major     ( name )
+    `)
+    .eq("handle", handleLower)
+    .single<Omit<ProfileRow, 'zid'>>();
+
+  if (error) {
+    if (error.code === 'PGRST116') {
+      const err: any = new Error('Profile not found');
+      err.code = 'PROFILE_NOT_FOUND';
+      throw err;
+    }
+    throw error;
+  }
+
+  const pickName = (v: ProfileRow['programs']) =>
+    Array.isArray(v) ? v?.[0]?.name ?? null : v?.name ?? null;
+
+  return {
+    id: data.id,
+    fullName: data.full_name,
+    handle: data.handle,
+    photoUrl: data.photo_url,
+    isIndonesian: data.is_indonesian,
+    program: pickName(data.programs),
+    major: pickName(data.majors),
+    level: data.level,
+    yearStart: data.year_start,
+    yearGrad: data.year_grad,
+    headline: data.headline,
+    domicileCity: data.domicile_city,
+    domicileCountry: data.domicile_country,
+    bio: data.bio,
+    socialLinks: data.social_links,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+}

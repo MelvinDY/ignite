@@ -169,6 +169,15 @@ export function MyProfilePage() {
                   setEducations((prev) => [e, ...prev]);
                   refetchEducations();
                 }}
+                
+                onEducationUpdated={(e) => {
+                  setEducations((prev) => prev.map((it) => (it.id === e.id ? e : it)));
+                  refetchEducations();
+                }}
+
+                onEducationDeleted={(id) =>
+                  setEducations((prev) => prev.filter((x) => x.id !== id))  // CHANGED: was setEds → setEducations
+                }
               />
               <ProfileSkills />
             </div>

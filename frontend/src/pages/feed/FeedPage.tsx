@@ -228,6 +228,7 @@ export const FeedPage = () => {
     fullName: profile.fullName,
     handle: profile.handle,
     photoUrl: profile.photoUrl,
+    headline: profile.headline,
     domicileCity: profile.domicileCity,
     domicileCountry: profile.domicileCountry,
     bio: profile.bio,

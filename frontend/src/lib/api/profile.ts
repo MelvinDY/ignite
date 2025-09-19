@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { success, z } from "zod";
 import { authStateManager } from "../../hooks/useAuth";
 
 // Prefer configured base URL; fall back to same-origin proxy
@@ -112,7 +112,7 @@ const AddEducationRequestSchema = z.object({
   if (!bothOrNeither) {
     ctx.addIssue({
       code: "custom",                         // <- use string literal
-      message: "If either endMonth or endYear is provided, both must be present",
+      message: "If either endMonth or endYear is provided, both must be provided",
       path: ["endMonth"],
     });
   }
@@ -132,8 +132,52 @@ const AddEducationRequestSchema = z.object({
 });
 
 const AddEducationResponseSchema = z.object({
+
   success: z.literal(true),
   id: z.string(),
+})
+
+const UpdateEducationRequestSchema = z.object({
+  school: z.string().min(1).max(30),
+  program: z.string().trim().min(1),
+  major: z.string().trim().min(1),
+  startMonth: z.coerce.number().int().min(1).max(12),
+  startYear: z.coerce.number().int().min(1900).max(2100),
+  endMonth: z.coerce.number().int().min(1).max(12).nullable(),
+  endYear: z.coerce.number().int().min(1900).max(2100).nullable(),
+}).superRefine((v, ctx) => {
+  // both endMonth/endYear must be present or both null (unchanged logic)
+  const bothOrNeither =
+    (v.endMonth == null && v.endYear == null) ||
+    (v.endMonth != null && v.endYear != null);
+  if (!bothOrNeither) {
+    ctx.addIssue({
+      code: "custom",
+      message: "If either endMonth or endYear is provided, both must be provided",
+      path: ["endMonth"],
+    });
+  }
+
+  // chronology check when both provided (unchanged logic)
+  if (v.endMonth != null && v.endYear != null) {
+    const start = v.startYear * 12 + (v.startMonth - 1);
+    const end   = v.endYear  * 12 + (v.endMonth  - 1);
+    if (end < start) {
+      ctx.addIssue({
+        code: "custom",
+        message: "End date must be same as or after start date",
+        path: ["endYear"],
+      });
+    }
+  }
+})
+
+const UpdateEducationResponseSchema = z.object({
+  success: z.literal(true),
+})
+
+const DeleteEducationResponseSchema = z.object({
+  success: z.literal(true),
 })
 
 // Types
@@ -148,6 +192,9 @@ export type Education = z.infer<typeof EducationSchema>;
 export type ProfileEducationResponse = z.infer<typeof ProfileEducationResponseSchema>;
 export type AddEducationRequest = z.infer<typeof AddEducationRequestSchema>;
 export type AddEducationResponse = z.infer<typeof AddEducationResponseSchema>;
+export type UpdateEducationRequest = z.infer<typeof UpdateEducationRequestSchema>;
+export type UpdateEducationResponse = z.infer<typeof UpdateEducationResponseSchema>;
+export type DeleteEducationResponse = z.infer<typeof DeleteEducationResponseSchema>;
 
 // Error types
 export type ProfileError = {
@@ -379,6 +426,41 @@ class ProfileApi {
       body: JSON.stringify(parsed.data),
     }, AddEducationResponseSchema);
   }
+
+  async updateEducations(id: string, body: UpdateEducationRequest): Promise<UpdateEducationResponse> {
+    const parsed = UpdateEducationRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      console.error("UpdateEducation validation errors:", parsed.error.format());
+      const fieldErrors: Record<string, string[]> = {};
+      const formErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key) {
+          (fieldErrors[key] ??= []).push(issue.message);
+        } else {
+          formErrors.push(issue.message);
+        }
+      }
+      throw new ProfileApiError(
+        'VALIDATION_ERROR',
+        0,
+        'Invalid education payload',
+        { fieldErrors, formErrors }
+      );
+    }
+
+    return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      body: JSON.stringify(parsed.data),
+    }, UpdateEducationResponseSchema);
+  }
+
+  async deleteEducations(id: string): Promise<DeleteEducationResponse> {
+    return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
+      method: "DELETE"
+    }, DeleteEducationResponseSchema)
+  }
+  
 }
 
 export const profileApi = new ProfileApi();

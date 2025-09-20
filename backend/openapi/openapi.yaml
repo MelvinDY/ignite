@@ -1242,6 +1242,7 @@ paths:
                     fullName: "Jane Doe"
                     handle: "janedoe"
                     photoUrl: "https://example.com/profile.jpg"
+                    bannerUrl: "https://example.com/banner.jpg"
                     isIndonesian: true
                     program: "BE"
                     major: "Computer Science"
@@ -2946,6 +2947,9 @@ components:
         photoUrl:
           type: string
           description: URL to user's profile photo
+        bannerUrl:
+          type: string
+          description: URL to user's banner image
         isIndonesian:
           type: boolean
           description: Whether the user is Indonesian or not

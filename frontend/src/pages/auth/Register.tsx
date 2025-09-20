@@ -406,7 +406,7 @@ export function Register() {
   return (
     <AuthLayout title={`Register (${currentStep}/3)`}>
       <FormProgress currentStep={currentStep} totalSteps={3} />
-      
+
       {apiError && <Alert message={apiError} type="error" className="mb-4" />}
 
       <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
@@ -425,17 +425,17 @@ export function Register() {
               Back
             </Button>
           )}
-          
+
           <Button
             type="button"
             onClick={handleNext}
             disabled={isLoading}
             className={currentStep === 1 ? 'w-full' : 'ml-auto'}
           >
-            {isLoading 
-              ? 'Creating Account...' 
-              : currentStep === 3 
-                ? 'Create Account' 
+            {isLoading
+              ? 'Creating Account...'
+              : currentStep === 3
+                ? 'Create Account'
                 : 'Next'
             }
           </Button>
@@ -445,8 +445,8 @@ export function Register() {
       <div className="mt-8 text-center">
         <p className="text-sm text-white/80">
           Already have an account?{' '}
-          <Link 
-            to="/auth/login" 
+          <Link
+            to="/auth/login"
             className="text-white font-medium hover:underline"
           >
             Sign In

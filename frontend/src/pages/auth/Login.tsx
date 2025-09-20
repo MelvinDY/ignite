@@ -80,8 +80,8 @@ export function Login() {
         password: formData.password,
       });
 
-      // Navigate to dashboard on successful login
-      navigate('/dashboard');
+      // Navigate to profile/me which will check for handle
+      navigate('/profile/me');
     } catch (error) {
       if (error instanceof AuthApiError) {
         switch (error.code) {

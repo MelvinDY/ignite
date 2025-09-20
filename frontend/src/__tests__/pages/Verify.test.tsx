@@ -22,7 +22,11 @@ vi.mock('react-router-dom', async () => {
 });
 
 const renderVerify = (resumeToken = 'mock-resume-token') => {
-  mockSearchParams.set('resumeToken', resumeToken);
+  if (resumeToken) {
+    mockSearchParams.set('resumeToken', resumeToken);
+  } else {
+    mockSearchParams.delete('resumeToken');
+  }
   return render(
     <BrowserRouter>
       <Verify />
@@ -36,71 +40,84 @@ describe('Verify Page', () => {
     mockSearchParams = new URLSearchParams();
   });
 
-  // TODO: Fix loading state detection in Verify component
-  it('renders loading state initially', () => {
-    renderVerify();
-    
-    // Component shows the verification form directly, not a loading state
-    expect(screen.getByText(/we sent a verification code to your email/i)).toBeInTheDocument();
-  });
-
-  it('shows error when no resume token provided', async () => {
+  it('shows error when no resume token provided', () => {
     renderVerify('');
-    
-    await waitFor(() => {
-      expect(screen.getByText(/invalid or missing verification link/i)).toBeInTheDocument();
-      expect(screen.getByText(/start registration again/i)).toBeInTheDocument();
-      expect(screen.getByText(/sign in/i)).toBeInTheDocument();
-    });
+
+    expect(screen.getByText(/no verification link provided/i)).toBeInTheDocument();
+    expect(screen.getByText(/start registration/i)).toBeInTheDocument();
   });
 
-  // TODO: Fix pending context loading test
+  it('shows loading state initially', () => {
+    renderVerify();
+
+    expect(screen.getByText(/loading verification details/i)).toBeInTheDocument();
+  });
+
   it('loads and displays pending context successfully', async () => {
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByText(/we sent a verification code to your email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /verify account/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /resend code/i })).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
+
+    expect(screen.getByText(/we've sent a verification code to/i)).toBeInTheDocument();
+    expect(screen.getByText(/n\*\*\*@example\.com/i)).toBeInTheDocument();
+
+    // Check for the 6 individual OTP input boxes
+    const otpInputs = screen.getAllByRole('textbox');
+    expect(otpInputs).toHaveLength(6);
+
+    expect(screen.getByRole('button', { name: /verify email address/i })).toBeInTheDocument();
+    expect(screen.getByText(/resend verification code/i)).toBeInTheDocument();
   });
 
   it('handles successful OTP verification', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '123456');
+
+    // Get all 6 OTP input boxes
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type one digit in each box
+    await user.type(otpInputs[0], '1');
+    await user.type(otpInputs[1], '2');
+    await user.type(otpInputs[2], '3');
+    await user.type(otpInputs[3], '4');
+    await user.type(otpInputs[4], '5');
+    await user.type(otpInputs[5], '6');
+
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
     await user.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/your account has been successfully verified/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /proceed to sign in/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /continue to setup/i })).toBeInTheDocument();
     });
   });
 
   it('handles invalid OTP error', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '000000');
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type invalid OTP
+    for (let i = 0; i < 6; i++) {
+      await user.type(otpInputs[i], '0');
+    }
+
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
     await user.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/invalid verification code/i)).toBeInTheDocument();
     });
@@ -109,17 +126,21 @@ describe('Verify Page', () => {
   it('handles expired OTP error', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '999999');
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type expired OTP
+    for (let i = 0; i < 6; i++) {
+      await user.type(otpInputs[i], '9');
+    }
+
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
     await user.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/verification code has expired/i)).toBeInTheDocument();
     });
@@ -128,266 +149,274 @@ describe('Verify Page', () => {
   it('handles OTP locked error', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '888888');
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type OTP that triggers locked error
+    for (let i = 0; i < 6; i++) {
+      await user.type(otpInputs[i], '8');
+    }
+
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
     await user.click(verifyButton);
-    
+
     await waitFor(() => {
       expect(screen.getByText(/too many incorrect attempts/i)).toBeInTheDocument();
     });
   });
 
-  // TODO: Fix OTP validation logic in tests
-  it.skip('validates OTP length before submission', async () => {
+  it('disables verify button when OTP is incomplete', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '123');
-    await user.click(verifyButton);
-    
-    // Should show validation error without making API call
-    await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/please enter a 6-digit code/i);
-    });
+
+    const otpInputs = screen.getAllByRole('textbox');
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
+
+    // Initially disabled (no digits entered)
+    expect(verifyButton).toBeDisabled();
+
+    // Type only 3 digits
+    await user.type(otpInputs[0], '1');
+    await user.type(otpInputs[1], '2');
+    await user.type(otpInputs[2], '3');
+
+    // Should still be disabled
+    expect(verifyButton).toBeDisabled();
+
+    // Complete the OTP
+    await user.type(otpInputs[3], '4');
+    await user.type(otpInputs[4], '5');
+    await user.type(otpInputs[5], '6');
+
+    // Should now be enabled
+    expect(verifyButton).not.toBeDisabled();
   });
 
-  it('limits OTP input to 6 digits', async () => {
+  it('handles OTP resend', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
-    await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
-    });
-    
-    const otpInput = screen.getByLabelText(/verification code/i) as HTMLInputElement;
-    
-    await user.type(otpInput, '12345678901');
-    
-    // Should only show first 6 digits
-    expect(otpInput.value).toBe('123456');
-  });
 
-  it('filters non-digits from OTP input', async () => {
-    const user = userEvent.setup();
-    renderVerify();
-    
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i) as HTMLInputElement;
-    
-    await user.type(otpInput, '1a2b3c4d5e6f');
-    
-    // Should only show digits
-    expect(otpInput.value).toBe('123456');
-  });
 
-  // TODO: Fix resend OTP functionality test - DISABLED: Edge case test
-  it.skip('handles successful resend OTP', async () => {
-    const user = userEvent.setup();
-    renderVerify();
-    
-    // Wait for cooldown to expire (mocked to be 0 seconds for test)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /resend code/i })).toBeInTheDocument();
-    });
-    
-    // Mock zero cooldown for this test
-    server.use(
-      http.get('http://localhost:3000/auth/pending/context', () => {
-        return HttpResponse.json({
-          success: true,
-          emailMasked: 'n***@example.com',
-          resend: {
-            cooldownSeconds: 0,
-            remainingToday: 5,
-          },
-        });
-      })
-    );
-    
-    // Re-render to get updated state
-    renderVerify();
-    
-    await waitFor(() => {
-      const resendButton = screen.getByRole('button', { name: /resend code/i });
-      expect(resendButton).not.toBeDisabled();
-    });
-    
-    const resendButton = screen.getByRole('button', { name: /resend code/i });
+    // Find and click the resend button
+    const resendButton = screen.getByRole('button', { name: /resend verification code/i });
     await user.click(resendButton);
-    
+
     await waitFor(() => {
-      expect(screen.getByText(/verification code sent/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /resend in 60s/i })).toBeInTheDocument();
+      expect(screen.getByText(/a new verification code has been sent to your email/i)).toBeInTheDocument();
     });
   });
 
-  // TODO: Fix cooldown timer display test - DISABLED: Edge case test
-  it.skip('shows resend cooldown timer', async () => {
+  it('shows cooldown timer after resend', async () => {
+    const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /resend in 30s/i })).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+    });
+
+    const resendButton = screen.getByRole('button', { name: /resend verification code/i });
+    await user.click(resendButton);
+
+    await waitFor(() => {
+      // Should show cooldown timer
+      expect(screen.getByText(/resend in \d+s/i)).toBeInTheDocument();
     });
   });
 
-  // TODO: Fix remaining resends counter test - DISABLED: Edge case test
-  it.skip('shows remaining resends count', async () => {
+  it('shows change email option', async () => {
+    const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByText(/5 resends remaining today/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+    });
+
+    // Find and click the change email button
+    const changeEmailButton = screen.getByRole('button', { name: /change email address/i });
+    expect(changeEmailButton).toBeInTheDocument();
+
+    await user.click(changeEmailButton);
+
+    // Should show email change form
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new email address/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /update email/i })).toBeInTheDocument();
     });
   });
 
-  // TODO: Fix invalid resume token error handling test - DISABLED: Edge case test
-  it.skip('handles invalid resume token error', async () => {
+  it('handles email change', async () => {
+    const user = userEvent.setup();
+    renderVerify();
+
+    await waitFor(() => {
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+    });
+
+    // Open email change form
+    const changeEmailButton = screen.getByRole('button', { name: /change email address/i });
+    await user.click(changeEmailButton);
+
+    // Fill and submit new email
+    const emailInput = screen.getByLabelText(/new email address/i);
+    await user.type(emailInput, 'newemail@example.com');
+
+    const updateButton = screen.getByRole('button', { name: /update email/i });
+    await user.click(updateButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/email updated.*new verification code has been sent/i)).toBeInTheDocument();
+    });
+  });
+
+  it('navigates to login when clicking proceed after verification', async () => {
+    const user = userEvent.setup();
+    renderVerify();
+
+    await waitFor(() => {
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
+    });
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Enter valid OTP
+    for (let i = 0; i < 6; i++) {
+      await user.type(otpInputs[i], (i + 1).toString());
+    }
+
+    const verifyButton = screen.getByRole('button', { name: /verify email address/i });
+    await user.click(verifyButton);
+
+    await waitFor(() => {
+      expect(screen.getByText(/your account has been successfully verified/i)).toBeInTheDocument();
+    });
+
+    const continueButton = screen.getByRole('button', { name: /continue to setup/i });
+    await user.click(continueButton);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/auth/login', { state: { redirectToHandle: true } });
+  });
+
+  it('handles already verified account', async () => {
     server.use(
-      http.post('http://localhost:3000/auth/verify-otp', () => {
-        return HttpResponse.json(
-          { success: false, code: 'RESUME_TOKEN_INVALID', message: 'Invalid resume token' },
-          { status: 400 }
-        );
+      http.get('http://localhost:3000/api/auth/pending/context', () => {
+        return HttpResponse.json({
+          code: 'ALREADY_VERIFIED',
+        }, { status: 409 });
       })
     );
-    
-    const user = userEvent.setup();
-    renderVerify('expired-token');
-    
+
+    renderVerify();
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/your account has been successfully verified/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /continue to setup/i })).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '123456');
-    await user.click(verifyButton);
-    
+  });
+
+  it('handles invalid resume token', async () => {
+    server.use(
+      http.get('http://localhost:3000/api/auth/pending/context', () => {
+        return HttpResponse.json({
+          code: 'RESUME_TOKEN_INVALID',
+        }, { status: 401 });
+      })
+    );
+
+    renderVerify();
+
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(/invalid or expired verification link/i);
+      expect(screen.getByText(/invalid or expired verification link/i)).toBeInTheDocument();
       expect(screen.getByText(/start registration again/i)).toBeInTheDocument();
     });
   });
 
-  // TODO: Fix already verified error handling test - DISABLED: Edge case test
-  it.skip('handles already verified error', async () => {
-    renderVerify('verified-token');
-    
-    await waitFor(() => {
-      expect(screen.getByText(/your account is already verified/i)).toBeInTheDocument();
-      expect(screen.getByText(/sign in/i)).toBeInTheDocument();
-    });
-  });
-
-  it('navigates to login after successful verification', async () => {
+  it('auto-focuses next input when typing OTP', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '123456');
-    await user.click(verifyButton);
-    
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /proceed to sign in/i })).toBeInTheDocument();
-    });
-    
-    const proceedButton = screen.getByRole('button', { name: /proceed to sign in/i });
-    await user.click(proceedButton);
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/auth/login');
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type in first input
+    await user.type(otpInputs[0], '1');
+
+    // Second input should be focused
+    expect(otpInputs[1]).toHaveFocus();
+
+    // Type in second input
+    await user.type(otpInputs[1], '2');
+
+    // Third input should be focused
+    expect(otpInputs[2]).toHaveFocus();
   });
 
-  // TODO: Fix verify button loading state test - DISABLED: Edge case test
-  it.skip('disables verify button while verifying', async () => {
-    server.use(
-      http.post('http://localhost:3000/auth/verify-otp', async () => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return HttpResponse.json({
-          success: true,
-          message: 'Account verified successfully',
-        });
-      })
-    );
-
+  it('handles backspace to move to previous input', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    await user.type(otpInput, '123456');
-    await user.click(verifyButton);
-    
-    expect(screen.getByRole('button', { name: /verifying.../i })).toBeInTheDocument();
-    expect(verifyButton).toBeDisabled();
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Type in first two inputs
+    await user.type(otpInputs[0], '1');
+    await user.type(otpInputs[1], '2');
+
+    // Clear second input and press backspace
+    await user.clear(otpInputs[1]);
+    await user.type(otpInputs[1], '{backspace}');
+
+    // First input should be focused
+    expect(otpInputs[0]).toHaveFocus();
   });
 
-  // TODO: Fix network error handling test - DISABLED: Edge case test
-  it.skip('handles network error gracefully', async () => {
-    server.use(
-      http.get('http://localhost:3000/auth/pending/context', () => {
-        return HttpResponse.error();
-      })
-    );
-
-    renderVerify();
-    
-    await waitFor(() => {
-      expect(screen.getByText(/unable to connect to server/i)).toBeInTheDocument();
-    });
-  });
-
-  it('clears errors when user starts typing', async () => {
+  it('handles paste of complete OTP', async () => {
     const user = userEvent.setup();
     renderVerify();
-    
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/verification code/i)).toBeInTheDocument();
+      expect(screen.getByText(/check your email/i)).toBeInTheDocument();
     });
-    
-    const otpInput = screen.getByLabelText(/verification code/i);
-    const verifyButton = screen.getByRole('button', { name: /verify account/i });
-    
-    // Trigger an error first
-    await user.type(otpInput, '000000');
-    await user.click(verifyButton);
-    
+
+    const otpInputs = screen.getAllByRole('textbox');
+
+    // Focus first input and paste
+    otpInputs[0].focus();
+
+    // Simulate paste event
+    const pasteEvent = new ClipboardEvent('paste', {
+      clipboardData: new DataTransfer(),
+    });
+    Object.defineProperty(pasteEvent.clipboardData, 'getData', {
+      value: () => '123456',
+    });
+
+    otpInputs[0].dispatchEvent(pasteEvent);
+
+    // All inputs should be filled
     await waitFor(() => {
-      expect(screen.getByText(/invalid verification code/i)).toBeInTheDocument();
+      expect(otpInputs[0]).toHaveValue('1');
+      expect(otpInputs[1]).toHaveValue('2');
+      expect(otpInputs[2]).toHaveValue('3');
+      expect(otpInputs[3]).toHaveValue('4');
+      expect(otpInputs[4]).toHaveValue('5');
+      expect(otpInputs[5]).toHaveValue('6');
     });
-    
-    // Clear input and start typing again
-    await user.clear(otpInput);
-    await user.type(otpInput, '1');
-    
-    // Error should be cleared
-    expect(screen.queryByText(/invalid verification code/i)).not.toBeInTheDocument();
   });
 });

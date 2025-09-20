@@ -94,8 +94,8 @@ export function HandleSetupPage() {
     setError(null);
 
     try {
-      const response = await profileApi.updateHandle(handle);
-      navigate(`/profile/${response.handle}`);
+      await profileApi.updateHandle(handle);
+      navigate('/profile/me');
     } catch (err) {
       if (err instanceof ProfileApiError) {
         if (err.code === "HANDLE_TAKEN") {

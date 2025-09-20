@@ -12,6 +12,15 @@ import { ProfileExperience } from "../../components/ProfileExperience";
 import { ProfileSkills } from "../../components/ProfileSkills";
 import { EventsSidebar } from "../../components/EventsSidebar";
 import { ProfileEducation } from "../../components/ProfileEducation";
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { profileApi, type ProfileMe, type Education, type Experience, ProfileApiError } from '../../lib/api/profile';
+import { ProfileLayout } from '../../components/ProfileLayout';
+import { ProfileCard } from '../../components/ProfileCard';
+import { ProfileExperience } from '../../components/ProfileExperience';
+import { ProfileSkills } from '../../components/ProfileSkills';
+import { EventsSidebar } from '../../components/EventsSidebar';
+import { ProfileEducation } from '../../components/ProfileEducation';
 
 export function MyProfilePage() {
   const navigate = useNavigate();
@@ -19,11 +28,21 @@ export function MyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [educations, setEducations] = useState<Education[]>([]);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
 
   const refetchEducations = useCallback(async () => {
     try {
       const data = await profileApi.getProfileEducations();
       setEducations(data);
+    } catch (err) {
+      // swallow refetch errors silently for now
+    }
+  }, []);
+
+  const refetchExperiences = useCallback(async () => {
+    try {
+      const data = await profileApi.getProfileExperiences();
+      setExperiences(data);
     } catch (err) {
       // swallow refetch errors silently for now
     }
@@ -42,14 +61,16 @@ export function MyProfilePage() {
           return;
         }
 
-        // Fetch the education and other things in the future
-        const [educationData] = await Promise.all([
+        // Fetch the education, experience and other things in the future
+        const [educationData, experienceData] = await Promise.all([
           profileApi.getProfileEducations(),
+          profileApi.getProfileExperiences(),
           // Add more calls here
         ]);
 
         setProfile(profileData);
         setEducations(educationData);
+        setExperiences(experienceData);
       } catch (err) {
         if (
           err instanceof ProfileApiError &&
@@ -195,7 +216,19 @@ export function MyProfilePage() {
           {/* Main Content */}
           <div className="xl:col-span-3 lg:col-span-2 space-y-6">
             <ProfileCard profile={profileForCard} isOwnProfile={true} />
-            <ProfileExperience experience={profileForDisplay.experience} />
+            <ProfileExperience
+              experiences={experiences}
+              isOwnProfile={true}
+              onExperienceAdded={() => {
+                refetchExperiences();
+              }}
+              onExperienceUpdated={() => {
+                refetchExperiences();
+              }}
+              onExperienceDeleted={() => {
+                refetchExperiences();
+              }}
+            />
             <ProfileEducation
               educations={educations}
               onEducationAdded={(e) => {

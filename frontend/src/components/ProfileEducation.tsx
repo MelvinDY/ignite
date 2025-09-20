@@ -62,7 +62,6 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<AddEducationRequest>({
     school: "",
@@ -120,17 +119,8 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
   }
   
   const closeModal = () => setModalOpen(false);
-  
+
   const handleChange = (key: keyof AddEducationRequest, value: string | number | null) => {
-    setOpen(true);
-  };
-  const closeModal = () => setOpen(false);
-
-  const handleChange = (
-    key: keyof AddEducationRequest,
-    value: string | number | null
-  ) => {
-
     setForm((f) => ({ ...f, [key]: value as any }));
   };
 

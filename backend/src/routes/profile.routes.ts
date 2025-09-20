@@ -582,6 +582,21 @@ router.delete('/profile/educations/:id', async (req, res) => {
   }
 });
 
+// GET /profile/:handle/educations
+router.get("/profile/:handle/educations", async (req, res) => {
+  const { handle } = req.params;
+  try {
+    const educations = await getProfileEducations(undefined, handle);
+    return res.status(200).json(educations);
+  } catch (err: any) {
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    console.error("getProfileEducationsHandle.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
 // GET /profile/:handle - Get profile by handle (requires authentication)
 // This route must be LAST to avoid conflicts with specific routes like /profile/educations
 router.get("/profile/:handle", async (req, res) => {

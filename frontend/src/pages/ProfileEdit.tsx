@@ -64,7 +64,6 @@ const ProfileEdit = () => {
     const fetchProfile = async () => {
       try {
         const profileData = await profileApi.getMyProfile();
-        const skills = await profileApi.getSkills();
         const data = {
           emailAddress: "TODO",
           fullName: profileData.fullName,
@@ -75,11 +74,9 @@ const ProfileEdit = () => {
           major: profileData.major ?? "",
           level: profileData.level,
           program: profileData.program ?? "",
-          skills: skills,
         };
         setInitialFormData(data);
         setFormData(data);
-        console.log(data);
       } catch (error) {
         if (error instanceof ProfileApiError) {
           console.error("Profile API Error:", error.message);

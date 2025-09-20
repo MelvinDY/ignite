@@ -584,6 +584,9 @@ router.delete('/profile/educations/:id', async (req, res) => {
 
 // GET /profile/:handle/educations
 router.get("/profile/:handle/educations", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+  
   const { handle } = req.params;
   try {
     const educations = await getProfileEducations(undefined, handle);

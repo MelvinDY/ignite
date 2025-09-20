@@ -2497,7 +2497,8 @@ paths:
         **Data returned:**
         - All education records for the specified profile
         - Sorted by: endYear DESC NULLS LAST, endMonth DESC NULLS LAST, startYear DESC, startMonth DESC
-      security: [] 
+      security:
+      - bearerAuth: []
       parameters:
         - in: path
           name: handle

@@ -9,6 +9,12 @@ let profileData: any;
 let supabaseError: any;
 let profileError: any;
 
+const mockJwtVerify = vi.fn();
+vi.mock('jsonwebtoken', () => ({
+  default: { verify: mockJwtVerify },
+  verify: mockJwtVerify,
+}));
+
 async function buildApp() {
   const mod = await import('../src/app');
   return mod.createApp();
@@ -116,7 +122,10 @@ const route = '/api/profile/johndoe/educations';
 
 describe('GET /api/profile/:handle/educations', () => {
   it('200: returns educations for valid handle', async () => {
-    const res = await request(app).get(route);
+    mockJwtVerify.mockReturnValue({ sub: 'user-123' });
+    const res = await request(app)
+      .get(route)
+      .set('Authorization', 'Bearer validtoken');
     
     expect(res.status).toBe(200);
     expect(res.body).toEqual([
@@ -155,8 +164,11 @@ describe('GET /api/profile/:handle/educations', () => {
   
   it('200: returns empty array when user has no educations', async () => {
     educationsData = [];
+    mockJwtVerify.mockReturnValue({ sub: 'user-123' });
     
-    const res = await request(app).get(route);
+    const res = await request(app)
+      .get(route)
+      .set('Authorization', 'Bearer validtoken');
     
     expect(res.status).toBe(200);
     expect(res.body).toEqual([]);
@@ -164,9 +176,32 @@ describe('GET /api/profile/:handle/educations', () => {
 
   it('404 NOT_FOUND: handle does not exist', async () => {
     profileError = { code: 'PGRST116', message: 'No rows returned' };
+    mockJwtVerify.mockReturnValue({ sub: 'user-123' });
     
-    const res = await request(app).get('/api/profile/nonexistentuser/educations');
+    const res = await request(app)
+      .get('/api/profile/nonexistentuser/educations')
+      .set('Authorization', 'Bearer validtoken');
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ code: 'NOT_FOUND' });
+  });
+
+  it('401 UNAUTHORIZED: missing authorization header', async () => {
+    const res = await request(app).get(route);
+    
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
+  });
+
+  it('401 UNAUTHORIZED: invalid token', async () => {
+    mockJwtVerify.mockImplementation(() => {
+      throw new Error('Invalid token');
+    });
+    
+    const res = await request(app)
+      .get(route)
+      .set('Authorization', 'Bearer invalidtoken');
+    
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
   });
 });

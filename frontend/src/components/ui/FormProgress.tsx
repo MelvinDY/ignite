@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 interface FormProgressProps {
   currentStep: number;
@@ -13,16 +13,16 @@ export function FormProgress({ currentStep, totalSteps }: FormProgressProps) {
           const stepNumber = i + 1;
           const isActive = stepNumber === currentStep;
           const isCompleted = stepNumber < currentStep;
-          
+
           return (
             <React.Fragment key={stepNumber}>
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
                   isActive
-                    ? 'bg-white text-[#3E000C]'
+                    ? "bg-white text-[var(--dark-red)]"
                     : isCompleted
-                    ? 'bg-white/80 text-[#3E000C]'
-                    : 'bg-white/20 text-white border border-white/30'
+                    ? "bg-white/80 text-[var(--dark-red)]"
+                    : "bg-white/20 text-white border border-white/30"
                 }`}
               >
                 {stepNumber}
@@ -30,7 +30,7 @@ export function FormProgress({ currentStep, totalSteps }: FormProgressProps) {
               {stepNumber < totalSteps && (
                 <div
                   className={`w-8 h-px ${
-                    isCompleted ? 'bg-white/80' : 'bg-white/30'
+                    isCompleted ? "bg-white/80" : "bg-white/30"
                   }`}
                 />
               )}

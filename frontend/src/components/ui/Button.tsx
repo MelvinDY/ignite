@@ -29,7 +29,7 @@ export function Button({
   };
   const variantClasses = {
     primary:
-      "bg-white text-[#3E000C] hover:bg-white/90 disabled:bg-white/50 disabled:cursor-not-allowed",
+      "bg-white text-[var(--dark-red)] hover:bg-white/90 disabled:bg-white/50 disabled:cursor-not-allowed",
     secondary:
       "bg-white/10 text-white border border-white/30 hover:bg-white/20 disabled:bg-white/5 disabled:cursor-not-allowed",
     link: `inline-flex p-0 relative bg-transparent text-white disabled:text-white/50 disabled:cursor-not-allowed

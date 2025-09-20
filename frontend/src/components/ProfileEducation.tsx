@@ -282,14 +282,6 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:underline">{edu.school}</h3>
                         {headline && <p className="text-[#3E000C] font-medium">{headline}</p>}
                       </button>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {edu.school}
-                      </h3>
-                      {headline && (
-                        <p className="text-[var(--dark-red)] font-medium">
-                          {headline}
-                        </p>
-                      )}
                     </div>
                     <div className="mt-2 sm:mt-0 sm:text-right">
                       <p className=" text-gray-600 font-medium">

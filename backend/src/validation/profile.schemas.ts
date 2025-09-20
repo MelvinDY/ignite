@@ -7,16 +7,16 @@ export const HandleSchema = z.object({
 
 export const UpdateProfileSchema = z.object({
   fullName: z.string().min(1).optional(),
-  headline: z.string().optional(),
+  headline: z.string().nullable().optional(),
   isIndonesian: z.boolean().optional(),
   program: z.string().min(1).optional(),
   major: z.string().min(1).optional(),
   level: z.enum(['foundation', 'diploma', 'undergrad', 'postgrad', 'phd']).optional(),
   yearStart: z.number().int().min(2000).max(2100).optional(),
-  yearGrad: z.number().int().min(2000).max(2100).optional(),
-  domicileCity: z.string().optional(),
-  domicileCountry: z.string().regex(/^[A-Z]{2}$/).optional(),
-  bio: z.string().optional(),
+  yearGrad: z.number().int().min(2000).max(2100).nullable().optional(),
+  domicileCity: z.string().nullable().optional(),
+  domicileCountry: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+  bio: z.string().nullable().optional(),
 }).refine((data) => {
   // Validate that yearGrad is after yearStart if both are provided
   if (data.yearStart && data.yearGrad && data.yearGrad <= data.yearStart) {

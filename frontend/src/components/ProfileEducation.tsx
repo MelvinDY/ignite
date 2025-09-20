@@ -62,7 +62,6 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<AddEducationRequest>({
     school: "",
@@ -120,17 +119,8 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
   }
   
   const closeModal = () => setModalOpen(false);
-  
+
   const handleChange = (key: keyof AddEducationRequest, value: string | number | null) => {
-    setOpen(true);
-  };
-  const closeModal = () => setOpen(false);
-
-  const handleChange = (
-    key: keyof AddEducationRequest,
-    value: string | number | null
-  ) => {
-
     setForm((f) => ({ ...f, [key]: value as any }));
   };
 
@@ -292,14 +282,6 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:underline">{edu.school}</h3>
                         {headline && <p className="text-[#3E000C] font-medium">{headline}</p>}
                       </button>
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        {edu.school}
-                      </h3>
-                      {headline && (
-                        <p className="text-[var(--dark-red)] font-medium">
-                          {headline}
-                        </p>
-                      )}
                     </div>
                     <div className="mt-2 sm:mt-0 sm:text-right">
                       <p className=" text-gray-600 font-medium">

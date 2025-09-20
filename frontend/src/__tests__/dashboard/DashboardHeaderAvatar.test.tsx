@@ -25,6 +25,16 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+// Mock the useAuth hook
+vi.mock('../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    login: vi.fn(),
+    logout: vi.fn(),
+    user: null,
+  }),
+}));
+
 describe('DashboardHeaderAvatar', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -103,7 +113,15 @@ describe('DashboardHeaderAvatar', () => {
       expect(screen.getByText('TU')).toBeInTheDocument(); // Initials
     });
 
+    // Click dropdown trigger to open menu
     fireEvent.click(screen.getByRole('button'));
+
+    await waitFor(() => {
+      expect(screen.getByText('View Profile')).toBeInTheDocument();
+    });
+
+    // Click "View Profile" option
+    fireEvent.click(screen.getByText('View Profile'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/profile/me');
   });
@@ -135,7 +153,7 @@ describe('DashboardHeaderAvatar', () => {
     render(<DashboardHeaderAvatar />);
 
     await waitFor(() => {
-      const img = screen.getByAltText("Test User's profile");
+      const img = screen.getByAltText("Test User");
       expect(img).toBeInTheDocument();
       expect(img).toHaveAttribute('src', 'https://example.com/photo.jpg');
     });

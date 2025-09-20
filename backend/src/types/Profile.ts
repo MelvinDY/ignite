@@ -3,6 +3,7 @@ export interface ProfileObject {
   fullName: string;
   handle: string | null;
   photoUrl: string | null;
+  bannerUrl: string | null;
   isIndonesian: boolean;
   program: string | null;
   major: string | null;

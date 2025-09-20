@@ -7,9 +7,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/useAuth";
+} from "./ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { useAuth } from "../hooks/useAuth";
 
 interface ProfileMenuProps {
   user: {
@@ -68,7 +68,7 @@ export function ProfileMenu({ user, variant = "default" }: ProfileMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className={triggerClasses}>
+        <button className={triggerClasses} aria-label="Open my profile">
           <Avatar className="h-8 w-8">
             <AvatarImage src={user.avatarUrl || undefined} alt={user.name} />
             <AvatarFallback className={avatarFallbackClasses}>

@@ -87,14 +87,43 @@ export function Verify() {
     }
   }, [cooldownSeconds]);
 
-  const handleOtpChange = (value: string) => {
-    // Only allow digits and limit to 6 characters
-    const digits = value.replace(/\D/g, '').slice(0, 6);
-    setOtp(digits);
+  const handleOtpChange = (value: string, index: number) => {
+    // Only allow digits
+    const digit = value.replace(/\D/g, '').slice(-1);
+
+    // Update the OTP string
+    const newOtp = otp.split('');
+    newOtp[index] = digit;
+    setOtp(newOtp.join(''));
 
     // Clear errors when user starts typing
     if (otpError) setOtpError('');
     if (apiError) setApiError('');
+
+    // Auto-focus next input
+    if (digit && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text');
+    const digits = pastedData.replace(/\D/g, '').slice(0, 6);
+    setOtp(digits);
+
+    // Focus the last filled input or the next empty one
+    const lastIndex = Math.min(digits.length - 1, 5);
+    const targetInput = document.getElementById(`otp-${lastIndex}`);
+    targetInput?.focus();
   };
 
   const handleEmailInputChange = (value: string) => {
@@ -151,7 +180,7 @@ export function Verify() {
             );
             break;
           default:
-            setApiError('Verification failed. Please try again.');
+            setApiError('An unexpected error occurred. Please try again.');
         }
       } else {
         setApiError('Unable to connect to server. Please try again.');
@@ -161,95 +190,23 @@ export function Verify() {
     }
   };
 
-  const handleChangeEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!currentResumeToken || !newEmail.trim()) return;
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      setEmailChangeError('Please enter a valid email address');
-      return;
-    }
-
-    setIsChangingEmail(true);
-    setEmailChangeError('');
-    setApiError('');
-
-    try {
-      const result = await authApi.changeEmailPreVerify({
-        resumeToken: currentResumeToken,
-        newEmail: newEmail.trim(),
-      });
-
-      // Update the resume token and reset states
-      setCurrentResumeToken(result.resumeToken);
-      setShowEmailChange(false);
-      setNewEmail('');
-      setOtp(''); // Clear OTP as user needs new code
-      setCooldownSeconds(0); // Reset cooldown
-
-      setApiError(
-        <span className="text-green-200">
-          Email updated! A new verification code has been sent to {newEmail}.
-        </span>
-      );
-    } catch (error) {
-      if (error instanceof AuthApiError) {
-        switch (error.code) {
-          case 'EMAIL_EXISTS':
-            setEmailChangeError('This email is already registered to another account');
-            break;
-          case 'ALREADY_VERIFIED':
-            setIsVerified(true);
-            break;
-          case 'RESUME_TOKEN_INVALID':
-          case 'PENDING_NOT_FOUND':
-            setApiError(
-              <>
-                Invalid verification session.{' '}
-                <Link to="/auth/register" className="underline hover:text-white/80">
-                  Start registration again
-                </Link>
-              </>
-            );
-            break;
-          default:
-            setEmailChangeError('Failed to change email. Please try again.');
-        }
-      } else {
-        setEmailChangeError('Unable to connect to server. Please try again.');
-      }
-    } finally {
-      setIsChangingEmail(false);
-    }
-  };
-
-  const handleResend = async () => {
-    if (!currentResumeToken || cooldownSeconds > 0) return;
+  const handleResendOtp = async () => {
+    if (!currentResumeToken) return;
 
     setIsResending(true);
     setApiError('');
 
     try {
-      const result = await authApi.resendOtp({ resumeToken: currentResumeToken });
+      await authApi.resendOtp(currentResumeToken);
 
-      // Update context with new resend state if returned
-      if (result.resend && context) {
-        setContext({
-          ...context,
-          resend: {
-            cooldownSeconds: result.resend.cooldownSeconds,
-            remainingToday: result.resend.remainingToday,
-          },
-        });
-      }
+      // Refresh context to get updated resend count
+      const updatedContext = await authApi.getPendingContext(currentResumeToken);
+      setContext(updatedContext);
+      setCooldownSeconds(60);
 
-      setCooldownSeconds(60); // Set 60-second cooldown
       setApiError(
-        <span className="text-green-200">
-          Verification code sent! Please check your email.
+        <span className="text-green-400">
+          A new verification code has been sent to your email.
         </span>
       );
     } catch (error) {
@@ -265,7 +222,7 @@ export function Verify() {
           case 'PENDING_NOT_FOUND':
             setApiError(
               <>
-                Invalid verification link.{' '}
+                Invalid or expired verification link.{' '}
                 <Link to="/auth/register" className="underline hover:text-white/80">
                   Start registration again
                 </Link>
@@ -283,19 +240,83 @@ export function Verify() {
     }
   };
 
+  const handleResend = handleResendOtp;
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!currentResumeToken || !newEmail.trim()) return;
+
+    setIsChangingEmail(true);
+    setEmailChangeError('');
+    setApiError('');
+
+    try {
+      const response = await authApi.changeEmailPreVerify({
+        resumeToken: currentResumeToken,
+        newEmail: newEmail.trim(),
+      });
+
+      // Update the resume token
+      setCurrentResumeToken(response.resumeToken);
+
+      // Clear the form
+      setNewEmail('');
+      setShowEmailChange(false);
+
+      // Fetch updated context
+      const updatedContext = await authApi.getPendingContext(response.resumeToken);
+      setContext(updatedContext);
+      setCooldownSeconds(updatedContext.resend.cooldownSeconds);
+
+      setApiError(
+        <span className="text-green-400">
+          Email updated! A new verification code has been sent to {newEmail.trim()}.
+        </span>
+      );
+
+      // Clear the OTP input
+      setOtp('');
+    } catch (error) {
+      if (error instanceof AuthApiError) {
+        switch (error.code) {
+          case 'EMAIL_EXISTS':
+            setEmailChangeError('This email is already registered.');
+            break;
+          case 'VALIDATION_ERROR':
+            setEmailChangeError('Please enter a valid email address.');
+            break;
+          case 'RESUME_TOKEN_INVALID':
+          case 'PENDING_NOT_FOUND':
+            setApiError(
+              <>
+                Invalid or expired verification link.{' '}
+                <Link to="/auth/register" className="underline hover:text-white/80">
+                  Start registration again
+                </Link>
+              </>
+            );
+            break;
+          default:
+            setEmailChangeError('Failed to update email. Please try again.');
+        }
+      } else {
+        setEmailChangeError('Unable to connect to server. Please try again.');
+      }
+    } finally {
+      setIsChangingEmail(false);
+    }
+  };
+
   if (!resumeToken) {
     return (
       <AuthLayout title="Verify Email">
         <Alert
           message={
             <>
-              Invalid or missing verification link.{' '}
+              No verification link provided.{' '}
               <Link to="/auth/register" className="underline hover:text-white/80">
-                Start registration again
-              </Link>
-              {' or '}
-              <Link to="/auth/login" className="underline hover:text-white/80">
-                Sign in
+                Start registration
               </Link>
             </>
           }
@@ -309,7 +330,13 @@ export function Verify() {
     return (
       <AuthLayout title="Verify Email">
         <div className="text-center">
-          <div className="text-white/80 text-sm">Loading verification details...</div>
+          <div className="inline-flex items-center space-x-2">
+            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span className="text-white/80 text-sm">Loading verification details...</span>
+          </div>
         </div>
       </AuthLayout>
     );
@@ -326,149 +353,206 @@ export function Verify() {
   if (isVerified) {
     return (
       <AuthLayout title="Account Verified">
-        <Alert
-          message="Your account has been successfully verified!"
-          type="success"
-        />
-        <div className="mt-6 text-center">
-          <p className="text-white/80 text-sm mb-4">
-            You can now sign in to your account.
-          </p>
-          <Button
-            onClick={() => navigate('/auth/login')}
-            className="w-full"
-          >
-            Proceed to Sign In
-          </Button>
+        <div className="text-center">
+          {/* Success Icon */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
+              <svg className="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+
+          <Alert
+            message="Your account has been successfully verified!"
+            type="success"
+          />
+
+          <div className="mt-6">
+            <p className="text-white/70 text-sm mb-6">
+              Let's set up your profile handle to get started.
+            </p>
+            <Button
+              onClick={() => navigate('/auth/login', { state: { redirectToHandle: true } })}
+              className="w-full bg-white/20 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-white font-medium py-3 rounded-lg transition-all"
+            >
+              Continue to Setup
+            </Button>
+          </div>
         </div>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout title="Verify Email">
+    <AuthLayout title="Verify Your Email">
+      {/* Email Icon */}
+      <div className="flex justify-center mb-6">
+        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
+        </div>
+      </div>
+
       <div className="text-center mb-6">
-        <p className="text-white/80 text-sm">
-          We sent a verification code to{' '}
-          {context?.emailMasked ? (
-            <span className="font-medium text-white">
+        <h2 className="text-lg font-semibold text-white mb-3">Check Your Email</h2>
+        <p className="text-white/70 text-sm leading-relaxed">
+          We've sent a verification code to
+        </p>
+        {context?.emailMasked && (
+          <div className="mt-2">
+            <span className="font-medium text-white bg-white/10 px-3 py-1 rounded-full text-sm inline-block">
               {context.emailMasked}
             </span>
-          ) : (
-            'your email address'
-          )}
-          . Please check your inbox and enter the 6-digit code below.
-        </p>
-
-        {context && (
-          <div className="mt-3 text-xs text-white/60">
-            {context.resend.remainingToday > 0 ? (
-              <>
-                {context.resend.remainingToday} resend{context.resend.remainingToday === 1 ? '' : 's'} remaining today
-              </>
-            ) : (
-              'Daily resend limit reached. Try again tomorrow.'
-            )}
           </div>
         )}
+        <p className="text-white/50 text-xs mt-3">
+          Please check your inbox and enter the 6-digit code below
+        </p>
       </div>
 
       {apiError && <Alert message={apiError} type="error" className="mb-4" />}
 
-      <form onSubmit={handleVerify} className="space-y-4">
-        <TextInput
-          id="otp"
-          label="Verification Code"
-          type="text"
-          value={otp}
-          onChange={handleOtpChange}
-          error={otpError}
-          placeholder="Enter 6-digit code"
-          maxLength={6}
-          className="text-center text-2xl tracking-wider"
-          required
-          disabled={isVerifying}
-        />
+      <form onSubmit={handleVerify} className="space-y-6">
+        <div>
+          <label className="block text-sm font-medium text-white/90 mb-4 text-center">
+            Verification Code
+          </label>
+          <div className="flex justify-center gap-2 sm:gap-3">
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <input
+                key={index}
+                id={`otp-${index}`}
+                type="text"
+                value={otp[index] || ''}
+                onChange={(e) => handleOtpChange(e.target.value, index)}
+                onKeyDown={(e) => handleOtpKeyDown(e, index)}
+                onPaste={handleOtpPaste}
+                className="w-12 h-14 sm:w-14 sm:h-16 bg-white/10 backdrop-blur-sm border-2 border-white/20 rounded-lg text-white text-center text-xl sm:text-2xl font-mono focus:outline-none focus:border-white/50 focus:bg-white/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                maxLength={1}
+                disabled={isVerifying}
+                autoComplete="one-time-code"
+                inputMode="numeric"
+                pattern="[0-9]"
+                required={index === 0}
+              />
+            ))}
+          </div>
+          {otpError && (
+            <p className="mt-3 text-sm text-red-300 text-center">{otpError}</p>
+          )}
+        </div>
 
         <Button
           type="submit"
           disabled={isVerifying || otp.length !== 6}
-          className="w-full"
+          className="w-full bg-white/20 hover:bg-white/25 backdrop-blur-sm border border-white/30 text-white font-medium py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isVerifying ? 'Verifying...' : 'Verify Account'}
+          {isVerifying ? (
+            <span className="flex items-center justify-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Verifying...
+            </span>
+          ) : (
+            'Verify Email Address'
+          )}
         </Button>
       </form>
 
-      <div className="mt-6 text-center space-y-4">
-        <div className="text-sm text-white/60">
-          Didn't receive the code?
+      {/* Divider */}
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-white/10"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-3 bg-gradient-to-br from-[#3E000C]/80 to-[#8B1538]/80 text-white/50">Options</span>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {/* Resend OTP */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={handleResendOtp}
+            disabled={isResending || cooldownSeconds > 0 || (context?.resend.remainingToday === 0)}
+            className="inline-flex items-center space-x-2 text-white/70 hover:text-white text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+          >
+            {isResending ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Sending...</span>
+              </>
+            ) : cooldownSeconds > 0 ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Resend in {cooldownSeconds}s</span>
+              </>
+            ) : context?.resend.remainingToday === 0 ? (
+              <span className="text-red-300">Daily limit reached</span>
+            ) : (
+              <>
+                <svg className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Resend verification code</span>
+              </>
+            )}
+          </button>
+          {context && context.resend.remainingToday > 0 && cooldownSeconds === 0 && !isResending && (
+            <p className="text-xs text-white/40 mt-1">
+              {context.resend.remainingToday} resend{context.resend.remainingToday === 1 ? '' : 's'} remaining today
+            </p>
+          )}
         </div>
 
-        <div className="space-y-2">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={handleResend}
-            disabled={
-              isResending ||
-              cooldownSeconds > 0 ||
-              (context && context.resend.remainingToday === 0)
-            }
-            className="text-sm w-full"
-          >
-            {isResending
-              ? 'Sending...'
-              : cooldownSeconds > 0
-              ? `Resend in ${cooldownSeconds}s`
-              : context && context.resend.remainingToday === 0
-              ? 'Daily limit reached'
-              : 'Resend Code'
-            }
-          </Button>
-
-          <div className="text-xs text-white/40">or</div>
-
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            onClick={() => setShowEmailChange(!showEmailChange)}
-            disabled={isChangingEmail}
-            className="text-sm text-white/60 hover:text-white/80 w-full"
-          >
-            {showEmailChange ? 'Cancel' : 'Change Email Address'}
-          </Button>
-        </div>
-
-        {showEmailChange && (
-          <div className="mt-4 p-4 bg-white/5 rounded-lg border border-white/10">
+        {/* Change Email */}
+        {!showEmailChange ? (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setShowEmailChange(true)}
+              className="inline-flex items-center space-x-2 text-white/70 hover:text-white text-sm font-medium transition-all group"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              <span>Change email address</span>
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 bg-white/5 rounded-lg border border-white/10">
             <form onSubmit={handleChangeEmail} className="space-y-3">
-              <div className="text-left">
-                <TextInput
-                  id="newEmail"
-                  label="New Email Address"
-                  type="email"
-                  value={newEmail}
-                  onChange={handleEmailInputChange}
-                  error={emailChangeError}
-                  placeholder="Enter your correct email"
-                  required
-                  disabled={isChangingEmail}
-                  className="text-sm"
-                />
-              </div>
-
+              <TextInput
+                id="newEmail"
+                label="New Email Address"
+                type="email"
+                value={newEmail}
+                onChange={handleEmailInputChange}
+                error={emailChangeError}
+                placeholder="Enter your correct email"
+                required
+                disabled={isChangingEmail}
+                className="text-sm"
+              />
               <div className="flex gap-2">
                 <Button
                   type="submit"
                   size="sm"
                   disabled={isChangingEmail || !newEmail.trim()}
-                  className="flex-1 text-sm"
+                  className="flex-1 bg-white/10 hover:bg-white/15"
                 >
                   {isChangingEmail ? 'Updating...' : 'Update Email'}
                 </Button>
-
                 <Button
                   type="button"
                   variant="secondary"
@@ -479,27 +563,41 @@ export function Verify() {
                     setEmailChangeError('');
                   }}
                   disabled={isChangingEmail}
-                  className="flex-1 text-sm"
+                  className="flex-1"
                 >
                   Cancel
                 </Button>
               </div>
             </form>
-
-            <div className="mt-3 text-xs text-white/40">
-              After updating your email, a new verification code will be sent to your new address.
-            </div>
+            <p className="mt-3 text-xs text-white/40">
+              A new verification code will be sent to your new address
+            </p>
           </div>
         )}
       </div>
 
-      <div className="mt-8 text-center">
-        <Link
-          to="/auth/register"
-          className="text-sm text-white/60 hover:text-white/80 underline"
-        >
-          Back to Registration
-        </Link>
+      {/* Footer Links */}
+      <div className="mt-8 pt-6 border-t border-white/10">
+        <div className="flex flex-col sm:flex-row justify-between items-center space-y-3 sm:space-y-0">
+          <Link
+            to="/auth/login"
+            className="inline-flex items-center space-x-2 text-white/60 hover:text-white text-sm font-medium transition-all group"
+          >
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+            </svg>
+            <span>Back to login</span>
+          </Link>
+          <Link
+            to="/auth/register"
+            className="inline-flex items-center space-x-2 text-white/60 hover:text-white text-sm font-medium transition-all group"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            <span>New registration</span>
+          </Link>
+        </div>
       </div>
     </AuthLayout>
   );

@@ -19,6 +19,7 @@ import {
   isHandleAvailable,
   setHandle,
   getProfileDetails,
+  getPublicProfileByHandle,
   uploadProfilePicture,
   uploadBannerImage,
   updateProfile,
@@ -74,6 +75,7 @@ router.get("/profile/me", async (req, res) => {
     return res.status(500).json({ code: "INTERNAL" });
   }
 });
+
 
 // PATCH /profile - Update user profile details
 router.patch("/profile", async (req, res) => {
@@ -577,6 +579,30 @@ router.delete('/profile/educations/:id', async (req, res) => {
   } catch (err) {
     console.error('deleteEducation.error', err);
     return res.status(500).json({ code: 'INTERNAL' });
+  }
+});
+
+// GET /profile/:handle - Get profile by handle (requires authentication)
+// This route must be LAST to avoid conflicts with specific routes like /profile/educations
+router.get("/profile/:handle", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const { handle } = req.params;
+
+  if (!handle) {
+    return res.status(400).json({ code: "INVALID_HANDLE" });
+  }
+
+  try {
+    const profileDetails = await getPublicProfileByHandle(handle);
+    return res.status(200).json(profileDetails);
+  } catch (err: any) {
+    if (err?.code === "PROFILE_NOT_FOUND") {
+      return res.status(404).json({ code: "PROFILE_NOT_FOUND", message: "Profile not found" });
+    }
+    console.error("get-profile.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
   }
 });
 

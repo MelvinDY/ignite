@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileApi, type ProfileMe, type Education, ProfileApiError } from '../../lib/api/profile';
-import { ProfileHeader } from '../../components/ProfileHeader';
+import { ProfileLayout } from '../../components/ProfileLayout';
+import { ProfileCard } from '../../components/ProfileCard';
 import { ProfileExperience } from '../../components/ProfileExperience';
 import { ProfileSkills } from '../../components/ProfileSkills';
 import { EventsSidebar } from '../../components/EventsSidebar';
@@ -134,11 +135,27 @@ export function MyProfilePage() {
     return null;
   }
 
-  // Convert ProfileMe to compatible format for existing components
+  // Convert ProfileMe to compatible format for components
+  const profileForCard = {
+    id: profile.id,
+    handle: profile.handle,
+    photoUrl: profile.photoUrl,
+    fullName: profile.fullName,
+    bio: profile.bio,
+    yearStart: profile.yearStart,
+    yearGrad: profile.yearGrad,
+    level: profile.level,
+    program: profile.program,
+    major: profile.major,
+    isIndonesian: profile.isIndonesian,
+    headline: profile.headline,
+    domicileCity: profile.domicileCity,
+    domicileCountry: profile.domicileCountry,
+  };
+
   const profileForDisplay = {
     id: profile.id,
     handle: profile.handle!,
-    zid: profile.zid,
     photo_url: profile.photoUrl,
     full_name: profile.fullName,
     bio: profile.bio,
@@ -147,50 +164,45 @@ export function MyProfilePage() {
     program: profile.program || '',
     major: profile.major || '',
     is_indonesian: profile.isIndonesian,
-    experience: [], // TODO: Add when experience API is implemented
-    skills: [] // TODO: Add when skills API is implemented
+    experience: [],
+    skills: []
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Page Header */}
-      <div className="bg-gradient-to-r from-[#3E000C] to-[#8B1538] h-32 md:h-40 lg:h-48"></div>
-      
-      <div className="w-full max-w-none px-0 sm:px-4 md:px-6 lg:px-8 xl:px-12 -mt-16 md:-mt-20 lg:-mt-24">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-            {/* Main Content */}
-            <div className="xl:col-span-3 lg:col-span-2 space-y-4 md:space-y-6">
-              <ProfileHeader profile={profileForDisplay} />
-              <ProfileExperience experience={profileForDisplay.experience} />
-              <ProfileEducation
-                educations={educations}
-                onEducationAdded={(e) => {
-                  setEducations((prev) => [e, ...prev]);
-                  refetchEducations();
-                }}
-                
-                onEducationUpdated={(e) => {
-                  setEducations((prev) => prev.map((it) => (it.id === e.id ? e : it)));
-                  refetchEducations();
-                }}
+    <ProfileLayout>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="xl:col-span-3 lg:col-span-2 space-y-6">
+            <ProfileCard profile={profileForCard} isOwnProfile={true} />
+            <ProfileExperience experience={profileForDisplay.experience} />
+            <ProfileEducation
+              educations={educations}
+              onEducationAdded={(e) => {
+                setEducations((prev) => [e, ...prev]);
+                refetchEducations();
+              }}
 
-                onEducationDeleted={(id) =>
-                  setEducations((prev) => prev.filter((x) => x.id !== id))  // CHANGED: was setEds → setEducations
-                }
-              />
-              <ProfileSkills />
-            </div>
-            
-            {/* Sidebar */}
-            <div className="xl:col-span-1 lg:col-span-1">
-              <div className="sticky top-6">
-                <EventsSidebar />
-              </div>
+              onEducationUpdated={(e) => {
+                setEducations((prev) => prev.map((it) => (it.id === e.id ? e : it)));
+                refetchEducations();
+              }}
+
+              onEducationDeleted={(id) =>
+                setEducations((prev) => prev.filter((x) => x.id !== id))
+              }
+            />
+            <ProfileSkills />
+          </div>
+
+          {/* Sidebar */}
+          <div className="xl:col-span-1 lg:col-span-1">
+            <div className="sticky top-24">
+              <EventsSidebar />
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ProfileLayout>
   );
 }

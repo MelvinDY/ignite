@@ -2,23 +2,26 @@ import { twMerge } from "tailwind-merge";
 
 interface BadgeProps {
   text: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   className?: string;
+  canRemove?: boolean;
 }
 
-const Badge = ({ text, onRemove, className }: BadgeProps) => {
+const Badge = ({ text, onRemove, className, canRemove = true }: BadgeProps) => {
   return (
     <span
       className={twMerge(
         `inline-block h-6 bg-white text-black text-xs font-semibold mr-2 px-2.5 py-0.5 
-        rounded`,
+        rounded-full border border-black`,
         className
       )}
     >
       {text}
-      <button className="ml-1" onClick={onRemove}>
-        x
-      </button>
+      {canRemove && (
+        <button className="ml-1" onClick={onRemove}>
+          x
+        </button>
+      )}
     </span>
   );
 };

@@ -5,18 +5,18 @@ import { type Skill } from "./formTypes";
 
 interface SkillsContainerProps {
   id: string;
-  label?: string;
   value: Skill[];
   className?: string;
   onChange: (value: Skill[]) => void;
+  displayOnly: boolean;
 }
 
 const SkillsContainer = ({
   id,
-  label,
   value = [],
   className,
   onChange,
+  displayOnly,
 }: SkillsContainerProps) => {
   const [inputValue, setInputValue] = useState("");
 
@@ -48,16 +48,10 @@ const SkillsContainer = ({
 
   return (
     <>
-      {label && (
-        <label htmlFor={id} className="block text-sm font-medium mb-2">
-          {label}
-        </label>
-      )}
       <div
         id={id}
         className={twMerge(
-          `w-full px-3 py-2 bg-white/10 border rounded-md text-white placeholder-white/60 
-          focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent border-white/30`,
+          `w-full px-3 py-2 bg-white/10 rounded-md placeholder-white/60 text-black`,
           className
         )}
       >
@@ -67,19 +61,22 @@ const SkillsContainer = ({
               key={index}
               text={skill.name}
               onRemove={() => removeSkill(index)}
+              canRemove={!displayOnly}
             />
           ))}
-          <input
-            id={id}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={
-              value.length > 0 ? "" : "Enter a skill and press Enter"
-            }
-            className="flex-1 bg-transparent text-white placeholder-white/60 focus:outline-none min-w-0"
-          />
+          {!displayOnly && (
+            <input
+              id={id}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={
+                value.length > 0 ? "" : "Enter a skill and press Enter"
+              }
+              className="text-black flex-1 bg-transparent placeholder-black/60 focus:outline-none min-w-0"
+            />
+          )}
         </div>
       </div>
     </>

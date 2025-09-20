@@ -177,10 +177,10 @@ export const handlers = [
 
     if (resumeToken === 'mock-resume-token') {
       return HttpResponse.json({
-        success: true,
         emailMasked: 'n***@example.com',
+        status: 'PENDING_VERIFICATION',
         resend: {
-          cooldownSeconds: 30,
+          cooldownSeconds: 0,
           remainingToday: 5,
         },
       });

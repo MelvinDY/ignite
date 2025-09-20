@@ -107,6 +107,7 @@ const DashboardForm = ({ formData, changeFormData }: EditProfileFormProps) => {
             label="Skills"
             value={formData.skills}
             onChange={(value) => changeFormData("skills", value)}
+            displayOnly={false}
           />
         </div>
       </section>

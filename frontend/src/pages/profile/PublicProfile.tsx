@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   profileApi,
   type PublicProfile,
   ProfileApiError,
 } from "../../lib/api/profile";
+import { ProfileLayout } from "../../components/ProfileLayout";
+import { ProfileCard } from "../../components/ProfileCard";
+import { EventsSidebar } from "../../components/EventsSidebar";
+import { useAuth } from "../../hooks/useAuth";
 
 function PublicProfileHeader({ profile }: { profile: PublicProfile }) {
   const getInitials = (name: string) =>
@@ -118,9 +122,12 @@ function PublicProfileHeader({ profile }: { profile: PublicProfile }) {
 
 export function PublicProfilePage() {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -129,78 +136,167 @@ export function PublicProfilePage() {
         setLoading(false);
         return;
       }
+
       try {
         setLoading(true);
         setError(null);
-        const profileData = await profileApi.getPublicProfile(slug);
-        setProfile(profileData);
+
+        // Try to fetch public profile first
+        const publicProfile = await profileApi.getPublicProfile(slug);
+        setProfile(publicProfile);
+
+        // Check if it's the user's own profile (only if authenticated)
+        if (isAuthenticated) {
+          try {
+            const myProfile = await profileApi.getMyProfile();
+            setIsOwnProfile(myProfile.handle === slug);
+          } catch (err) {
+            // If we can't get myProfile, assume it's not own profile
+            setIsOwnProfile(false);
+          }
+        }
       } catch (err) {
+        console.error("Error fetching profile:", err);
         if (err instanceof ProfileApiError) {
-          if (err.code === "PROFILE_NOT_FOUND") setError("Profile not found");
-          else setError("Failed to load profile");
-        } else setError("Failed to connect to server");
+          if (err.code === "PROFILE_NOT_FOUND") {
+            setError("Profile not found");
+          } else {
+            setError("Unable to load profile");
+          }
+        } else {
+          setError("Unable to load profile");
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchProfile();
-  }, [slug]);
+  }, [slug, isAuthenticated]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-gradient-to-r from-[var(--dark-red)] to-[#8B1538] h-32 md:h-40 lg:h-48 animate-pulse"></div>
-      </div>
+      <ProfileLayout>
+        <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+            <div className="h-48 md:h-64 bg-gradient-to-r from-gray-200 to-gray-300"></div>
+            <div className="px-6 pb-6">
+              <div className="-mt-16 mb-4">
+                <div className="w-32 h-32 rounded-full bg-gray-300"></div>
+              </div>
+              <div className="space-y-3">
+                <div className="h-8 bg-gray-200 rounded w-1/3"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ProfileLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
-          <div className="text-red-500 mb-4">
-            <svg
-              className="w-12 h-12 mx-auto"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+      <ProfileLayout>
+        <div className="flex items-center justify-center py-20">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-sm border border-gray-200 p-6 text-center">
+            <div className="text-red-500 mb-4">
+              <svg
+                className="w-12 h-12 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {error === "Profile not found"
+                ? "Profile Not Found"
+                : "Error Loading Profile"}
+            </h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => navigate("/")}
+              className="px-4 py-2 bg-[#3E000C] text-white rounded-md hover:bg-[#3E000C]/90 transition-colors"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z"
-              />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Error Loading Profile
-          </h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <Link to="/">
-            <button className="px-4 py-2 bg-[var(--dark-red)] text-white rounded-md hover:bg-[var(--dark-red)]/90 transition-colors">
-              Go Back Home
+              Go Home
             </button>
-          </Link>
+          </div>
         </div>
-      </div>
+      </ProfileLayout>
     );
   }
 
   if (!profile) return null;
 
+  // Convert to ProfileCard format
+  const profileForCard = {
+    id: profile.id,
+    handle: profile.handle,
+    photoUrl: profile.photoUrl,
+    fullName: profile.fullName,
+    bio: profile.bio,
+    yearStart: profile.yearStart,
+    yearGrad: profile.yearGrad,
+    level: profile.level,
+    program: profile.program,
+    major: profile.major,
+    headline: profile.headline,
+    domicileCity: profile.domicileCity,
+    domicileCountry: profile.domicileCountry,
+    isIndonesian: profile.isIndonesian,
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-gradient-to-r from-[var(--dark-red)] to-[#8B1538] h-32 md:h-40 lg:h-48"></div>
-      <div className="w-full max-w-none px-0 sm:px-4 md:px-6 lg:px-8 xl:px-12 -mt-16 md:-mt-20 lg:-mt-24">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8">
-            <div className="xl:col-span-3 lg:col-span-2 space-y-4 md:space-y-6">
-              <PublicProfileHeader profile={profile} />
+    <ProfileLayout>
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="xl:col-span-3 lg:col-span-2 space-y-6">
+            <ProfileCard profile={profileForCard} isOwnProfile={isOwnProfile} />
+
+            {/* Placeholder sections for Experience, Education, Skills */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Experience
+              </h2>
+              <p className="text-gray-500 text-center py-8">
+                No experience information available
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">
+                Education
+              </h2>
+              <p className="text-gray-500 text-center py-8">
+                No education information available
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Skills</h2>
+              <p className="text-gray-500 text-center py-8">
+                No skills information available
+              </p>
+            </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="xl:col-span-1 lg:col-span-1">
+            <div className="sticky top-24">
+              <EventsSidebar />
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ProfileLayout>
   );
 }

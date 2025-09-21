@@ -5,6 +5,7 @@ import {
   type ProfileMe,
   type Education,
   ProfileApiError,
+  type Experience,
 } from "../../lib/api/profile";
 import { ProfileLayout } from "../../components/ProfileLayout";
 import { ProfileCard } from "../../components/ProfileCard";
@@ -12,15 +13,6 @@ import { ProfileExperience } from "../../components/ProfileExperience";
 import { ProfileSkills } from "../../components/ProfileSkills";
 import { EventsSidebar } from "../../components/EventsSidebar";
 import { ProfileEducation } from "../../components/ProfileEducation";
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { profileApi, type ProfileMe, type Education, type Experience, ProfileApiError } from '../../lib/api/profile';
-import { ProfileLayout } from '../../components/ProfileLayout';
-import { ProfileCard } from '../../components/ProfileCard';
-import { ProfileExperience } from '../../components/ProfileExperience';
-import { ProfileSkills } from '../../components/ProfileSkills';
-import { EventsSidebar } from '../../components/EventsSidebar';
-import { ProfileEducation } from '../../components/ProfileEducation';
 
 export function MyProfilePage() {
   const navigate = useNavigate();
@@ -235,12 +227,12 @@ export function MyProfilePage() {
                 setEducations((prev) => [e, ...prev]);
                 refetchEducations();
               }}
-
               onEducationUpdated={(e) => {
-                setEducations((prev) => prev.map((it) => (it.id === e.id ? e : it)));
+                setEducations((prev) =>
+                  prev.map((it) => (it.id === e.id ? e : it))
+                );
                 refetchEducations();
               }}
-
               onEducationDeleted={(id) =>
                 setEducations((prev) => prev.filter((x) => x.id !== id))
               }

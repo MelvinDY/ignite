@@ -447,3 +447,23 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
     updatedAt: data.updated_at,
   };
 }
+
+/**
+ * Fetch the user id from given handle.
+ * Assumes a valid handle
+ * @param handle 
+ */
+export async function getUserIdFromHandle(handle: string): Promise<string> {
+  const handleLower = handle.toLowerCase();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", handleLower)
+    .single();
+
+  if (error || !data) {
+    throw new Error("Profile not found");
+  }
+
+  return data.id;
+}

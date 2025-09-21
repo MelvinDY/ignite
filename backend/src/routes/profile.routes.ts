@@ -588,6 +588,13 @@ router.get("/profile/:handle/educations", async (req, res) => {
   if (!userId) return;
   
   const { handle } = req.params;
+  
+  // Validate handle format
+  const handleValidation = HandleSchema.safeParse({ handle });
+  if (!handleValidation.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+  
   try {
     const educations = await getProfileEducations(undefined, handle);
     return res.status(200).json(educations);

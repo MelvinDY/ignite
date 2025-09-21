@@ -2539,6 +2539,16 @@ paths:
                       endYear: null
                 empty_list:
                   value: []
+        "400":
+          description: Invalid handle format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
         "401":
           description: Not authenticated
           content:

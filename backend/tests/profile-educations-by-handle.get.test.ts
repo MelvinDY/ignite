@@ -204,4 +204,15 @@ describe('GET /api/profile/:handle/educations', () => {
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
   });
+
+  it('400 VALIDATION_ERROR: invalid handle format', async () => {
+    mockJwtVerify.mockReturnValue({ sub: 'user-123' });
+    
+    const res = await request(app)
+      .get('/api/profile/INVALID-HANDLE!/educations')
+      .set('Authorization', 'Bearer validtoken');
+    
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ code: 'VALIDATION_ERROR' });
+  });
 });

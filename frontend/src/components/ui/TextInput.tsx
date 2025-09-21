@@ -10,6 +10,9 @@ interface TextInputProps {
   placeholder?: string;
   required?: boolean;
   maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
   className?: string;
   disabled?: boolean;
 }
@@ -24,6 +27,9 @@ export function TextInput({
   placeholder,
   required = false,
   maxLength,
+  min,
+  max,
+  pattern,
   className = "",
   disabled = false,
 }: TextInputProps) {
@@ -40,6 +46,9 @@ export function TextInput({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         maxLength={maxLength}
+        min={min}
+        max={max}
+        pattern={pattern}
         disabled={disabled}
         className={twMerge(
           "w-full px-3 py-2 bg-white/10 border rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent",

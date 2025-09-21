@@ -4,7 +4,6 @@ import { Select } from "../ui/Select";
 import { TextArea } from "../ui/TextArea";
 import { TextInput } from "../ui/TextInput";
 import type { EditProfileFormProps } from "./formTypes";
-import { SkillsContainer } from "./SkillsContainer";
 
 // Get program and major options from the data service
 const PROGRAM_OPTIONS = programDataService
@@ -79,6 +78,53 @@ const DashboardForm = ({ formData, changeFormData }: EditProfileFormProps) => {
               .getPopularMajors()
               .map((m) => ({ value: m.value, label: m.label }))}
           />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TextInput
+              id="yearStart"
+              label="Start Year"
+              type="number"
+              placeholder="e.g., 2020"
+              value={formData.yearStart?.toString() || ""}
+              onChange={(value) => changeFormData("yearStart", value ? parseInt(value) : null)}
+              min={2000}
+              max={2100}
+              required
+            />
+            <TextInput
+              id="yearGrad"
+              label="Graduation Year (Expected)"
+              type="number"
+              placeholder="e.g., 2024"
+              value={formData.yearGrad?.toString() || ""}
+              onChange={(value) => changeFormData("yearGrad", value ? parseInt(value) : null)}
+              min={2000}
+              max={2100}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Location Information */}
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Location</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <TextInput
+            id="domicileCity"
+            label="City"
+            placeholder="e.g., Sydney"
+            value={formData.domicileCity || ""}
+            onChange={(value) => changeFormData("domicileCity", value)}
+          />
+          <TextInput
+            id="domicileCountry"
+            label="Country Code"
+            placeholder="e.g., AU (2-letter code)"
+            value={formData.domicileCountry || ""}
+            onChange={(value) => changeFormData("domicileCountry", value.toUpperCase())}
+            maxLength={2}
+            pattern="[A-Z]{2}"
+          />
         </div>
       </section>
 
@@ -102,13 +148,7 @@ const DashboardForm = ({ formData, changeFormData }: EditProfileFormProps) => {
             onChange={(value) => changeFormData("bio", value)}
             className="w-full h-52"
           />
-          <SkillsContainer
-            id="skills"
-            label="Skills"
-            value={formData.skills}
-            onChange={(value) => changeFormData("skills", value)}
-            displayOnly={false}
-          />
+          {/* Skills are managed separately via the skills API */}
         </div>
       </section>
 

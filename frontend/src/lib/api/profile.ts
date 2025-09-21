@@ -51,7 +51,7 @@ const PublicProfileResponseSchema = z.object({
   socialLinks: z.any(),
 });
 
-const EducationSchema = z.object ({
+const EducationSchema = z.object({
   id: z.string(),
   school: z.string(),
   program: z.string().nullable(),
@@ -120,157 +120,201 @@ const UpdateSkillsResponseSchema = z.object({
 
 const ProfileEducationResponseSchema = z.array(EducationSchema);
 
-const AddEducationRequestSchema = z.object({
-  school: z.string().min(1).max(30),
-  program: z.string().min(1).transform(v => v.trim()),
-  major: z.string().min(1).transform(v => v.trim()),
-  startMonth: z.number().int().min(1).max(12),
-  startYear: z.number().int().min(1900).max(2100),
-  endMonth: z.number().int().min(1).max(12).nullable(),
-  endYear: z.number().int().min(1900).max(2100).nullable(),
-}).superRefine((v, ctx) => {
-  // both endMonth/endYear must be present or both null
-  const bothOrNeither =
-    (v.endMonth == null && v.endYear == null) ||
-    (v.endMonth != null && v.endYear != null);
-  if (!bothOrNeither) {
-    ctx.addIssue({
-      code: "custom",                         // <- use string literal
-      message: "If either endMonth or endYear is provided, both must be provided",
-      path: ["endMonth"],
-    });
-  }
-
-  // if provided, end must be >= start
-  if (v.endMonth != null && v.endYear != null) {
-    const start = v.startYear * 12 + (v.startMonth - 1);
-    const end   = v.endYear  * 12 + (v.endMonth  - 1);
-    if (end < start) {
+const AddEducationRequestSchema = z
+  .object({
+    school: z.string().min(1).max(30),
+    program: z
+      .string()
+      .min(1)
+      .transform((v) => v.trim()),
+    major: z
+      .string()
+      .min(1)
+      .transform((v) => v.trim()),
+    startMonth: z.number().int().min(1).max(12),
+    startYear: z.number().int().min(1900).max(2100),
+    endMonth: z.number().int().min(1).max(12).nullable(),
+    endYear: z.number().int().min(1900).max(2100).nullable(),
+  })
+  .superRefine((v, ctx) => {
+    // both endMonth/endYear must be present or both null
+    const bothOrNeither =
+      (v.endMonth == null && v.endYear == null) ||
+      (v.endMonth != null && v.endYear != null);
+    if (!bothOrNeither) {
       ctx.addIssue({
-        code: "custom",
-        message: "End date must be same as or after start date",
-        path: ["endYear"],
+        code: "custom", // <- use string literal
+        message:
+          "If either endMonth or endYear is provided, both must be provided",
+        path: ["endMonth"],
       });
     }
-  }
-});
+
+    // if provided, end must be >= start
+    if (v.endMonth != null && v.endYear != null) {
+      const start = v.startYear * 12 + (v.startMonth - 1);
+      const end = v.endYear * 12 + (v.endMonth - 1);
+      if (end < start) {
+        ctx.addIssue({
+          code: "custom",
+          message: "End date must be same as or after start date",
+          path: ["endYear"],
+        });
+      }
+    }
+  });
 
 const AddEducationResponseSchema = z.object({
-
   success: z.literal(true),
   id: z.string(),
-})
+});
 
-const UpdateEducationRequestSchema = z.object({
-  school: z.string().min(1).max(30),
-  program: z.string().trim().min(1),
-  major: z.string().trim().min(1),
-  startMonth: z.coerce.number().int().min(1).max(12),
-  startYear: z.coerce.number().int().min(1900).max(2100),
-  endMonth: z.coerce.number().int().min(1).max(12).nullable(),
-  endYear: z.coerce.number().int().min(1900).max(2100).nullable(),
-}).superRefine((v, ctx) => {
-  // both endMonth/endYear must be present or both null (unchanged logic)
-  const bothOrNeither =
-    (v.endMonth == null && v.endYear == null) ||
-    (v.endMonth != null && v.endYear != null);
-  if (!bothOrNeither) {
-    ctx.addIssue({
-      code: "custom",
-      message: "If either endMonth or endYear is provided, both must be provided",
-      path: ["endMonth"],
-    });
-  }
-
-  // chronology check when both provided (unchanged logic)
-  if (v.endMonth != null && v.endYear != null) {
-    const start = v.startYear * 12 + (v.startMonth - 1);
-    const end   = v.endYear  * 12 + (v.endMonth  - 1);
-    if (end < start) {
+const UpdateEducationRequestSchema = z
+  .object({
+    school: z.string().min(1).max(30),
+    program: z.string().trim().min(1),
+    major: z.string().trim().min(1),
+    startMonth: z.coerce.number().int().min(1).max(12),
+    startYear: z.coerce.number().int().min(1900).max(2100),
+    endMonth: z.coerce.number().int().min(1).max(12).nullable(),
+    endYear: z.coerce.number().int().min(1900).max(2100).nullable(),
+  })
+  .superRefine((v, ctx) => {
+    // both endMonth/endYear must be present or both null (unchanged logic)
+    const bothOrNeither =
+      (v.endMonth == null && v.endYear == null) ||
+      (v.endMonth != null && v.endYear != null);
+    if (!bothOrNeither) {
       ctx.addIssue({
         code: "custom",
-        message: "End date must be same as or after start date",
-        path: ["endYear"],
+        message:
+          "If either endMonth or endYear is provided, both must be provided",
+        path: ["endMonth"],
       });
     }
-  }
-})
+
+    // chronology check when both provided (unchanged logic)
+    if (v.endMonth != null && v.endYear != null) {
+      const start = v.startYear * 12 + (v.startMonth - 1);
+      const end = v.endYear * 12 + (v.endMonth - 1);
+      if (end < start) {
+        ctx.addIssue({
+          code: "custom",
+          message: "End date must be same as or after start date",
+          path: ["endYear"],
+        });
+      }
+    }
+  });
 
 const UpdateEducationResponseSchema = z.object({
   success: z.literal(true),
-})
+});
 
 const DeleteEducationResponseSchema = z.object({
   success: z.literal(true),
+});
 
 const ProfileExperienceResponseSchema = z.array(ExperienceSchema);
 
-const CreateExperienceRequestSchema = z.object({
-  roleTitle: z.string().min(1).max(120),
-  company: z.string().min(1).max(120),
-  fieldOfWork: z.string().min(1).max(120).optional(),
-  employmentType: z.enum([
-    'full_time', 'part_time', 'contract', 'internship', 'temporary', 'volunteer', 'freelance'
-  ]).optional(),
-  locationCity: z.string().optional(),
-  locationCountry: z.string().regex(/^[A-Z]{2}$/).optional(),
-  locationType: z.enum(['on_site', 'remote', 'hybrid']).optional(),
-  startMonth: z.number().int().min(1).max(12),
-  startYear: z.number().int().min(1900).max(2100),
-  endMonth: z.number().int().min(1).max(12).nullable().optional(),
-  endYear: z.number().int().min(1900).max(2100).nullable().optional(),
-  isCurrent: z.boolean(),
-  description: z.string().max(2000).optional(),
-}).superRefine((v, ctx) => {
-  const endProvided = v.endMonth != null || v.endYear != null;
+const CreateExperienceRequestSchema = z
+  .object({
+    roleTitle: z.string().min(1).max(120),
+    company: z.string().min(1).max(120),
+    fieldOfWork: z.string().min(1).max(120).optional(),
+    employmentType: z
+      .enum([
+        "full_time",
+        "part_time",
+        "contract",
+        "internship",
+        "temporary",
+        "volunteer",
+        "freelance",
+      ])
+      .optional(),
+    locationCity: z.string().optional(),
+    locationCountry: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .optional(),
+    locationType: z.enum(["on_site", "remote", "hybrid"]).optional(),
+    startMonth: z.number().int().min(1).max(12),
+    startYear: z.number().int().min(1900).max(2100),
+    endMonth: z.number().int().min(1).max(12).nullable().optional(),
+    endYear: z.number().int().min(1900).max(2100).nullable().optional(),
+    isCurrent: z.boolean(),
+    description: z.string().max(2000).optional(),
+  })
+  .superRefine((v, ctx) => {
+    const endProvided = v.endMonth != null || v.endYear != null;
 
-  if (v.isCurrent) {
-    if (endProvided) {
+    if (v.isCurrent) {
+      if (endProvided) {
+        ctx.addIssue({
+          code: "custom",
+          message: "When isCurrent is true, endMonth/endYear must be omitted",
+          path: ["endMonth"],
+        });
+        ctx.addIssue({
+          code: "custom",
+          message: "When isCurrent is true, endMonth/endYear must be omitted",
+          path: ["endYear"],
+        });
+      }
+      return;
+    }
+
+    if (v.endMonth == null || v.endYear == null) {
+      if (v.endMonth == null) {
+        ctx.addIssue({
+          code: "custom",
+          message: "endMonth is required when isCurrent is false",
+          path: ["endMonth"],
+        });
+      }
+      if (v.endYear == null) {
+        ctx.addIssue({
+          code: "custom",
+          message: "endYear is required when isCurrent is false",
+          path: ["endYear"],
+        });
+      }
+      return;
+    }
+
+    const startNum = v.startYear * 12 + (v.startMonth - 1);
+    const endNum = v.endYear * 12 + (v.endMonth - 1);
+    if (endNum < startNum) {
       ctx.addIssue({
-        code: 'custom',
-        message: "When isCurrent is true, endMonth/endYear must be omitted",
-        path: ['endMonth']
-      });
-      ctx.addIssue({
-        code: 'custom',
-        message: "When isCurrent is true, endMonth/endYear must be omitted",
-        path: ['endYear']
+        code: "custom",
+        message: "End date must be same month or after start date",
+        path: ["endYear"],
       });
     }
-    return;
-  }
-
-  if (v.endMonth == null || v.endYear == null) {
-    if (v.endMonth == null) {
-      ctx.addIssue({ code: 'custom', message: "endMonth is required when isCurrent is false", path: ['endMonth'] });
-    }
-    if (v.endYear == null) {
-      ctx.addIssue({ code: 'custom', message: "endYear is required when isCurrent is false", path: ['endYear'] });
-    }
-    return;
-  }
-
-  const startNum = v.startYear * 12 + (v.startMonth - 1);
-  const endNum = v.endYear * 12 + (v.endMonth - 1);
-  if (endNum < startNum) {
-    ctx.addIssue({
-      code: 'custom',
-      message: "End date must be same month or after start date",
-      path: ['endYear']
-    });
-  }
-});
+  });
 
 const UpdateExperienceRequestSchema = z.object({
   roleTitle: z.string().min(1).max(120).optional(),
   company: z.string().min(1).max(120).optional(),
   fieldOfWork: z.string().min(1).max(120).optional(),
-  employmentType: z.enum([
-    'full_time', 'part_time', 'contract', 'internship', 'temporary', 'volunteer', 'freelance'
-  ]).optional(),
+  employmentType: z
+    .enum([
+      "full_time",
+      "part_time",
+      "contract",
+      "internship",
+      "temporary",
+      "volunteer",
+      "freelance",
+    ])
+    .optional(),
   locationCity: z.string().optional(),
-  locationCountry: z.string().regex(/^[A-Z]{2}$/).optional(),
-  locationType: z.enum(['on_site', 'remote', 'hybrid']).optional(),
+  locationCountry: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
+  locationType: z.enum(["on_site", "remote", "hybrid"]).optional(),
   startMonth: z.number().int().min(1).max(12).optional(),
   startYear: z.number().int().min(1900).max(2100).optional(),
   endMonth: z.number().int().min(1).max(12).nullable().optional(),
@@ -282,30 +326,47 @@ const UpdateExperienceRequestSchema = z.object({
 const CreateExperienceResponseSchema = z.object({
   success: z.literal(true),
   id: z.string(),
-
-})
+});
 
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
 export type PublicProfile = z.infer<typeof PublicProfileResponseSchema>;
-export type PublicProfileWithDetails = z.infer<typeof PublicProfileWithDetailsResponseSchema>;
+export type PublicProfileWithDetails = z.infer<
+  typeof PublicProfileWithDetailsResponseSchema
+>;
 export type HandleCheckResponse = z.infer<typeof HandleCheckResponseSchema>;
 export type UpdateHandleRequest = z.infer<typeof UpdateHandleRequestSchema>;
 export type UpdateHandleResponse = z.infer<typeof UpdateHandleResponseSchema>;
 export type ProfileSkills = z.infer<typeof SkillsResponseSchema>;
 export type UpdateSkillsResponse = z.infer<typeof UpdateSkillsResponseSchema>;
 export type Education = z.infer<typeof EducationSchema>;
-export type ProfileEducationResponse = z.infer<typeof ProfileEducationResponseSchema>;
+export type ProfileEducationResponse = z.infer<
+  typeof ProfileEducationResponseSchema
+>;
 export type AddEducationRequest = z.infer<typeof AddEducationRequestSchema>;
 export type AddEducationResponse = z.infer<typeof AddEducationResponseSchema>;
-export type UpdateEducationRequest = z.infer<typeof UpdateEducationRequestSchema>;
-export type UpdateEducationResponse = z.infer<typeof UpdateEducationResponseSchema>;
-export type DeleteEducationResponse = z.infer<typeof DeleteEducationResponseSchema>;
+export type UpdateEducationRequest = z.infer<
+  typeof UpdateEducationRequestSchema
+>;
+export type UpdateEducationResponse = z.infer<
+  typeof UpdateEducationResponseSchema
+>;
+export type DeleteEducationResponse = z.infer<
+  typeof DeleteEducationResponseSchema
+>;
 export type Experience = z.infer<typeof ExperienceSchema>;
-export type ProfileExperienceResponse = z.infer<typeof ProfileExperienceResponseSchema>;
-export type CreateExperienceRequest = z.infer<typeof CreateExperienceRequestSchema>;
-export type UpdateExperienceRequest = z.infer<typeof UpdateExperienceRequestSchema>;
-export type CreateExperienceResponse = z.infer<typeof CreateExperienceResponseSchema>;
+export type ProfileExperienceResponse = z.infer<
+  typeof ProfileExperienceResponseSchema
+>;
+export type CreateExperienceRequest = z.infer<
+  typeof CreateExperienceRequestSchema
+>;
+export type UpdateExperienceRequest = z.infer<
+  typeof UpdateExperienceRequestSchema
+>;
+export type CreateExperienceResponse = z.infer<
+  typeof CreateExperienceResponseSchema
+>;
 
 // Error types
 export type ProfileError = {
@@ -388,7 +449,11 @@ class ProfileApi {
         const errorResult = ErrorResponseSchema.safeParse(data);
         if (errorResult.success) {
           // If we get a 401 and haven't already retried, attempt token refresh
-          if (response.status === 401 && !isRetry && errorResult.data.code === "NOT_AUTHENTICATED") {
+          if (
+            response.status === 401 &&
+            !isRetry &&
+            errorResult.data.code === "NOT_AUTHENTICATED"
+          ) {
             try {
               console.log("Access token expired, attempting refresh...");
               // Import authApi here to avoid circular dependency
@@ -396,8 +461,14 @@ class ProfileApi {
               const refreshResponse = await authApi.refresh();
 
               // Update the auth state with new token
-              authStateManager.setAuth(refreshResponse.accessToken, refreshResponse.userId, refreshResponse.expiresIn);
-              console.log("Token refreshed successfully, retrying original request");
+              authStateManager.setAuth(
+                refreshResponse.accessToken,
+                refreshResponse.userId,
+                refreshResponse.expiresIn
+              );
+              console.log(
+                "Token refreshed successfully, retrying original request"
+              );
 
               // Retry the original request with new token
               return this.request(endpoint, options, responseSchema, true);
@@ -466,7 +537,7 @@ class ProfileApi {
     );
   }
 
-  async getPublicProfile(handle: string): Promise<Omit<ProfileMe, 'zid'>> {
+  async getPublicProfile(handle: string): Promise<Omit<ProfileMe, "zid">> {
     return this.request(
       `/profile/${encodeURIComponent(handle)}`,
       {
@@ -530,12 +601,18 @@ class ProfileApi {
   }
 
   async getProfileEducations(): Promise<ProfileEducationResponse> {
-    return this.request('/profile/educations', {
-      method: 'GET',
-    }, ProfileEducationResponseSchema);
+    return this.request(
+      "/profile/educations",
+      {
+        method: "GET",
+      },
+      ProfileEducationResponseSchema
+    );
   }
 
-  async addEducations(input: AddEducationRequest): Promise<AddEducationResponse> {
+  async addEducations(
+    input: AddEducationRequest
+  ): Promise<AddEducationResponse> {
     const parsed = AddEducationRequestSchema.safeParse(input);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};
@@ -549,43 +626,84 @@ class ProfileApi {
         }
       }
       throw new ProfileApiError(
-        'VALIDATION_ERROR',
+        "VALIDATION_ERROR",
         0,
-        'Invalid education payload',
+        "Invalid education payload",
         { fieldErrors, formErrors }
       );
     }
 
-    return this.request('/profile/educations', {
-      method: 'POST',
-      body: JSON.stringify(parsed.data),
-    }, AddEducationResponseSchema);
+    return this.request(
+      "/profile/educations",
+      {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+      },
+      AddEducationResponseSchema
+    );
   }
 
-  async updateEducations(id: string, body: UpdateEducationRequest): Promise<UpdateEducationResponse> {
+  async updateEducations(
+    id: string,
+    body: UpdateEducationRequest
+  ): Promise<UpdateEducationResponse> {
     const parsed = UpdateEducationRequestSchema.safeParse(body);
     if (!parsed.success) {
-      console.error("UpdateEducation validation errors:", parsed.error.format());
-  async updateEducation(id: string, input: Partial<AddEducationRequest>): Promise<{ success: true }> {
-    return this.request(`/profile/educations/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(input),
-    }, z.object({ success: z.literal(true) }));
+      console.error(
+        "UpdateEducation validation errors:",
+        parsed.error.format()
+      );
+      const fieldErrors: Record<string, string[]> = {};
+      const formErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key) {
+          (fieldErrors[key] ??= []).push(issue.message);
+        } else {
+          formErrors.push(issue.message);
+        }
+      }
+      throw new ProfileApiError(
+        "VALIDATION_ERROR",
+        0,
+        "Invalid education payload",
+        { fieldErrors, formErrors }
+      );
+    }
+
+    return this.request(
+      `/profile/educations/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(parsed.data),
+      },
+      UpdateEducationResponseSchema
+    );
   }
 
   async deleteEducation(id: string): Promise<{ success: true }> {
-    return this.request(`/profile/educations/${id}`, {
-      method: 'DELETE',
-    }, z.object({ success: z.literal(true) }));
+    return this.request(
+      `/profile/educations/${id}`,
+      {
+        method: "DELETE",
+      },
+      z.object({ success: z.literal(true) })
+    );
   }
 
   async getProfileExperiences(): Promise<ProfileExperienceResponse> {
-    return this.request('/profile/experiences', {
-      method: 'GET',
-    }, ProfileExperienceResponseSchema);
+    return this.request(
+      "/profile/experiences",
+      {
+        method: "GET",
+      },
+      ProfileExperienceResponseSchema
+    );
   }
 
-  async createExperience(input: CreateExperienceRequest): Promise<CreateExperienceResponse> {
+  async createExperience(
+    input: CreateExperienceRequest
+  ): Promise<CreateExperienceResponse> {
     const parsed = CreateExperienceRequestSchema.safeParse(input);
     if (!parsed.success) {
       const fieldErrors: Record<string, string[]> = {};
@@ -599,43 +717,45 @@ class ProfileApi {
         }
       }
       throw new ProfileApiError(
-        'VALIDATION_ERROR',
+        "VALIDATION_ERROR",
         0,
-        'Invalid education payload',
-        'Invalid experience payload',
+        "Invalid experience payload",
         { fieldErrors, formErrors }
       );
     }
 
-    return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      body: JSON.stringify(parsed.data),
-    }, UpdateEducationResponseSchema);
+    return this.request(
+      "/profile/experiences",
+      {
+        method: "POST",
+        body: JSON.stringify(parsed.data),
+      },
+      CreateExperienceResponseSchema
+    );
   }
 
-  async deleteEducations(id: string): Promise<DeleteEducationResponse> {
-    return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
-      method: "DELETE"
-    }, DeleteEducationResponseSchema)
-  }
-  
-    return this.request('/profile/experiences', {
-      method: 'POST',
-      body: JSON.stringify(parsed.data),
-    }, CreateExperienceResponseSchema);
-  }
-
-  async updateExperience(id: string, input: UpdateExperienceRequest): Promise<{ success: true }> {
-    return this.request(`/profile/experiences/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(input),
-    }, z.object({ success: z.literal(true) }));
+  async updateExperience(
+    id: string,
+    input: UpdateExperienceRequest
+  ): Promise<{ success: true }> {
+    return this.request(
+      `/profile/experiences/${id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      },
+      z.object({ success: z.literal(true) })
+    );
   }
 
   async deleteExperience(id: string): Promise<{ success: true }> {
-    return this.request(`/profile/experiences/${id}`, {
-      method: 'DELETE',
-    }, z.object({ success: z.literal(true) }));
+    return this.request(
+      `/profile/experiences/${id}`,
+      {
+        method: "DELETE",
+      },
+      z.object({ success: z.literal(true) })
+    );
   }
 }
 

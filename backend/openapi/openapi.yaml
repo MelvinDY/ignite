@@ -1242,6 +1242,7 @@ paths:
                     fullName: "Jane Doe"
                     handle: "janedoe"
                     photoUrl: "https://example.com/profile.jpg"
+                    bannerUrl: "https://example.com/banner.jpg"
                     isIndonesian: true
                     program: "BE"
                     major: "Computer Science"
@@ -2548,6 +2549,72 @@ paths:
                 not_found:
                   value:
                     code: NOT_FOUND
+  /profile/{handle}:
+    get:
+      tags: ["Profile"]
+      summary: Get profile core details by user handle
+      description: |
+        Returns the full profile record for the given handle.
+        This is a public endpoint that allows anyone to view profile information by handle.
+        
+        **Auth:** No authentication required.
+      parameters:
+        - in: path
+          name: handle
+          required: true
+          schema: { type: string, description: "User handle" }
+      responses:
+        "200":
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetProfileOK"
+              examples:
+                complete_profile:
+                  value:
+                    id: "123e4567-e89b-12d3-a456-426614174000"
+                    fullName: "Jane Doe"
+                    handle: "janedoe"
+                    photoUrl: "https://example.com/profile.jpg"
+                    bannerUrl: "https://example.com/banner.jpg"
+                    isIndonesian: true
+                    program: "BE"
+                    major: "Computer Science"
+                    level: "undergrad"
+                    yearStart: 2020
+                    yearGrad: 2024
+                    zid: "z1234567"
+                    headline: "Software Engineer"
+                    domicileCity: "Sydney"
+                    domicileCountry: "AU"
+                    bio: "Passionate about building innovative software solutions."
+                    socialLinks:
+                      linkedin: "https://www.linkedin.com/in/janedoe"
+                      github: "https://github.com/janedoe"
+                      website: "https://janedoe.dev"
+                    createdAt: "2024-01-15T10:30:00Z"
+                    updatedAt: "2024-03-20T14:45:00Z"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                profile_not_found:
+                  value:
+                    code: PROFILE_NOT_FOUND
 
 components:
   securitySchemes:
@@ -3006,6 +3073,9 @@ components:
         photoUrl:
           type: string
           description: URL to user's profile photo
+        bannerUrl:
+          type: string
+          description: URL to user's banner image
         isIndonesian:
           type: boolean
           description: Whether the user is Indonesian or not

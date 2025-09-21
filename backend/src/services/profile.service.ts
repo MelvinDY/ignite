@@ -23,6 +23,7 @@ type ProfileRow = {
   full_name: string;
   handle: string | null;
   photo_url: string | null;
+  banner_url: string | null;
   is_indonesian: boolean;
   level: "foundation" | "diploma" | "undergrad" | "postgrad" | "phd";
   year_start: number;
@@ -157,6 +158,7 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
       full_name,
       handle,
       photo_url,
+      banner_url,
       is_indonesian,
       level,
       year_start,
@@ -185,6 +187,7 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
     fullName: data.full_name,
     handle: data.handle,
     photoUrl: data.photo_url,
+    bannerUrl: data.banner_url,
     isIndonesian: data.is_indonesian,
     program: pickName(data.programs),
     major: pickName(data.majors),
@@ -393,6 +396,7 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
       full_name,
       handle,
       photo_url,
+      banner_url,
       is_indonesian,
       level,
       year_start,
@@ -427,6 +431,7 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
     fullName: data.full_name,
     handle: data.handle,
     photoUrl: data.photo_url,
+    bannerUrl: data.banner_url,
     isIndonesian: data.is_indonesian,
     program: pickName(data.programs),
     major: pickName(data.majors),

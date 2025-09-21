@@ -6,6 +6,7 @@ interface UserProps {
     fullName: string;
     handle: string | null;
     photoUrl: string | null;
+    headline: string | null;
     domicileCity: string | null;
     domicileCountry: string | null;
     bio: string | null;
@@ -44,7 +45,7 @@ const ProfileCard = ({ user }: UserProps) => {
               <h2 className="font-semibold leading-tight text-xl truncate w-full">{user.fullName}</h2>
               <p className="text-sm text-gray-600 truncate w-full">@{user.handle}</p>
             </div>
-            <p className="text-md text-gray-500 mt-2 mb-4 truncate w-full">{user.bio ?? ''}</p>
+            <p className="text-md text-gray-500 mt-2 mb-4 truncate w-full">{user.headline ?? ''}</p>
             {location && (
               <p className="text-sm text-gray-500 truncate w-full">{location}</p>
             )}

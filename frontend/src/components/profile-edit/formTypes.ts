@@ -13,7 +13,6 @@ export interface FormData {
   major: string;
   level: string;
   program: string;
-  skills: Skill[];
 }
 
 export interface EditProfileFormProps {

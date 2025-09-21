@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { GlassCard } from "../ui/GlassCard";
 import { BatikBackground } from "../BatikBackground";
+import connectImage from "../../assets/Connect.png";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -65,12 +66,23 @@ export function AuthLayout({ children, title }: AuthLayoutProps) {
           </GlassCard>
         </div>
 
-        {/* Right side - Headline */}
-        <div className="order-1 lg:order-2 text-center lg:text-left px-2 sm:px-4">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white tracking-wide leading-tight drop-shadow-lg">
-            CONNECT AND FIND YOUR FAMILY
-          </h2>
-          <div className="mt-3 sm:mt-4 w-12 sm:w-16 h-0.5 sm:h-1 bg-gradient-to-r from-white/60 to-transparent mx-auto lg:mx-0 rounded-full" />
+        {/* Right side - Custom Image */}
+        <div className="order-1 lg:order-2 flex items-center justify-center px-2 sm:px-4">
+          <div className="relative w-full max-w-md lg:max-w-lg xl:max-w-xl">
+            {/* Background glow layers */}
+            <div className="absolute -inset-4 bg-gradient-to-br from-white/8 via-white/4 to-transparent blur-lg pointer-events-none rounded-2xl" />
+            <div className="absolute -inset-2 bg-gradient-to-t from-white/6 via-transparent to-white/4 blur-md pointer-events-none rounded-xl" />
+
+            <img
+              src={connectImage}
+              alt="Connect and find your family"
+              className="w-full h-auto object-contain drop-shadow-2xl relative z-10"
+            />
+
+            {/* Overlay gradient effects */}
+            <div className="absolute inset-0 bg-gradient-to-t from-white/12 via-white/6 to-transparent pointer-events-none rounded-lg z-20" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/8 via-transparent to-white/6 pointer-events-none rounded-lg z-20" />
+          </div>
         </div>
       </div>
     </div>

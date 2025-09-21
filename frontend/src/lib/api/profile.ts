@@ -1,4 +1,4 @@
-import { success, z } from "zod";
+import { z } from "zod";
 import { authStateManager } from "../../hooks/useAuth";
 
 // Prefer configured base URL; fall back to same-origin proxy
@@ -296,6 +296,25 @@ const ProfilePictureDeleteResponseSchema = z.object({
   success: z.literal(true),
 })
 
+// Update Profile Schema
+const UpdateProfileRequestSchema = z.object({
+  fullName: z.string().min(1).optional(),
+  headline: z.string().nullable().optional(),
+  isIndonesian: z.boolean().optional(),
+  program: z.string().min(1).optional(),
+  major: z.string().min(1).optional(),
+  level: z.enum(['foundation', 'diploma', 'undergrad', 'postgrad', 'phd']).optional(),
+  yearStart: z.number().int().min(2000).max(2100).optional(),
+  yearGrad: z.number().int().min(2000).max(2100).nullable().optional(),
+  domicileCity: z.string().nullable().optional(),
+  domicileCountry: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+  bio: z.string().nullable().optional(),
+});
+
+const UpdateProfileResponseSchema = z.object({
+  success: z.literal(true),
+});
+
 // Types
 export type ProfileMe = z.infer<typeof ProfileMeResponseSchema>;
 export type PublicProfile = z.infer<typeof PublicProfileResponseSchema>;
@@ -319,6 +338,8 @@ export type UpdateExperienceRequest = z.infer<typeof UpdateExperienceRequestSche
 export type CreateExperienceResponse = z.infer<typeof CreateExperienceResponseSchema>;
 export type ProfilePictureUploadResponse = z.infer<typeof ProfilePictureUploadResponseSchema>;
 export type ProfilePictureDeleteResponse = z.infer<typeof ProfilePictureDeleteResponseSchema>;
+export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>;
+export type UpdateProfileResponse = z.infer<typeof UpdateProfileResponseSchema>;
 
 // Error types
 export type ProfileError = {
@@ -713,6 +734,37 @@ class ProfileApi {
         method: 'DELETE',
       },
       ProfilePictureDeleteResponseSchema
+    );
+  }
+
+  async updateProfile(updates: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+    const parsed = UpdateProfileRequestSchema.safeParse(updates);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string[]> = {};
+      const formErrors: string[] = [];
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]?.toString();
+        if (key) {
+          (fieldErrors[key] ??= []).push(issue.message);
+        } else {
+          formErrors.push(issue.message);
+        }
+      }
+      throw new ProfileApiError(
+        'VALIDATION_ERROR',
+        0,
+        'Invalid profile update data',
+        { fieldErrors, formErrors }
+      );
+    }
+
+    return this.request(
+      '/profile',
+      {
+        method: 'PATCH',
+        body: JSON.stringify(parsed.data),
+      },
+      UpdateProfileResponseSchema
     );
   }
 }

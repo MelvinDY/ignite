@@ -185,14 +185,14 @@ describe('GET /api/profile/:handle/educations', () => {
     expect(res.body).toEqual({ code: 'NOT_FOUND' });
   });
 
-  it('401 UNAUTHORIZED: missing authorization header', async () => {
+  it('401 NOT_AUTHENTICATED: missing authorization header', async () => {
     const res = await request(app).get(route);
     
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
   });
 
-  it('401 UNAUTHORIZED: invalid token', async () => {
+  it('401 NOT_AUTHENTICATED: invalid token', async () => {
     mockJwtVerify.mockImplementation(() => {
       throw new Error('Invalid token');
     });

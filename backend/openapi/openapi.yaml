@@ -2491,7 +2491,7 @@ paths:
   /profile/{handle}/educations:
     get:
       tags: ["Profile"]
-      summary: Get educations for a profile by handle (public)
+      summary: Get educations for a profile by handle
       description: |
         Retrieve all education records for a user profile identified by their handle.
         
@@ -2539,6 +2539,16 @@ paths:
                       endYear: null
                 empty_list:
                   value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
         "404":
           description: Profile not found for the given handle
           content:

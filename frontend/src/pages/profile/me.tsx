@@ -4,6 +4,7 @@ import {
   profileApi,
   type ProfileMe,
   type Education,
+  type Experience,
   ProfileApiError,
 } from "../../lib/api/profile";
 import { ProfileLayout } from "../../components/ProfileLayout";
@@ -12,15 +13,6 @@ import { ProfileExperience } from "../../components/ProfileExperience";
 import { ProfileSkills } from "../../components/ProfileSkills";
 import { EventsSidebar } from "../../components/EventsSidebar";
 import { ProfileEducation } from "../../components/ProfileEducation";
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { profileApi, type ProfileMe, type Education, type Experience, ProfileApiError } from '../../lib/api/profile';
-import { ProfileLayout } from '../../components/ProfileLayout';
-import { ProfileCard } from '../../components/ProfileCard';
-import { ProfileExperience } from '../../components/ProfileExperience';
-import { ProfileSkills } from '../../components/ProfileSkills';
-import { EventsSidebar } from '../../components/EventsSidebar';
-import { ProfileEducation } from '../../components/ProfileEducation';
 
 export function MyProfilePage() {
   const navigate = useNavigate();
@@ -194,20 +186,6 @@ export function MyProfilePage() {
     domicileCountry: profile.domicileCountry,
   };
 
-  const profileForDisplay = {
-    id: profile.id,
-    handle: profile.handle!,
-    photo_url: profile.photoUrl,
-    full_name: profile.fullName,
-    bio: profile.bio,
-    year_intake: profile.yearStart,
-    level: profile.level,
-    program: profile.program || "",
-    major: profile.major || "",
-    is_indonesian: profile.isIndonesian,
-    experience: [],
-    skills: [],
-  };
 
   return (
     <ProfileLayout>

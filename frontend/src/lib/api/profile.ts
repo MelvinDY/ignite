@@ -202,6 +202,7 @@ const UpdateEducationResponseSchema = z.object({
 
 const DeleteEducationResponseSchema = z.object({
   success: z.literal(true),
+});
 
 const ProfileExperienceResponseSchema = z.array(ExperienceSchema);
 
@@ -566,11 +567,12 @@ class ProfileApi {
     const parsed = UpdateEducationRequestSchema.safeParse(body);
     if (!parsed.success) {
       console.error("UpdateEducation validation errors:", parsed.error.format());
-  async updateEducation(id: string, input: Partial<AddEducationRequest>): Promise<{ success: true }> {
+      throw new Error('Validation failed');
+    }
     return this.request(`/profile/educations/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify(input),
-    }, z.object({ success: z.literal(true) }));
+      body: JSON.stringify(parsed.data),
+    }, UpdateEducationResponseSchema);
   }
 
   async deleteEducation(id: string): Promise<{ success: true }> {
@@ -601,28 +603,21 @@ class ProfileApi {
       throw new ProfileApiError(
         'VALIDATION_ERROR',
         0,
-        'Invalid education payload',
         'Invalid experience payload',
         { fieldErrors, formErrors }
       );
     }
 
-    return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
-      method: "PATCH",
+    return this.request('/profile/experiences', {
+      method: 'POST',
       body: JSON.stringify(parsed.data),
-    }, UpdateEducationResponseSchema);
+    }, CreateExperienceResponseSchema);
   }
 
   async deleteEducations(id: string): Promise<DeleteEducationResponse> {
     return this.request(`/profile/educations/${encodeURIComponent(id)}`, {
       method: "DELETE"
-    }, DeleteEducationResponseSchema)
-  }
-  
-    return this.request('/profile/experiences', {
-      method: 'POST',
-      body: JSON.stringify(parsed.data),
-    }, CreateExperienceResponseSchema);
+    }, DeleteEducationResponseSchema);
   }
 
   async updateExperience(id: string, input: UpdateExperienceRequest): Promise<{ success: true }> {

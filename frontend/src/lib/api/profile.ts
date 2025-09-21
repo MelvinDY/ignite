@@ -668,7 +668,7 @@ class ProfileApi {
 
   async uploadProfilePicture(file: File): Promise<ProfilePictureUploadResponse> {
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('profile_picture', file);
 
     // Special request for file upload - we don't set Content-Type header
     // as the browser will set it with the boundary parameter

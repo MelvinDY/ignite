@@ -270,6 +270,7 @@ router.post(
         photoUrl: photoUrl,
       });
     } catch (err) {
+      console.error("uploadProfilePicture.error", err);
       return res.status(500).json({ code: "INTERNAL" });
     }
   }

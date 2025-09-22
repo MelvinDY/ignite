@@ -48,3 +48,23 @@ export async function listWorkFields(): Promise<{ id: number; name: string }[]> 
     if (error) throw error;
     return data ?? [];
 };
+
+export async function listCities(): Promise<{ name: string }[]> {
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('domicile_city')
+        .eq('is_indonesian', true)
+        .eq('domicile_country', 'ID')
+        .eq('status', 'ACTIVE')
+        .not('domicile_city', 'is', null)
+        .order('domicile_city', { ascending: true });
+        
+    if (error) throw error;
+
+    const uniqueCities = [...new Set(data.map(row => row.domicile_city))]
+        .filter(city => city && city.trim())
+        .sort()
+        .map(name => ({ name }));
+
+    return uniqueCities;
+}

@@ -4,7 +4,6 @@ import {
   profileApi,
   type ProfileMe,
   type Education,
-  type Experience,
   ProfileApiError,
   type Experience,
 } from "../../lib/api/profile";
@@ -187,7 +186,6 @@ export function MyProfilePage() {
     domicileCountry: profile.domicileCountry,
   };
 
-
   return (
     <ProfileLayout>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -198,7 +196,9 @@ export function MyProfilePage() {
               profile={profileForCard}
               isOwnProfile={true}
               onPhotoUpdate={(newPhotoUrl) => {
-                setProfile(prev => prev ? { ...prev, photoUrl: newPhotoUrl } : null);
+                setProfile((prev) =>
+                  prev ? { ...prev, photoUrl: newPhotoUrl } : null
+                );
               }}
             />
             <ProfileExperience

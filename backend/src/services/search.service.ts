@@ -60,8 +60,8 @@ export async function listCities(): Promise<{ name: string }[]> {
         .order('domicile_city', { ascending: true });
         
     if (error) throw error;
-
-    const uniqueCities = [...new Set(data.map(row => row.domicile_city))]
+    
+    const uniqueCities = [...new Set(data?.map(row => row.domicile_city) || [])]
         .filter(city => city && city.trim())
         .sort()
         .map(name => ({ name }));

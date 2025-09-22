@@ -1,12 +1,21 @@
-import { useState } from 'react';
-import { MapPin, Calendar, GraduationCap, Building, Award, Edit2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { ProfilePictureUpload } from './ProfilePictureUpload';
+import { useState } from "react";
+import {
+  MapPin,
+  Calendar,
+  GraduationCap,
+  Building,
+  Award,
+  Edit2,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import { ProfilePictureUpload } from "./ProfilePictureUpload";
+import { BannerModal } from "./ui/BannerModal";
 
 interface ProfileData {
   id: string;
   handle: string | null;
   photoUrl: string | null;
+  bannerUrl: string | null;
   fullName: string;
   bio: string | null;
   yearStart: number;
@@ -27,27 +36,33 @@ interface ProfileCardProps {
   onPhotoUpdate?: (newPhotoUrl: string | null) => void;
 }
 
-export function ProfileCard({ profile, isOwnProfile = false, onPhotoUpdate }: ProfileCardProps) {
+export function ProfileCard({
+  profile,
+  isOwnProfile = false,
+  onPhotoUpdate,
+}: ProfileCardProps) {
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl);
+  const [bannerUrl, setBannerUrl] = useState(profile.bannerUrl);
+  const [openBannerModal, setOpenBannerModal] = useState(false);
+
   const getInitials = (name: string) =>
     name
-      .split(' ')
+      .split(" ")
       .map((p) => p.charAt(0))
-      .join('')
+      .join("")
       .toUpperCase()
       .slice(0, 2);
 
   const formatLevel = (level: string) => {
     const levelMap: Record<string, string> = {
-      foundation: 'Foundation',
-      diploma: 'Diploma',
-      undergrad: 'Undergraduate',
-      postgrad: 'Postgraduate',
-      phd: 'PhD',
+      foundation: "Foundation",
+      diploma: "Diploma",
+      undergrad: "Undergraduate",
+      postgrad: "Postgraduate",
+      phd: "PhD",
     };
     return levelMap[level] || level.charAt(0).toUpperCase() + level.slice(1);
   };
-
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -55,26 +70,37 @@ export function ProfileCard({ profile, isOwnProfile = false, onPhotoUpdate }: Pr
       <div className="relative h-[200px] bg-gradient-to-r from-[#3E000C] to-[#8B1538]">
         {/* Pattern overlay */}
         <div className="absolute inset-0 opacity-20">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <pattern
-                id="cover-pattern"
-                x="0"
-                y="0"
-                width="20"
-                height="20"
-                patternUnits="userSpaceOnUse"
-              >
-                <circle cx="2" cy="2" r="1" fill="white" opacity="0.3" />
-                <circle cx="12" cy="12" r="1.5" fill="white" opacity="0.2" />
-              </pattern>
-            </defs>
-            <rect width="100" height="100" fill="url(#cover-pattern)" />
-          </svg>
+          {bannerUrl ? (
+            <img src={bannerUrl} alt="Profile banner"></img>
+          ) : (
+            <svg
+              className="w-full h-full"
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <pattern
+                  id="cover-pattern"
+                  x="0"
+                  y="0"
+                  width="20"
+                  height="20"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <circle cx="2" cy="2" r="1" fill="white" opacity="0.3" />
+                  <circle cx="12" cy="12" r="1.5" fill="white" opacity="0.2" />
+                </pattern>
+              </defs>
+              <rect width="100" height="100" fill="url(#cover-pattern)" />
+            </svg>
+          )}
         </div>
 
         {isOwnProfile && (
-          <button className="absolute bottom-4 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-lg hover:bg-white/30 transition-colors">
+          <button
+            className="absolute top-4 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-lg hover:bg-white/30 transition-colors"
+            onClick={() => setOpenBannerModal(true)}
+          >
             Change Cover
           </button>
         )}
@@ -142,7 +168,9 @@ export function ProfileCard({ profile, isOwnProfile = false, onPhotoUpdate }: Pr
             <GraduationCap className="w-4 h-4 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Level</p>
-              <p className="text-sm font-medium">{formatLevel(profile.level)}</p>
+              <p className="text-sm font-medium">
+                {formatLevel(profile.level)}
+              </p>
             </div>
           </div>
 
@@ -186,7 +214,6 @@ export function ProfileCard({ profile, isOwnProfile = false, onPhotoUpdate }: Pr
               </div>
             </div>
           )}
-
         </div>
 
         {/* Badges */}
@@ -203,6 +230,15 @@ export function ProfileCard({ profile, isOwnProfile = false, onPhotoUpdate }: Pr
           )}
         </div>
       </div>
+      {openBannerModal && (
+        <BannerModal
+          open={openBannerModal}
+          onClose={() => setOpenBannerModal(false)}
+          formError={null}
+          banner={profile.bannerUrl || ""}
+          setBanner={() => {}}
+        />
+      )}
     </div>
   );
 }

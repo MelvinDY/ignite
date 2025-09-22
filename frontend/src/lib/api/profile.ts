@@ -18,6 +18,7 @@ const ProfileMeResponseSchema = z.object({
   fullName: z.string(),
   handle: z.string().nullable(),
   photoUrl: z.string().nullable(),
+  bannerUrl: z.string().nullable(),
   isIndonesian: z.boolean(),
   program: z.string().nullable(),
   major: z.string().nullable(),
@@ -328,6 +329,16 @@ const CreateExperienceResponseSchema = z.object({
   id: z.string(),
 });
 
+// Banner Schemas
+const BannerUploadResponseSchema = z.object({
+  success: z.literal(true),
+  bannerUrl: z.string(),
+});
+
+const BannerDeleteResponseSchema = z.object({
+  success: z.literal(true),
+});
+
 // Profile Picture Schemas
 const ProfilePictureUploadResponseSchema = z.object({
   success: z.literal(true),
@@ -402,6 +413,8 @@ export type UpdateExperienceRequest = z.infer<
 export type CreateExperienceResponse = z.infer<
   typeof CreateExperienceResponseSchema
 >;
+export type BannerUploadResponse = z.infer<typeof BannerUploadResponseSchema>;
+export type BannerDeleteResponse = z.infer<typeof BannerDeleteResponseSchema>;
 export type ProfilePictureUploadResponse = z.infer<
   typeof ProfilePictureUploadResponseSchema
 >;
@@ -899,6 +912,63 @@ class ProfileApi {
       },
       UpdateProfileResponseSchema
     );
+  }
+
+  async uploadBanner(file: File): Promise<BannerUploadResponse> {
+    const formData = new FormData();
+    formData.append("banner", file);
+
+    // Special request for file upload - we don't set Content-Type header
+    // as the browser will set it with the boundary parameter
+    const url = `${API_BASE_URL}/profile/banner`;
+    const authState = authStateManager.getState();
+    const token = authState.accessToken || "";
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        const errorResult = ErrorResponseSchema.safeParse(errorData);
+        if (errorResult.success) {
+          throw new ProfileApiError(
+            errorResult.data.code as ProfileError["code"],
+            response.status,
+            errorResult.data.message || `Error: ${errorResult.data.code}`,
+            errorResult.data.details
+          );
+        }
+        throw new ProfileApiError(
+          "UNKNOWN_ERROR",
+          response.status,
+          "Failed to upload banner"
+        );
+      }
+
+      const data = await response.json();
+      const result = BannerUploadResponseSchema.safeParse(data);
+      if (!result.success) {
+        throw new ProfileApiError(
+          "UNKNOWN_ERROR",
+          200,
+          "Invalid response format"
+        );
+      }
+
+      return result.data;
+    } catch (error) {
+      if (error instanceof ProfileApiError) {
+        throw error;
+      }
+      throw new ProfileApiError("NETWORK_ERROR", 0, "Unable to upload banner");
+    }
   }
 }
 

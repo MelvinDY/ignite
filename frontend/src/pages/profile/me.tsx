@@ -173,6 +173,7 @@ export function MyProfilePage() {
     id: profile.id,
     handle: profile.handle,
     photoUrl: profile.photoUrl,
+    bannerUrl: profile.bannerUrl,
     fullName: profile.fullName,
     bio: profile.bio,
     yearStart: profile.yearStart,

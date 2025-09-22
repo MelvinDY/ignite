@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { X } from "lucide-react";
 import { SkillsContainer } from "../profile-edit/SkillsContainer";
 import type { Skill } from "../profile-edit/formTypes";

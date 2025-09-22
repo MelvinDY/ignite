@@ -1253,6 +1253,7 @@ paths:
                     headline: "Software Engineer"
                     domicileCity: "Sydney"
                     domicileCountry: "AU"
+                    citizenshipStatus: "Permanent Resident"
                     bio: "Passionate about building innovative software solutions."
                     socialLinks:
                       linkedin: "https://www.linkedin.com/in/janedoe"
@@ -1284,6 +1285,7 @@ paths:
         - `yearStart`, `yearGrad`: Must be between 2000-2100
         - `yearGrad`: Must be after `yearStart` if both provided
         - `domicileCountry`: Must be ISO country code (2 uppercase letters)
+        - `citizenshipStatus`: Must be either Citizen or Permanent Resident
         
         **Auth:** Bearer token required.
       security:
@@ -1308,6 +1310,7 @@ paths:
                   yearGrad: 2026
                   domicileCity: "Sydney"
                   domicileCountry: "AU"
+                  citizenshipStatus: "Citizen"
                   bio: "I ship boring, reliable services."
               partial_update:
                 summary: Partial update (only some fields)
@@ -2527,6 +2530,7 @@ paths:
                     headline: "Software Engineer"
                     domicileCity: "Sydney"
                     domicileCountry: "AU"
+                    citizenshipStatus: "Citizen"
                     bio: "Passionate about building innovative software solutions."
                     socialLinks:
                       linkedin: "https://www.linkedin.com/in/janedoe"

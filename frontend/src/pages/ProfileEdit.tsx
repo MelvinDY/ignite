@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { BatikBackground } from "../components/BatikBackground";
 import { GlassCard } from "../components/ui/GlassCard";
 import { Button } from "../components/ui/Button";
-import { Pencil } from "lucide-react";
+import { Pencil, CheckCircle, XCircle } from "lucide-react";
 import { AccountDetailsForm } from "../components/profile-edit/AccountDetailsForm";
 import { twMerge } from "tailwind-merge";
 import { DashboardForm } from "../components/profile-edit/DashboardForm";
@@ -17,6 +17,8 @@ interface MenuItem {
 const ProfileEdit = () => {
   const [menu, setMenu] = useState(0);
   const [showSaveButton, setShowSaveButton] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [notification, setNotification] = useState<{type: 'success' | 'error', message: string} | null>(null);
   const [initialFormData, setInitialFormData] = useState<FormData>(
     {} as FormData
   );
@@ -31,7 +33,54 @@ const ProfileEdit = () => {
   };
 
   const updateData = async () => {
-    // TODO: update other fields
+    setSaving(true);
+    setNotification(null);
+
+    try {
+      // Build the update payload (exclude non-API fields)
+      const updates = {
+        fullName: formData.fullName !== initialFormData.fullName ? formData.fullName : undefined,
+        headline: formData.headline !== initialFormData.headline ? (formData.headline || null) : undefined,
+        isIndonesian: formData.isIndonesian !== initialFormData.isIndonesian ? formData.isIndonesian : undefined,
+        bio: formData.bio !== initialFormData.bio ? (formData.bio || null) : undefined,
+        major: formData.major !== initialFormData.major ? formData.major : undefined,
+        level: formData.level !== initialFormData.level ? formData.level as any : undefined,
+        program: formData.program !== initialFormData.program ? formData.program : undefined,
+        yearStart: formData.yearStart !== initialFormData.yearStart ? formData.yearStart : undefined,
+        yearGrad: formData.yearGrad !== initialFormData.yearGrad ? formData.yearGrad : undefined,
+        domicileCity: formData.domicileCity !== initialFormData.domicileCity ? (formData.domicileCity || null) : undefined,
+        domicileCountry: formData.domicileCountry !== initialFormData.domicileCountry ? (formData.domicileCountry || null) : undefined,
+      };
+
+      // Remove undefined fields
+      const filteredUpdates = Object.fromEntries(
+        Object.entries(updates).filter(([_, value]) => value !== undefined)
+      );
+
+      if (Object.keys(filteredUpdates).length === 0) {
+        setNotification({ type: 'error', message: 'No changes to save' });
+        setSaving(false);
+        return;
+      }
+
+      await profileApi.updateProfile(filteredUpdates);
+
+      // Update initial form data to reflect saved changes
+      setInitialFormData(formData);
+      setShowSaveButton(false);
+      setNotification({ type: 'success', message: 'Profile updated successfully!' });
+
+      // Clear notification after 3 seconds
+      setTimeout(() => setNotification(null), 3000);
+    } catch (err) {
+      if (err instanceof ProfileApiError) {
+        setNotification({ type: 'error', message: err.message || 'Failed to update profile' });
+      } else {
+        setNotification({ type: 'error', message: 'An unexpected error occurred' });
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const menuItems: MenuItem[] = [
@@ -74,6 +123,10 @@ const ProfileEdit = () => {
           major: profileData.major ?? "",
           level: profileData.level,
           program: profileData.program ?? "",
+          yearStart: profileData.yearStart,
+          yearGrad: profileData.yearGrad,
+          domicileCity: profileData.domicileCity ?? "",
+          domicileCountry: profileData.domicileCountry ?? "",
         };
         setInitialFormData(data);
         setFormData(data);
@@ -94,7 +147,24 @@ const ProfileEdit = () => {
       <BatikBackground />
       <GlassCard className="w-[90%] h-[calc(100vh-8rem)]">
         <div className="flex flex-col gap-4 h-full">
-          <h1 className="font-bold text-3xl place-self-start">My Account</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="font-bold text-3xl place-self-start">My Account</h1>
+            {/* Notification */}
+            {notification && (
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                notification.type === 'success'
+                  ? 'bg-green-100 text-green-800 border border-green-200'
+                  : 'bg-red-100 text-red-800 border border-red-200'
+              }`}>
+                {notification.type === 'success' ? (
+                  <CheckCircle className="w-5 h-5" />
+                ) : (
+                  <XCircle className="w-5 h-5" />
+                )}
+                <span className="text-sm font-medium">{notification.message}</span>
+              </div>
+            )}
+          </div>
           <div className="flex sm:flex-row flex-col items-center gap-10 p-8">
             <div className="flex flex-col justify-center items-center gap-4 h-full">
               {/* Profile picture */}
@@ -147,11 +217,10 @@ const ProfileEdit = () => {
                 />
                 <Button
                   type="submit"
-                  children="Save"
+                  children={saving ? "Saving..." : "Save"}
                   className="w-24"
+                  disabled={saving}
                   onClick={() => {
-                    setInitialFormData(formData);
-                    setShowSaveButton(false);
                     updateData();
                   }}
                 />

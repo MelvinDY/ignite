@@ -4,6 +4,7 @@ import {
   profileApi,
   type ProfileMe,
   type Education,
+  type Experience,
   ProfileApiError,
   type Experience,
 } from "../../lib/api/profile";
@@ -186,20 +187,6 @@ export function MyProfilePage() {
     domicileCountry: profile.domicileCountry,
   };
 
-  const profileForDisplay = {
-    id: profile.id,
-    handle: profile.handle!,
-    photo_url: profile.photoUrl,
-    full_name: profile.fullName,
-    bio: profile.bio,
-    year_intake: profile.yearStart,
-    level: profile.level,
-    program: profile.program || "",
-    major: profile.major || "",
-    is_indonesian: profile.isIndonesian,
-    experience: [],
-    skills: [],
-  };
 
   return (
     <ProfileLayout>
@@ -207,7 +194,13 @@ export function MyProfilePage() {
         <div className="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="xl:col-span-3 lg:col-span-2 space-y-6">
-            <ProfileCard profile={profileForCard} isOwnProfile={true} />
+            <ProfileCard
+              profile={profileForCard}
+              isOwnProfile={true}
+              onPhotoUpdate={(newPhotoUrl) => {
+                setProfile(prev => prev ? { ...prev, photoUrl: newPhotoUrl } : null);
+              }}
+            />
             <ProfileExperience
               experiences={experiences}
               isOwnProfile={true}

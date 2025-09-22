@@ -2488,6 +2488,87 @@ paths:
                   value:
                     code: INTERNAL
 
+  /profile/{handle}/educations:
+    get:
+      tags: ["Profile"]
+      summary: Get educations for a profile by handle
+      description: |
+        Retrieve all education records for a user profile identified by their handle.
+        
+        **Data returned:**
+        - All education records for the specified profile
+        - Sorted by: endYear DESC NULLS LAST, endMonth DESC NULLS LAST, startYear DESC, startMonth DESC
+      security:
+      - bearerAuth: []
+      parameters:
+        - in: path
+          name: handle
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9_.-]{3,30}$'
+            example: "janedoe"
+          description: The unique handle/username of the profile
+      responses:
+        "200":
+          description: List of educations for the profile
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Education"
+              examples:
+                with_educations:
+                  value:
+                    - id: "edu_123"
+                      school: "University of New South Wales"
+                      program: "Bachelor of Engineering"
+                      major: "Software Engineering"
+                      startMonth: 2
+                      startYear: 2021
+                      endMonth: 11
+                      endYear: 2024
+                    - id: "edu_456"
+                      school: "UNSW Sydney"
+                      program: "Master of Information Technology"
+                      major: "Artificial Intelligence"
+                      startMonth: 3
+                      startYear: 2025
+                      endMonth: null
+                      endYear: null
+                empty_list:
+                  value: []
+        "400":
+          description: Invalid handle format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Profile not found for the given handle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
   /profile/{handle}:
     get:
       tags: ["Profile"]

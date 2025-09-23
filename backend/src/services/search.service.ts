@@ -63,7 +63,6 @@ export async function listCities(): Promise<{ name: string }[]> {
     
     const uniqueCities = [...new Set(data?.map(row => row.domicile_city) || [])]
         .filter(city => city && city.trim())
-        .sort()
         .map(name => ({ name }));
 
     return uniqueCities;

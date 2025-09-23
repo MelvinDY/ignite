@@ -4,6 +4,7 @@ type SearchParams = {
   q: string;
   cities: string[];
   citizenship: Array<"Citizen" | "Permanent Resident">;
+  majors: string[];
   sortBy: "relevance" | "name_asc" | "name_desc" | string;
   page: number;
   pageSize: number;
@@ -21,7 +22,7 @@ type ProfilePublicRow = {
 };
 
 export async function searchDirectory(params: SearchParams) {
-  const { q, cities, citizenship, sortBy, page, pageSize } = params;
+  const { q, cities, citizenship, majors, sortBy, page, pageSize } = params;
 
   // pagination → PostgREST range is 0-indexed, inclusive
   const from = (page - 1) * pageSize;
@@ -31,24 +32,22 @@ export async function searchDirectory(params: SearchParams) {
   let query = supabase
     .from("profiles")
     .select(
-      [
-        "id",
-        "full_name",
-        "handle",
-        "photo_url",
-        "headline",
-        "domicile_city",
-        "domicile_country",
-        "citizenship_status",
-      ].join(","),
+      `
+      id,
+      full_name,
+      handle,
+      photo_url,
+      headline,
+      domicile_city,
+      domicile_country,
+      citizenship_status
+      `,
       { count: "exact" }
     )
-    // directory visibility guard (adjust if your policy allows "members")
-    .eq("visibility", "public"); // keep it strict per spec’s “public view”
+    .eq("visibility", "public");
 
   // q: case-insensitive partial match on full_name
   if (q) {
-    // ilike with wildcards → partial, case-insensitive
     query = query.ilike("full_name", `%${q}%`);
   }
 
@@ -66,13 +65,50 @@ export async function searchDirectory(params: SearchParams) {
     query = query.in("citizenship_status", citizenship);
   }
 
+  // majors: check both profile.major and educations.major
+  if (majors.length > 0) {
+    // 1) Resolve major names -> IDs
+    const { data: majorRows, error: majorErr } = await supabase
+      .from("majors")
+      .select("id, name")
+      .in("name", majors);
+    if (majorErr) throw majorErr;
+
+    const majorIds = (majorRows ?? []).map(r => r.id);
+    if (majorIds.length === 0) {
+      // None of the provided names exist -> no matches
+      return { results: [], total: 0 };
+    }
+
+    // 2) Collect profile ids that match either:
+    //    a) profiles.major_id IN majorIds
+    //    b) educations.major_id IN majorIds  (via educations.profile_id)
+    const [byProfileMajor, byEduMajor] = await Promise.all([
+      supabase.from("profiles").select("id").in("major_id", majorIds),
+      supabase.from("educations").select("profile_id").in("major_id", majorIds),
+    ]);
+
+    if (byProfileMajor.error) throw byProfileMajor.error;
+    if (byEduMajor.error) throw byEduMajor.error;
+
+    const idsA = (byProfileMajor.data ?? []).map(r => r.id as string);
+    const idsB = (byEduMajor.data ?? []).map(r => r.profile_id as string);
+
+    const matchingProfileIds = Array.from(new Set([...idsA, ...idsB]));
+    if (matchingProfileIds.length === 0) {
+      return { results: [], total: 0 };
+    }
+
+    // 3) Constrain the main query to those ids
+    query = query.in("id", matchingProfileIds);
+  }
+
   // Sorting
   const hasQ = Boolean(q);
   const sort = ((): { column: string; ascending: boolean } => {
     if (sortBy === "name_asc" || (!hasQ && sortBy === "relevance"))
       return { column: "full_name", ascending: true };
     if (sortBy === "name_desc") return { column: "full_name", ascending: false };
-    // "relevance" w/ q present — simple fallback: name_asc (you can upgrade to pg_trgm later)
     return { column: "full_name", ascending: true };
   })();
   query = query.order(sort.column, { ascending: sort.ascending });
@@ -101,8 +137,6 @@ export async function searchDirectory(params: SearchParams) {
 
 // helper to escape dots & commas inside OR clause tokens
 function escapeDot(value: string) {
-  // PostgREST OR syntax uses '.' as operator separator; escape with URL encoding
-  // We also replace commas which separate conditions.
   return encodeURIComponent(value);
 }
 

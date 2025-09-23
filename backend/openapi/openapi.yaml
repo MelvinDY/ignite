@@ -2231,6 +2231,48 @@ paths:
                   code:
                     type: string
                     example: NOT_AUTHENTICATED
+  /lookup/cities:
+    get:
+      tags: ["Search"]
+      summary: List Indonesian cities from society members
+      description: Returns distinct Indonesian cities where society members are located.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of distinct Indonesian cities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [name]
+                  properties:
+                    name:
+                      type: string
+                      description: City name
+                      example: "Jakarta"
+              examples:
+                with_cities:
+                  value:
+                    - name: "Bandung"
+                    - name: "Jakarta" 
+                    - name: "Surabaya"
+                no_cities:
+                  value: []
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          $ref: "#/components/responses/InternalError"
   /profile/picture:
     post:
       tags: ["Profile"]

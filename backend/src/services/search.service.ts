@@ -5,6 +5,8 @@ type SearchParams = {
   cities: string[];
   citizenship: Array<"Citizen" | "Permanent Resident">;
   majors: string[];
+  companies: string[];
+  workFields: string[];
   sortBy: "relevance" | "name_asc" | "name_desc" | string;
   page: number;
   pageSize: number;
@@ -22,7 +24,7 @@ type ProfilePublicRow = {
 };
 
 export async function searchDirectory(params: SearchParams) {
-  const { q, cities, citizenship, majors, sortBy, page, pageSize } = params;
+  const { q, cities, citizenship, majors, companies, workFields, sortBy, page, pageSize } = params;
 
   // pagination → PostgREST range is 0-indexed, inclusive
   const from = (page - 1) * pageSize;
@@ -101,6 +103,64 @@ export async function searchDirectory(params: SearchParams) {
 
     // 3) Constrain the main query to those ids
     query = query.in("id", matchingProfileIds);
+  }
+
+  // Companies + Work Fields
+  let mustBeProfileIds: string[] | null = null;
+
+  // Companies → IDs → experiences.profile_id
+  if (companies.length > 0) {
+    const { data: companyRows, error: compErr } = await supabase
+      .from("companies")
+      .select("id, name")
+      .in("name", companies);
+    if (compErr) throw compErr;
+
+    const companyIds = (companyRows ?? []).map(r => r.id);
+    if (companyIds.length === 0) return { results: [], total: 0 };
+
+    const { data: expByCompany, error: expCompErr } = await supabase
+      .from("experiences")
+      .select("profile_id")
+      .in("company_id", companyIds);
+    if (expCompErr) throw expCompErr;
+
+    const ids = Array.from(new Set((expByCompany ?? []).map(r => r.profile_id as string)));
+    if (ids.length === 0) return { results: [], total: 0 };
+
+    mustBeProfileIds = ids;
+  }
+
+  // WorkFields → IDs → experiences.profile_id
+  if (workFields.length > 0) {
+    const { data: fieldRows, error: fieldErr } = await supabase
+      .from("fields_of_work")
+      .select("id, name")
+      .in("name", workFields);
+    if (fieldErr) throw fieldErr;
+
+    const fieldIds = (fieldRows ?? []).map(r => r.id);
+    if (fieldIds.length === 0) return { results: [], total: 0 };
+
+    const { data: expByField, error: expFieldErr } = await supabase
+      .from("experiences")
+      .select("profile_id")
+      .in("field_of_work_id", fieldIds);
+    if (expFieldErr) throw expFieldErr;
+
+    const ids = Array.from(new Set((expByField ?? []).map(r => r.profile_id as string)));
+    if (ids.length === 0) return { results: [], total: 0 };
+
+    // AND semantics across params → intersect with previous set if present
+    mustBeProfileIds = mustBeProfileIds === null
+      ? ids
+      : mustBeProfileIds.filter(id => ids.includes(id));
+    if (mustBeProfileIds.length === 0) return { results: [], total: 0 };
+  }
+
+  // Apply the intersection set (if we collected one)
+  if (mustBeProfileIds !== null) {
+    query = query.in("id", mustBeProfileIds);
   }
 
   // Sorting

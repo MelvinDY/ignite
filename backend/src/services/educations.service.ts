@@ -1,6 +1,7 @@
 import { supabase } from "../lib/supabase";
 import { AddEducationInput, UpdateEducationInput } from "../validation/profile.schemas";
 import { ensureProgramId, ensureMajorId, ensureSchoolId } from "./lookups.service";
+import { getUserIdFromHandle } from "./profile.service";
 
 export interface Education {
   id: string;
@@ -14,12 +15,32 @@ export interface Education {
 }
 
 /**
- * Fetch all educations for a given profile (user) ID.
+ * Fetch all educations for a given profile (user) ID or handle.
  * Sorted by: endYear DESC NULLS LAST, endMonth DESC NULLS LAST, startYear DESC, startMonth DESC
  * @param profileId The UUID of the profile/user
+ * @param handle The handle of the user
  * @returns Array of educations
  */
-export async function getProfileEducations(profileId: string): Promise<Education[]> {
+export async function getProfileEducations(profileId?: string, handle?: string): Promise<Education[]> {
+  // Validate that at least one parameter is provided
+  if (!profileId && !handle) {
+    throw { code: "VALIDATION_ERROR" };
+  }
+
+  let givenProfileId: string;
+  if (profileId) {
+    givenProfileId = profileId;
+  } else {
+    // handle must exist due to validation above
+    // get the user id from handle
+    try {
+      givenProfileId = await getUserIdFromHandle(handle!);
+    } catch (error) {
+      // If profile not found by handle, NOT_FOUND
+      throw { code: "NOT_FOUND" };
+    }
+  }
+
   const { data, error } = await supabase
     .from("educations")
     .select(`
@@ -32,7 +53,7 @@ export async function getProfileEducations(profileId: string): Promise<Education
       programs!inner(name),
       majors!inner(name)
     `)
-    .eq("profile_id", profileId)
+    .eq("profile_id", givenProfileId)
     .order("end_year", { ascending: false, nullsFirst: false })
     .order("end_month", { ascending: false, nullsFirst: false })
     .order("start_year", { ascending: false })

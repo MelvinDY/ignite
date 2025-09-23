@@ -1,6 +1,6 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { listMajors, lookupCompanies, listWorkFields, searchDirectory } from "../services/search.service";
+import { listMajors, lookupCompanies, listWorkFields, listCities, searchDirectory } from "../services/search.service";
 
 const router = Router();
 
@@ -142,6 +142,27 @@ router.get("/lookup/work-fields", async (req, res) => {
 		console.error("listWorkFields.error", err);
 		return res.status(500).json({ code: "INTERNAL" });
 	}
+});
+
+router.get("/lookup/cities", async (req, res) => {
+    const accessToken = req.headers.authorization?.split(" ")[1];
+    if (!accessToken) {
+        return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    try {
+        jwt.verify(accessToken, process.env.JWT_SECRET!);
+    } catch {
+        return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+    }
+
+    try {
+        const cities = await listCities();
+        return res.status(200).json(cities);
+    } catch (err) {
+        console.error("listIndonesianCities.error", err);
+        return res.status(500).json({ code: "INTERNAL" });
+    }
 });
 
 export default router;

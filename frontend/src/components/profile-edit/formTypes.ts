@@ -13,6 +13,10 @@ export interface FormData {
   major: string;
   level: string;
   program: string;
+  yearStart: number;
+  yearGrad: number | null;
+  domicileCity: string;
+  domicileCountry: string;
 }
 
 export interface EditProfileFormProps {

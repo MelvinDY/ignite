@@ -245,21 +245,34 @@ export async function uploadProfilePicture(
   userId: string,
   file: Express.Multer.File
 ): Promise<string> {
+  console.log("Upload started for user:", userId);
+  console.log("File info:", {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size
+  });
+
   const ext = file.originalname.split(".").pop() || "jpg";
   const fileName = `${userId}/profile.${ext}`;
   const filePath = `profiles/${fileName}`;
 
+  console.log("Upload path:", filePath);
+
   const { data: uploadData, error: uploadError } = await supabase.storage
-    .from("profiles")
+    .from("profile-pictures")
     .upload(filePath, file.buffer, {
       contentType: file.mimetype,
       upsert: true,
     });
 
   if (uploadError) {
-    console.log("Upload error")
+    console.error("Upload error:", uploadError);
+    console.error("Attempted bucket:", "profile-pictures");
+    console.error("Attempted path:", filePath);
     throw uploadError;
   }
+
+  console.log("Upload successful:", uploadData);
 
   // Get public URL
   const {
@@ -452,4 +465,24 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
     createdAt: data.created_at,
     updatedAt: data.updated_at,
   };
+}
+
+/**
+ * Fetch the user id from given handle.
+ * Assumes a valid handle
+ * @param handle 
+ */
+export async function getUserIdFromHandle(handle: string): Promise<string> {
+  const handleLower = handle.toLowerCase();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("handle", handleLower)
+    .single();
+
+  if (error || !data) {
+    throw new Error("Profile not found");
+  }
+
+  return data.id;
 }

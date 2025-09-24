@@ -107,7 +107,7 @@ const SkillsModal = ({
 
           <SkillsContainer
             id="skills"
-            value={newSkills}
+            skills={newSkills}
             onChange={(value) => setNewSkills(value)}
             displayOnly={false}
             className="border border-black/30"

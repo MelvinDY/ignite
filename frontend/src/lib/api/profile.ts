@@ -916,7 +916,7 @@ class ProfileApi {
 
   async uploadBanner(file: File): Promise<BannerUploadResponse> {
     const formData = new FormData();
-    formData.append("banner", file);
+    formData.append("banner_image", file);
 
     // Special request for file upload - we don't set Content-Type header
     // as the browser will set it with the boundary parameter

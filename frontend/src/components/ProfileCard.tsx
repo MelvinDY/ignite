@@ -69,32 +69,30 @@ export function ProfileCard({
       {/* Rectangular Cover Image */}
       <div className="relative h-[200px] bg-gradient-to-r from-[#3E000C] to-[#8B1538]">
         {/* Pattern overlay */}
-        <div className="absolute inset-0 opacity-20">
-          {bannerUrl ? (
-            <img src={bannerUrl} alt="Profile banner"></img>
-          ) : (
-            <svg
-              className="w-full h-full"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-            >
-              <defs>
-                <pattern
-                  id="cover-pattern"
-                  x="0"
-                  y="0"
-                  width="20"
-                  height="20"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <circle cx="2" cy="2" r="1" fill="white" opacity="0.3" />
-                  <circle cx="12" cy="12" r="1.5" fill="white" opacity="0.2" />
-                </pattern>
-              </defs>
-              <rect width="100" height="100" fill="url(#cover-pattern)" />
-            </svg>
-          )}
-        </div>
+         {bannerUrl ? 
+            <img src={bannerUrl} alt="Profile banner" className="w-full h-full object-cover"></img> :
+        (<div className="absolute inset-0 opacity-20">
+          <svg
+            className="w-full h-full"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+          >
+            <defs>
+              <pattern
+                id="cover-pattern"
+                x="0"
+                y="0"
+                width="20"
+                height="20"
+                patternUnits="userSpaceOnUse"
+              >
+                <circle cx="2" cy="2" r="1" fill="white" opacity="0.3" />
+                <circle cx="12" cy="12" r="1.5" fill="white" opacity="0.2" />
+              </pattern>
+            </defs>
+            <rect width="100" height="100" fill="url(#cover-pattern)" />
+          </svg>
+        </div>)}
 
         {isOwnProfile && (
           <button

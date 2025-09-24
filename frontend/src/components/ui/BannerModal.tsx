@@ -67,7 +67,7 @@ const BannerModal = ({
   const handleFileUpload = async () => {
     if (!newBanner || !croppedAreaPixels) return;
     
-    const croppedImage = await getCroppedImg(newBanner, croppedAreaPixels);
+    const croppedImage = await getCroppedImg(newBanner, croppedAreaPixels, "banner.jpg");
     setError(null);
     setUploading(true);
 
@@ -125,6 +125,7 @@ const BannerModal = ({
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            name="banner_image"
             onChange={handleFileSelect}
             disabled={uploading || deleting}
             className="hidden"
@@ -144,7 +145,7 @@ const BannerModal = ({
               image={newBanner}
               crop={crop}
               zoom={zoom}
-              aspect={3} // 3 : 1 aspect ratio
+              aspect={3.75} // 3.75 : 1 aspect ratio
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}

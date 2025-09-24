@@ -98,10 +98,10 @@ export function ProfileCard({
 
         {isOwnProfile && (
           <button
-            className="absolute top-4 right-4 px-4 py-2 bg-white/20 backdrop-blur-sm text-white text-sm font-medium rounded-lg hover:bg-white/30 transition-colors"
+            className="absolute top-4 right-4 p-2 bg-white backdrop-blur-sm rounded-full"
             onClick={() => setOpenBannerModal(true)}
           >
-            Change Cover
+            <Edit2 size={16} strokeWidth={2} className="text-[var(--dark-red)] hover:text-black/40 transition-colors"/>
           </button>
         )}
       </div>

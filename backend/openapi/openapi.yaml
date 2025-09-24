@@ -20,6 +20,8 @@ tags:
     description: Profile data, skills, media, and preferences
   - name: Handles
     description: Public profile handles (unique slugs)
+  - name: Search
+    description: Directory search and lookups (majors, companies, fields, cities)
 
 paths:
   /auth/register:
@@ -2116,7 +2118,107 @@ paths:
                 bad_format: { value: { code: VALIDATION_ERROR } }
         "500":
           $ref: "#/components/responses/InternalError"
-          
+
+  /directory/search:
+    get:
+      tags: ["Search"]
+      summary: Search member directory
+      description: |
+        Returns a paginated list of public profiles matching the given filters.
+        - **OR within** each list param (`major`, `companies`, `workFields`, `cities`, `citizenship`)
+        - **AND across** different params (e.g., `major` AND `cities`)
+        - `cities` must exactly match values from `/lookup/cities` (case-insensitive)
+        - `citizenship` allow-list: `Citizen`, `Permanent Resident`
+        - If `q` is absent and `sortBy=relevance`, treat as `name_asc`
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+          description: Case-insensitive partial match on full name
+          example: "jane"
+        - in: query
+          name: major
+          schema: { type: string }
+          description: Comma-separated list of **major names** (case-insensitive exact; matches profile.major or any education.major)
+          example: "Software Engineering,Mechanical Engineering"
+        - in: query
+          name: companies
+          schema: { type: string }
+          description: Comma-separated list of company names (case-insensitive exact; sourced from experiences)
+          example: "Google,Grab"
+        - in: query
+          name: workFields
+          schema: { type: string }
+          description: Comma-separated list of predefined field-of-work names (case-insensitive; sourced from experiences)
+          example: "Software Engineering,Data Science"
+        - in: query
+          name: cities
+          schema: { type: string }
+          description: Comma-separated list of domicile city names (case-insensitive **exact**; must come from `/lookup/cities`)
+          example: "Jakarta,Medan"
+        - in: query
+          name: citizenship
+          schema:
+            type: string
+            description: Comma-separated set from the allow-list
+            example: "Citizen,Permanent Resident"
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+            enum: [relevance, name_asc, name_desc]
+            default: relevance
+          description: When `q` is absent, `relevance` behaves as `name_asc`.
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectorySearchResponse"
+              examples:
+                sample:
+                  value:
+                    results:
+                      - profileId: "usr_abc123"
+                        fullName: "Jane Doe"
+                        handle: "jane_doe"
+                        photoUrl: "https://cdn.app.com/profiles/usr_abc123/photo.jpg"
+                        headline: "Backend Engineer @ Acme | AI/ML"
+                        domicileCity: "Jakarta"
+                        domicileCountry: "ID"
+                        citizenshipStatus: "Citizen"
+                    pagination:
+                      total: 150
+                      page: 1
+                      pageSize: 20
+                      totalPages: 8
+        "400":
+          description: No filters provided or validation error
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                missing_filters:
+                  value: { code: VALIDATION_ERROR }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /lookup/majors:
     get:
       tags: ["Search"]
@@ -3506,3 +3608,60 @@ components:
           type: string
           nullable: true
           maxLength: 2000
+    DirectorySearchResponse:
+      type: object
+      required: [results, pagination]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectorySearchResult"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    DirectorySearchResult:
+      type: object
+      required:
+        - profileId
+        - fullName
+      properties:
+        profileId:
+          type: string
+          description: Profile UUID
+          example: "2abc8f8a-a7cc-4fbe-9628-55bc8bd24579"
+        fullName:
+          type: string
+          example: "Jane Doe"
+        handle:
+          type: string
+          nullable: true
+          example: "jane_doe"
+        photoUrl:
+          type: string
+          nullable: true
+          example: "https://cdn.app.com/profiles/usr_abc123/photo.jpg"
+        headline:
+          type: string
+          nullable: true
+          example: "Backend Engineer @ Acme | AI/ML"
+        domicileCity:
+          type: string
+          nullable: true
+          example: "Jakarta"
+        domicileCountry:
+          type: string
+          nullable: true
+          example: "ID"
+        citizenshipStatus:
+          type: string
+          nullable: true
+          enum: ["Citizen", "Permanent Resident"]
+
+    Pagination:
+      type: object
+      required: [total, page, pageSize, totalPages]
+      properties:
+        total:      { type: integer, example: 150 }
+        page:       { type: integer, example: 1 }
+        pageSize:   { type: integer, example: 20 }
+        totalPages: { type: integer, example: 8 }

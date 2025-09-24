@@ -201,6 +201,11 @@ export function MyProfilePage() {
                   prev ? { ...prev, photoUrl: newPhotoUrl } : null
                 );
               }}
+              onBannerUpdate={(newBannerUrl) => {
+                setProfile((prev) =>
+                  prev ? { ...prev, bannerUrl: newBannerUrl } : null
+                );
+              }}
             />
             <ProfileExperience
               experiences={experiences}

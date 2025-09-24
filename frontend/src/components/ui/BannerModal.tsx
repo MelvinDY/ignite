@@ -3,27 +3,24 @@ import { getCroppedImg } from "@/lib/utils";
 import { Upload, X } from "lucide-react";
 import React, {
   useCallback,
+  useEffect,
   useRef,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from "react";
 import Cropper from "react-easy-crop";
 
 interface BannerModalProps {
-  open: boolean;
   onClose: () => void;
   formError: string | null;
-  banner: string;
-  setBanner: Dispatch<SetStateAction<string>>;
+  banner: string | null;
+  onBannerUpdate?: (newBannerUrl: string | null) => void;
 }
 
 const BannerModal = ({
-  open,
   onClose,
   formError,
   banner,
-  setBanner,
+  onBannerUpdate
 }: BannerModalProps) => {
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +32,11 @@ const BannerModal = ({
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
 
-  const [newBanner, setNewBanner] = useState<string>(banner);
+  const [newBanner, setNewBanner] = useState<string | null>(banner);
+
+  useEffect(() => {
+    console.log("Banner updated:", banner);
+  }, [banner]);
 
   const onCropComplete = useCallback((_: any, croppedPixels: any) => {
     setCroppedAreaPixels(croppedPixels);
@@ -64,16 +65,18 @@ const BannerModal = ({
     fileReader.readAsDataURL(file);
   };
 
-  const handleFileUpload = async () => {
+  const handleFileUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!newBanner || !croppedAreaPixels) return;
     
     const croppedImage = await getCroppedImg(newBanner, croppedAreaPixels, "banner.jpg");
     setError(null);
     setUploading(true);
-
+    
     try {
       const response = await profileApi.uploadBanner(croppedImage);
-      setBanner(response.bannerUrl);
+      console.log("Banner upload url:", response.bannerUrl);
+      onBannerUpdate?.(response.bannerUrl);
     } catch (err) {
       if (err instanceof ProfileApiError) {
         setError(err.message || "Failed to upload profile picture");
@@ -86,8 +89,30 @@ const BannerModal = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      onClose();
     }
   };
+
+  const handleDelete = async () => {
+    if (!banner) return;
+    setError(null);
+    setDeleting(true);
+    
+    try {
+      await profileApi.deleteBanner();
+      onBannerUpdate?.(null);
+      setNewBanner(null);
+    } catch (err) {
+      if (err instanceof ProfileApiError) {
+        setError(err.message || "Failed to delete banner");
+      } else {
+        setError("An error occurred while deleting");
+      }
+    } finally {
+      setDeleting(false);
+      onClose();
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50">
@@ -167,13 +192,14 @@ const BannerModal = ({
           <div className="flex items-center justify-between gap-3 pt-2">
             <button
                 type="button"
-                // onClick={}
+                onClick={handleDelete}
                 className={
                   banner 
                   ? "rounded-md px-4 py-2 font-medium text-white disabled:opacity-60 bg-red-600 hover:bg-red-700"
                   : "invisible"}
+                  disabled={deleting || uploading}
               >
-                Delete
+                {deleting ? "Deleting..." : "Delete"}
               </button>
             <div className="flex gap-4">
               <button
@@ -187,7 +213,7 @@ const BannerModal = ({
               <button
                 type="submit"
                 className="rounded-md bg-[var(--dark-red)] px-4 py-2 font-medium text-white hover:bg-[var(--dark-red)]/90 disabled:opacity-60"
-                disabled={uploading}
+                disabled={deleting || uploading}
               >
                 {uploading ? "Saving..." : "Save"}
               </button>

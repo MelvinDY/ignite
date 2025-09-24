@@ -303,7 +303,7 @@ export async function uploadBannerImage(
   file: Express.Multer.File
 ): Promise<string> {
   const ext = file.originalname.split(".").pop() || "jpg";
-  const fileName = `${userId}/banner.${ext}`;
+  const fileName = `${userId}/banner-${Date.now()}.${ext}`;
   const filePath = `banners/${fileName}`;
 
   const { data: uploadData, error: uploadError } = await supabase.storage
@@ -314,11 +314,12 @@ export async function uploadBannerImage(
     });
 
   if (uploadError) throw uploadError;
-
+  console.log("Upload banner successful:", uploadData);
   // Get public URL
   const {
     data: { publicUrl },
   } = supabase.storage.from("profile-pictures").getPublicUrl(filePath);
+  console.log("Public url banner: ", publicUrl);
 
   // Update profile with new banner URL
   const { error: updateError } = await supabase

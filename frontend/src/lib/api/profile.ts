@@ -970,6 +970,16 @@ class ProfileApi {
       throw new ProfileApiError("NETWORK_ERROR", 0, "Unable to upload banner");
     }
   }
+
+  async deleteBanner(): Promise<BannerDeleteResponse> {
+    return this.request(
+      "/profile/banner",
+      {
+        method: "DELETE",
+      },
+      BannerDeleteResponseSchema
+    );
+  }
 }
 
 export const profileApi = new ProfileApi();

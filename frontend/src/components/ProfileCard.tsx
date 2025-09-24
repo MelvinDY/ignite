@@ -34,15 +34,17 @@ interface ProfileCardProps {
   profile: ProfileData;
   isOwnProfile?: boolean;
   onPhotoUpdate?: (newPhotoUrl: string | null) => void;
+  onBannerUpdate?: (newBannerUrl: string | null) => void;
 }
 
 export function ProfileCard({
   profile,
   isOwnProfile = false,
   onPhotoUpdate,
+  onBannerUpdate,
 }: ProfileCardProps) {
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl);
-  const [bannerUrl, setBannerUrl] = useState(profile.bannerUrl);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(profile.bannerUrl);
   const [openBannerModal, setOpenBannerModal] = useState(false);
 
   const getInitials = (name: string) =>
@@ -230,11 +232,15 @@ export function ProfileCard({
       </div>
       {openBannerModal && (
         <BannerModal
-          open={openBannerModal}
           onClose={() => setOpenBannerModal(false)}
           formError={null}
-          banner={profile.bannerUrl || ""}
-          setBanner={() => {}}
+          banner={bannerUrl}
+          onBannerUpdate={
+            (newBannerUrl) => {
+              setBannerUrl(newBannerUrl);
+              onBannerUpdate?.(newBannerUrl);
+            }
+          }
         />
       )}
     </div>

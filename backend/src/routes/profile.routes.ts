@@ -43,7 +43,7 @@ import {
 
 const router = Router();
 
-const authenticateUser: (req: Request, res: Response) => string | null = (req, res) => {
+export const authenticateUser: (req: Request, res: Response) => string | null = (req, res) => {
   // Check for valid token
   const accessToken = req.headers.authorization?.split(' ')[1];
   if (!accessToken) {

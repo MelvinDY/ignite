@@ -2923,6 +2923,59 @@ paths:
                   value:
                     code: INTERNAL
 
+  /connections/{profileId}:
+    delete:
+      tags: ["Connections"]
+      summary: Remove a connection
+      description: Delete an existing connection between the authenticated user and the specified profile. This operation is idempotent - deleting a non-existing connection still returns success.
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: The UUID of the profile to disconnect from
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Connection successfully removed (or was already absent)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                    enum: [true]
+              examples:
+                success:
+                  value:
+                    success: true
+        "401":
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL
+
 components:
   securitySchemes:
     bearerAuth:

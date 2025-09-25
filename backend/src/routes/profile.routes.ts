@@ -633,6 +633,28 @@ router.get("/profile/:handle/skills", async (req, res) => {
   }
 });
 
+// GET /profile/:handle/experiences
+router.get("/profile/:handle/experiences", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const { handle } = req.params;
+
+  // Validate handle format
+  const handleValidation = HandleSchema.safeParse({ handle });
+  if (!handleValidation.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    const experiences = await getProfileExperiences(undefined, handle);
+    return res.status(200).json(experiences);
+  } catch (err) {
+    console.error("getProfileExperiences.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
 // GET /profile/:handle - Get profile by handle (requires authentication)
 // This route must be LAST to avoid conflicts with specific routes like /profile/educations
 router.get("/profile/:handle", async (req, res) => {

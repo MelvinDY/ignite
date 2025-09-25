@@ -4,6 +4,7 @@ import { ExperienceObject } from '../types/Experience';
 import { pickName, validateMergedDates } from '../utils/experience';
 import { CreateExperienceInput, UpdateExperienceInput } from '../validation/profile.schemas';
 import { ensureCompanyId, ensureFieldOfWorkId } from './lookups.service';
+import { getUserIdFromHandle } from "./profile.service";
 
 export type ExperienceRow = {
   id: string;
@@ -35,9 +36,26 @@ export type ExperienceRow = {
  * start_year DESC,
  * start_month DESC.
  */
-export async function getProfileExperiences(
-  profileId: string
-): Promise<ExperienceObject[]> {
+export async function getProfileExperiences(profileId?: string, handle?: string): Promise<ExperienceObject[]> {
+  // Validate that at least one parameter is provided
+  if (!profileId && !handle) {
+    throw { code: "VALIDATION_ERROR" };
+  }
+
+  let givenProfileId: string;
+  if (profileId) {
+    givenProfileId = profileId;
+  } else {
+    // handle must exist due to validation above
+    // get the user id from handle
+    try {
+      givenProfileId = await getUserIdFromHandle(handle!);
+    } catch (error) {
+      // If profile not found by handle, NOT_FOUND
+      throw { code: "NOT_FOUND" };
+    }
+  }
+
   const { data, error } = await supabase
     .from('experiences')
     .select(`
@@ -56,7 +74,7 @@ export async function getProfileExperiences(
       companies:companies!experiences_company_id_fkey ( name ),
       fields_of_work:fields_of_work!experiences_field_of_work_id_fkey ( name )
     `)
-    .eq('profile_id', profileId)
+    .eq('profile_id', givenProfileId)
     .order('is_current', { ascending: false })
     .order('end_year', { ascending: false, nullsFirst: false })
     .order('end_month', { ascending: false, nullsFirst: false })

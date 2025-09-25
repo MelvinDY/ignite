@@ -10,9 +10,10 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes';
 import profileRoutes from './routes/profile.routes';
 import searchRoutes from './routes/search.routes';
+import connectionsRoutes from './routes/connections.routes';
 
 export const createApp = () => {
-  
+
   const app = express();
   // Configure CORS to allow frontend origin with credentials
   app.use(cors({
@@ -22,7 +23,7 @@ export const createApp = () => {
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
     exposedHeaders: ['Set-Cookie']
   }));
-  
+
   app.use(express.json());
   app.use(cookieParser());
 
@@ -47,6 +48,7 @@ export const createApp = () => {
   app.use('/api', authRoutes);
   app.use('/api', profileRoutes);
   app.use('/api', searchRoutes);
+  app.use('/api', connectionsRoutes);
 
   return app;
 };

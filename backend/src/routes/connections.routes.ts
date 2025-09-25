@@ -68,7 +68,7 @@ router.post("/connections/requests/:id/cancel", async (req, res) => {
  * User Story 4.2: Listing connection requests
  */
 router.get("/connections/requests", async (req, res) => {
-  const type = req.query.type as string;
+  const type = req.query.type ? req.query.type as string : "incoming";
   const page = parseInt(req.query.page as string) || 1;
   const pageSize = parseInt(req.query.pageSize as string) || 20;
   const accessToken = req.headers.authorization?.split(" ")[1];
@@ -76,7 +76,7 @@ router.get("/connections/requests", async (req, res) => {
   let userId: string;
 
   if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED " });
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
 
   try {
@@ -87,10 +87,6 @@ router.get("/connections/requests", async (req, res) => {
     }
   } catch (err) {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  if (type && !["incoming", "outgoing"].includes(type.toString())) {
-    return res.status(400).json({ code: "BAD_REQUEST" });
   }
 
   let data;

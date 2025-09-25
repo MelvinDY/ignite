@@ -1,25 +1,46 @@
 import { supabase } from "../lib/supabase";
+import { getUserIdFromHandle } from "./profile.service";
 
 /**
  * Fetch all skills for a given profile (user) ID, sorted alphabetically by name.
  * @param profileId The UUID of the profile/user
+ * @param handle The handle of the user
  * @returns Array of skills: [{ id, name }]
  */
-export async function getProfileSkills(profileId: string): Promise<Array<{ id: number; name: string }>> {
-	const { data, error } = await supabase
-		.from("profile_skills")
-		.select("skill_id, skills(id, name)")
-		.eq("profile_id", profileId);
-	if (error) throw error;
-    
-	const skills = (data || [])
-		.map((row: any) => row.skills)
-		.filter((s: any): s is { id: number; name: string } => !!s)
-		.reduce((acc: Record<number, { id: number; name: string }>, skill) => {
-			acc[skill.id] = skill;
-			return acc;
-		}, {});
-	return Object.values(skills).sort((a, b) => a.name.localeCompare(b.name));
+export async function getProfileSkills(profileId?: string, handle?: string): Promise<Array<{ id: number; name: string }>> {
+  // Validate that at least one parameter is provided
+  if (!profileId && !handle) {
+    throw { code: "VALIDATION_ERROR" };
+  }
+
+  let givenProfileId: string;
+  if (profileId) {
+    givenProfileId = profileId;
+  } else {
+    // handle must exist due to validation above
+    // get the user id from handle
+    try {
+      givenProfileId = await getUserIdFromHandle(handle!);
+    } catch (error) {
+      // If profile not found by handle, NOT_FOUND
+      throw { code: "NOT_FOUND" };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("profile_skills")
+    .select("skill_id, skills(id, name)")
+    .eq("profile_id", givenProfileId);
+  if (error) throw error;
+
+  const skills = (data || [])
+    .map((row: any) => row.skills)
+    .filter((s: any): s is { id: number; name: string } => !!s)
+    .reduce((acc: Record<number, { id: number; name: string }>, skill) => {
+      acc[skill.id] = skill;
+      return acc;
+    }, {});
+  return Object.values(skills).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**

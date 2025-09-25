@@ -2716,6 +2716,76 @@ paths:
                 not_found:
                   value:
                     code: NOT_FOUND
+  /profile/{handle}/skills:
+    get:
+      tags: ["Profile"]
+      summary: Get skills for a profile by handle
+      description: |
+        Retrieve all skills for a user profile identified by their handle.
+        Names are deduped and sorted alphabetically.
+        
+        **Auth:** Bearer token required.
+      security:
+      - bearerAuth: []
+      parameters:
+        - in: path
+          name: handle
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-z0-9_.-]{3,30}$'
+            example: "janedoe"
+          description: The unique handle/username of the profile
+      responses:
+        "200":
+          description: List of skills for the profile
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Skill"
+              examples:
+                with_skills:
+                  value:
+                    - id: 12
+                      name: Python
+                    - id: 34
+                      name: SQL
+                    - id: 56
+                      name: JavaScript
+                empty_list:
+                  value: []
+        "400":
+          description: Invalid handle format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Profile not found for the given handle
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
   /profile/{handle}:
     get:
       tags: ["Profile"]

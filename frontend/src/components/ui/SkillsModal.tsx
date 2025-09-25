@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  type Dispatch,
-  type SetStateAction,
-} from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { X } from "lucide-react";
 import { SkillsContainer } from "../profile-edit/SkillsContainer";
 import type { Skill } from "../profile-edit/formTypes";
@@ -112,7 +107,7 @@ const SkillsModal = ({
 
           <SkillsContainer
             id="skills"
-            value={newSkills}
+            skills={newSkills}
             onChange={(value) => setNewSkills(value)}
             displayOnly={false}
             className="border border-black/30"

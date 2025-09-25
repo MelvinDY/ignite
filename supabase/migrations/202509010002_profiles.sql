@@ -16,6 +16,7 @@ create table if not exists profiles (
   headline varchar,
   domicile_city varchar,
   domicile_country char(2),
+  citizenship_status citizenship_type,
   bio text,
   social_links jsonb,
   visibility text not null default 'public',

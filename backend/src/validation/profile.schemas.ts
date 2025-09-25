@@ -16,6 +16,7 @@ export const UpdateProfileSchema = z.object({
   yearGrad: z.number().int().min(2000).max(2100).nullable().optional(),
   domicileCity: z.string().nullable().optional(),
   domicileCountry: z.string().regex(/^[A-Z]{2}$/).nullable().optional(),
+  citizenshipStatus: z.enum(['Permanent Resident', 'Citizen']).optional(),
   bio: z.string().nullable().optional(),
 }).refine((data) => {
   // Validate that yearGrad is after yearStart if both are provided

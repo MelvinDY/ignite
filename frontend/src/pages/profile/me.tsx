@@ -4,8 +4,8 @@ import {
   profileApi,
   type ProfileMe,
   type Education,
-  type Experience,
   ProfileApiError,
+  type Experience,
 } from "../../lib/api/profile";
 import { ProfileLayout } from "../../components/ProfileLayout";
 import { ProfileCard } from "../../components/ProfileCard";
@@ -173,6 +173,7 @@ export function MyProfilePage() {
     id: profile.id,
     handle: profile.handle,
     photoUrl: profile.photoUrl,
+    bannerUrl: profile.bannerUrl,
     fullName: profile.fullName,
     bio: profile.bio,
     yearStart: profile.yearStart,
@@ -186,7 +187,6 @@ export function MyProfilePage() {
     domicileCountry: profile.domicileCountry,
   };
 
-
   return (
     <ProfileLayout>
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -197,7 +197,14 @@ export function MyProfilePage() {
               profile={profileForCard}
               isOwnProfile={true}
               onPhotoUpdate={(newPhotoUrl) => {
-                setProfile(prev => prev ? { ...prev, photoUrl: newPhotoUrl } : null);
+                setProfile((prev) =>
+                  prev ? { ...prev, photoUrl: newPhotoUrl } : null
+                );
+              }}
+              onBannerUpdate={(newBannerUrl) => {
+                setProfile((prev) =>
+                  prev ? { ...prev, bannerUrl: newBannerUrl } : null
+                );
               }}
             />
             <ProfileExperience
@@ -219,12 +226,12 @@ export function MyProfilePage() {
                 setEducations((prev) => [e, ...prev]);
                 refetchEducations();
               }}
-
               onEducationUpdated={(e) => {
-                setEducations((prev) => prev.map((it) => (it.id === e.id ? e : it)));
+                setEducations((prev) =>
+                  prev.map((it) => (it.id === e.id ? e : it))
+                );
                 refetchEducations();
               }}
-
               onEducationDeleted={(id) =>
                 setEducations((prev) => prev.filter((x) => x.id !== id))
               }

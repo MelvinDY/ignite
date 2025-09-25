@@ -14,6 +14,7 @@ export interface ProfileObject {
   headline: string | null;
   domicileCity: string | null;
   domicileCountry: string | null;
+  citizenshipStatus: 'Citizen' | 'Permanent Resident',
   bio: string | null;
   socialLinks: any;
   createdAt: string;

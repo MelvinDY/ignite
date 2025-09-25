@@ -388,18 +388,22 @@ export async function updateProfile(profileId: string, updates: UpdateProfileInp
 
 export async function replaceSocialLinks(
   profileId: string,
-  socialLinks: SocialLinksInput
+  socialLinks: SocialLinksInput | null
 ): Promise<void> {
+  const shouldNull =
+    socialLinks == null || (typeof socialLinks === 'object' && Object.keys(socialLinks).length === 0);
+
   const { error } = await supabase
     .from('profiles')
     .update({
-      social_links: socialLinks,
+      social_links: shouldNull ?  null : socialLinks,
       updated_at: new Date().toISOString(),
     })
     .eq('id', profileId);
 
   if (error) throw error;
 }
+
 /**
  * Get public profile by handle (no authentication required)
  * Returns profile without sensitive data like zid

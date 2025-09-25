@@ -222,11 +222,7 @@ export async function listMajors(): Promise<{ id: number; name: string }[]> {
 export async function lookupCompanies(query?: string) {
   let builder = supabase
     .from("companies")
-    .select(`
-      id,
-      name,
-      experiences!inner(id)
-    `)
+    .select("id, name")
     .order("name", { ascending: true });
 
   if (query) {
@@ -249,21 +245,19 @@ export async function listWorkFields(): Promise<{ id: number; name: string }[]> 
     return data ?? [];
 };
 
-export async function listCities(): Promise<{ name: string }[]> {
+export async function listCities(): Promise<{ id: string; name: string }[]> {
     const { data, error } = await supabase
         .from('profiles')
         .select('domicile_city')
-        .eq('is_indonesian', true)
-        .eq('domicile_country', 'ID')
         .eq('status', 'ACTIVE')
         .not('domicile_city', 'is', null)
         .order('domicile_city', { ascending: true });
-        
+
     if (error) throw error;
-    
+
     const uniqueCities = [...new Set(data?.map(row => row.domicile_city) || [])]
         .filter(city => city && city.trim())
-        .map(name => ({ name }));
+        .map(name => ({ id: name!, name: name! }));
 
     return uniqueCities;
 }

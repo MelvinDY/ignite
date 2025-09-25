@@ -1,8 +1,53 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { cancelConnectionRequest, ConnectionRequestError } from "../services/connections.service";
+import { cancelConnectionRequest, ConnectionRequestError, getConnections } from "../services/connections.service";
 
 const router = Router();
+
+/**
+ * User Story: Get current connections for networking
+ * GET /connections?page=1&pageSize=20
+ * 
+ * As a logged-in user, I want to see my current connections for networking.
+ * 
+ * Auth: Bearer token required
+ * Response (200): { results: [...], pagination: {...} }
+ * 
+ * Validation & Logic:
+ * - Paginated, sort by connected_at DESC
+ * 
+ * Errors:
+ * - 401 { code: NOT_AUTHENTICATED }
+ */
+router.get("/connections", async (req, res) => {
+  // 1. Authenticate user
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  let userId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    userId = decoded.sub;
+    if (!userId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // 2. Parse pagination parameters
+  const page = parseInt(req.query.page as string) || 1;
+  const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+  try {
+    // 3. Get connections using the service
+    const result = await getConnections(userId, page, pageSize);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.error("get connections error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
 
 /**
  * User Story: Cancel a pending connection request

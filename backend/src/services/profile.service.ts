@@ -32,6 +32,7 @@ type ProfileRow = {
   headline: string | null;
   domicile_city: string | null;
   domicile_country: string | null;
+  citizenship_status: 'Citizen' | 'Permanent Resident',
   bio: string | null;
   social_links: any;
   created_at: string;
@@ -171,6 +172,7 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
       social_links,
       created_at,
       updated_at,
+      citizenship_status,
       programs:programs!fk_profiles_program ( name ),
       majors:majors!fk_profiles_major     ( name )
 		`)
@@ -198,6 +200,7 @@ export async function getProfileDetails(profileId: string): Promise<ProfileObjec
     headline: data.headline,
     domicileCity: data.domicile_city,
     domicileCountry: data.domicile_country,
+    citizenshipStatus: data.citizenship_status,
     bio: data.bio,
     socialLinks: data.social_links,
     createdAt: data.created_at,
@@ -357,6 +360,7 @@ export async function updateProfile(profileId: string, updates: UpdateProfileInp
   if (updates.yearGrad !== undefined) updateData.year_grad = updates.yearGrad;
   if (updates.domicileCity !== undefined) updateData.domicile_city = updates.domicileCity;
   if (updates.domicileCountry !== undefined) updateData.domicile_country = updates.domicileCountry;
+  if (updates.citizenshipStatus !== undefined) updateData.citizenship_status = updates.citizenshipStatus;
   if (updates.bio !== undefined) updateData.bio = updates.bio;
 
   if (updates.program !== undefined) {
@@ -418,6 +422,7 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
       headline,
       domicile_city,
       domicile_country,
+      citizenship_status,
       bio,
       social_links,
       created_at,
@@ -455,6 +460,7 @@ export async function getPublicProfileByHandle(handle: string): Promise<Omit<Pro
     headline: data.headline,
     domicileCity: data.domicile_city,
     domicileCountry: data.domicile_country,
+    citizenshipStatus: data.citizenship_status,
     bio: data.bio,
     socialLinks: data.social_links,
     createdAt: data.created_at,

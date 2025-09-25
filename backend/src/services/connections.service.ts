@@ -23,6 +23,35 @@ export interface CancelResult {
 }
 
 /**
+ * Connection profile information for listing
+ */
+export interface ConnectionProfile {
+  profileId: string;
+  fullName: string;
+  handle: string | null;
+  photoUrl: string | null;
+  headline: string | null;
+}
+
+/**
+ * Pagination information
+ */
+export interface PaginationInfo {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Result of getting connections list
+ */
+export interface GetConnectionsResult {
+  results: ConnectionProfile[];
+  pagination: PaginationInfo;
+}
+
+/**
  * Custom error for connection request operations
  */
 export class ConnectionRequestError extends Error {
@@ -105,4 +134,98 @@ export async function cancelConnectionRequest(requestId: string, userId: string)
   }
 
   return { success: true };
+}
+
+/**
+ * Get paginated connections for a user
+ * @param userId The UUID of the user whose connections to fetch
+ * @param page Page number (1-based)
+ * @param pageSize Number of connections per page
+ * @returns Paginated list of connections with profile information
+ */
+export async function getConnections(userId: string, page: number = 1, pageSize: number = 20): Promise<GetConnectionsResult> {
+  // Validate pagination parameters
+  const validPage = Math.max(1, page);
+  const validPageSize = Math.min(Math.max(1, pageSize), 100); // Cap at 100
+  const offset = (validPage - 1) * validPageSize;
+
+  // Get total count of connections for this user
+  const { count, error: countError } = await supabase
+    .from("connections")
+    .select("*", { count: "exact", head: true })
+    .or(`user_id_a.eq.${userId},user_id_b.eq.${userId}`);
+
+  if (countError) {
+    console.error("Error counting connections:", countError);
+    throw countError;
+  }
+
+  const total = count || 0;
+  const totalPages = Math.ceil(total / validPageSize);
+
+  // If no connections, return empty result
+  if (total === 0) {
+    return {
+      results: [],
+      pagination: {
+        total: 0,
+        page: validPage,
+        pageSize: validPageSize,
+        totalPages: 0
+      }
+    };
+  }
+
+  // Get connections with profile data
+  // We need to handle the fact that the user could be in either user_id_a or user_id_b
+  const { data: connections, error } = await supabase
+    .from("connections")
+    .select(`
+      connected_at,
+      user_id_a,
+      user_id_b,
+      profile_a:profiles!connections_user_id_a_fkey(id, full_name, handle, photo_url, headline),
+      profile_b:profiles!connections_user_id_b_fkey(id, full_name, handle, photo_url, headline)
+    `)
+    .or(`user_id_a.eq.${userId},user_id_b.eq.${userId}`)
+    .order("connected_at", { ascending: false })
+    .range(offset, offset + validPageSize - 1);
+
+  if (error) {
+    console.error("Error fetching connections:", error);
+    throw error;
+  }
+
+  // Transform the data to get the "other" user's profile for each connection
+  const results: ConnectionProfile[] = (connections || []).map((conn: any) => {
+    // Determine which profile is the "other" user (not the requesting user)
+    const isUserA = conn.user_id_a === userId;
+    const otherProfile = isUserA ? conn.profile_b : conn.profile_a;
+
+    return {
+      profileId: otherProfile.id,
+      fullName: otherProfile.full_name,
+      handle: otherProfile.handle,
+      photoUrl: otherProfile.photo_url,
+      headline: otherProfile.headline
+    };
+  });
+
+  console.log("Connections fetched:", {
+    userId,
+    page: validPage,
+    pageSize: validPageSize,
+    total,
+    resultCount: results.length
+  });
+
+  return {
+    results,
+    pagination: {
+      total,
+      page: validPage,
+      pageSize: validPageSize,
+      totalPages
+    }
+  };
 }

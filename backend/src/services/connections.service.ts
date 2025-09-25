@@ -23,6 +23,14 @@ export interface CancelResult {
 }
 
 /**
+ * Result of a delete connection operation
+ */
+export interface DeleteConnectionResult {
+  success: boolean;
+  wasConnected?: boolean;
+}
+
+/**
  * Custom error for connection request operations
  */
 export class ConnectionRequestError extends Error {
@@ -105,4 +113,41 @@ export async function cancelConnectionRequest(requestId: string, userId: string)
   }
 
   return { success: true };
+}
+
+/**
+ * Delete a connection between two users
+ * @param currentUserId The UUID of the currently authenticated user
+ * @param targetProfileId The UUID of the profile to disconnect from
+ * @returns Result indicating success and whether they were previously connected
+ */
+export async function deleteConnection(currentUserId: string, targetProfileId: string): Promise<DeleteConnectionResult> {
+  // The connections table stores undirected relationships, so we need to check both combinations
+  // We use LEAST/GREATEST to ensure consistent ordering as per the unique index
+  const { data, error } = await supabase
+    .from("connections")
+    .delete()
+    .or(`and(user_id_a.eq.${currentUserId},user_id_b.eq.${targetProfileId}),and(user_id_a.eq.${targetProfileId},user_id_b.eq.${currentUserId})`)
+    .select();
+
+  if (error) {
+    console.error("Error deleting connection:", error);
+    throw error;
+  }
+
+  // Return success regardless of whether a connection existed (idempotent)
+  // data will be an array - if empty, no connection existed
+  const wasConnected = data && data.length > 0;
+
+  console.log("Connection deletion result:", {
+    currentUserId,
+    targetProfileId,
+    wasConnected,
+    deletedRows: data?.length || 0
+  });
+
+  return {
+    success: true,
+    wasConnected
+  };
 }

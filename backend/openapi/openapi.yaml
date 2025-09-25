@@ -21,7 +21,9 @@ tags:
   - name: Handles
     description: Public profile handles (unique slugs)
   - name: Search
-    description: Directory search and lookups (majors, companies, fields, cities)
+    description: User search and discovery
+  - name: Connections
+    description: Connection requests and networking
 
 paths:
   /auth/register:
@@ -2854,6 +2856,73 @@ paths:
                   value:
                     code: PROFILE_NOT_FOUND
 
+  /connections/requests/{id}/cancel:
+    post:
+      tags: ["Connections"]
+      summary: Cancel a pending connection request
+      description: Withdraw a pending request.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: UUID of the connection request to cancel
+      responses:
+        "200":
+          description: Connection request successfully canceled (or was already canceled)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                required:
+                  - success
+        "401":
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: NOT_AUTHENTICATED
+        "404":
+          description: Connection request not found or user is not the sender
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_found:
+                  value:
+                    code: NOT_FOUND
+        "409":
+          description: Connection request cannot be canceled in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                invalid_state:
+                  value:
+                    code: INVALID_STATE
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: INTERNAL
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3203,6 +3272,8 @@ components:
             - FILE_TOO_LARGE              
             - UNSUPPORTED_MEDIA_TYPE      
             - INTERNAL_ERROR
+            - NOT_FOUND
+            - INVALID_STATE
 
         details:
           type: string

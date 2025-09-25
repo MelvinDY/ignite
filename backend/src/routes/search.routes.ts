@@ -83,6 +83,17 @@ router.get("/directory/search", async (req, res) => {
 });
 
 router.get("/lookup/majors", async (req, res) => {
+	const accessToken = req.headers.authorization?.split(" ")[1];
+	if (!accessToken) {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
+	try {
+		jwt.verify(accessToken, process.env.JWT_SECRET!);
+	} catch {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
 	try {
 		const majors = await listMajors();
 		return res.status(200).json(majors);
@@ -93,6 +104,17 @@ router.get("/lookup/majors", async (req, res) => {
 });
 
 router.get("/lookup/companies", async (req, res) => {
+	const accessToken = req.headers.authorization?.split(" ")[1];
+	if (!accessToken) {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
+	try {
+		jwt.verify(accessToken, process.env.JWT_SECRET!);
+	} catch {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
 	const q = String(req.query.q || "");
 	try {
 		const companies = await lookupCompanies(q);
@@ -104,6 +126,17 @@ router.get("/lookup/companies", async (req, res) => {
 });
 
 router.get("/lookup/work-fields", async (req, res) => {
+	const accessToken = req.headers.authorization?.split(" ")[1];
+	if (!accessToken) {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
+	try {
+		jwt.verify(accessToken, process.env.JWT_SECRET!);
+	} catch {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
 	try {
 		const workFields = await listWorkFields();
 		return res.status(200).json(workFields);
@@ -114,6 +147,17 @@ router.get("/lookup/work-fields", async (req, res) => {
 });
 
 router.get("/lookup/cities", async (req, res) => {
+	const accessToken = req.headers.authorization?.split(" ")[1];
+	if (!accessToken) {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
+	try {
+		jwt.verify(accessToken, process.env.JWT_SECRET!);
+	} catch {
+		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+	}
+
     try {
         const cities = await listCities();
         return res.status(200).json(cities);

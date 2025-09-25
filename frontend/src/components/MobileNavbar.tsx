@@ -27,7 +27,7 @@ const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
   <button
     aria-label="Toggle menu"
     {...props}
-    className="relative z-50 h-8 w-8 text-white focus:outline-none hover:text-black "
+    className="relative z-50 h-8 w-8 text-white focus:outline-none hover:text-[#FF2766] "
   >
     <span className="sr-only">Open main menu</span>
     <div className="absolute left-1/2 top-1/2 block w-7 -translate-x-1/2 -translate-y-1/2 transform">

@@ -158,11 +158,21 @@ router.get("/lookup/cities", async (req, res) => {
 		return res.status(401).json({ code: "NOT_AUTHENTICATED" });
 	}
 
+	// Parse isIndonesian parameter
+	const isIndonesianParam = req.query.isIndonesian;
+	let isIndonesian: boolean | undefined;
+	if (isIndonesianParam === "true") {
+		isIndonesian = true;
+	} else if (isIndonesianParam === "false") {
+		isIndonesian = false;
+	}
+	// undefined = show all cities
+
     try {
-        const cities = await listCities();
+        const cities = await listCities(isIndonesian);
         return res.status(200).json(cities);
     } catch (err) {
-        console.error("listIndonesianCities.error", err);
+        console.error("listCities.error", err);
         return res.status(500).json({ code: "INTERNAL" });
     }
 });

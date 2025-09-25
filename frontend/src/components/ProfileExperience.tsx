@@ -1,5 +1,9 @@
 import React, { useState } from "react";
-import type { Experience, CreateExperienceRequest, UpdateExperienceRequest } from "../lib/api/profile";
+import type {
+  Experience,
+  CreateExperienceRequest,
+  UpdateExperienceRequest,
+} from "../lib/api/profile";
 import { profileApi, ProfileApiError } from "../lib/api/profile";
 import { ArrowDownToLine, Plus, Edit, Trash2 } from "lucide-react";
 import { ExperienceModal } from "./ui/ExperienceModal";
@@ -10,7 +14,21 @@ interface ProfileExperienceProps {
   onExperienceUpdated?: (id: string, exp: Partial<Experience>) => void;
   onExperienceDeleted?: (id: string) => void;
 }
-const MONTHS = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 function fmtMonthYear(month: number, year: number) {
   return `${MONTHS[month]} ${year}`;
 }
@@ -31,7 +49,9 @@ function labelDuration(e: Experience) {
   const years = Math.floor(months / 12);
   const rem = months % 12;
   return rem
-    ? `${years} year${years === 1 ? "" : "s"} ${rem} month${rem === 1 ? "" : "s"}`
+    ? `${years} year${years === 1 ? "" : "s"} ${rem} month${
+        rem === 1 ? "" : "s"
+      }`
     : `${years} year${years === 1 ? "" : "s"}`;
 }
 export function ProfileExperience({
@@ -39,10 +59,12 @@ export function ProfileExperience({
   isOwnProfile = false,
   onExperienceAdded,
   onExperienceUpdated,
-  onExperienceDeleted
+  onExperienceDeleted,
 }: ProfileExperienceProps) {
   const [open, setOpen] = useState(false);
-  const [editingExperience, setEditingExperience] = useState<Experience | null>(null);
+  const [editingExperience, setEditingExperience] = useState<Experience | null>(
+    null
+  );
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<CreateExperienceRequest>({
     roleTitle: "",
@@ -84,7 +106,6 @@ export function ProfileExperience({
     setEditingExperience(null);
   };
 
-
   const openModal = (experience?: Experience) => {
     resetModal();
     if (experience) {
@@ -112,7 +133,10 @@ export function ProfileExperience({
     setOpen(false);
     setEditingExperience(null);
   };
-  const handleChange = (key: keyof CreateExperienceRequest, value: string | number | null | boolean) => {
+  const handleChange = (
+    key: keyof CreateExperienceRequest,
+    value: string | number | null | boolean
+  ) => {
     setForm((f) => ({ ...f, [key]: value as any }));
   };
   const handleSubmit = async (e: React.FormEvent) => {
@@ -127,7 +151,10 @@ export function ProfileExperience({
           ? { ...form, endMonth: null, endYear: null, isCurrent: true }
           : { ...form, isCurrent: false };
         await profileApi.updateExperience(editingExperience.id, updatePayload);
-        onExperienceUpdated?.(editingExperience.id, updatePayload as Partial<Experience>);
+        onExperienceUpdated?.(
+          editingExperience.id,
+          updatePayload as Partial<Experience>
+        );
       } else {
         // Build create payload for new experiences
         const createPayload: CreateExperienceRequest = isCurrent
@@ -251,47 +278,69 @@ export function ProfileExperience({
                 <div
                   className="absolute bg-gray-200 z-0"
                   style={{
-                    left: '16px',
-                    top: '32px',
-                    width: '2px',
-                    height: 'calc(100% - 8px)'
+                    left: "16px",
+                    top: "32px",
+                    width: "2px",
+                    height: "calc(100% - 8px)",
                   }}
                 />
               )}
               <div className="flex items-start space-x-4">
                 <div
                   className={`w-8 h-8 rounded-full border-2 flex-center flex-shrink-0 ${
-                    isCurrentExp ? "border-[#3E000C] bg-[#3E000C]" : "border-gray-300 bg-white"
+                    isCurrentExp
+                      ? "border-[#3E000C] bg-[#3E000C]"
+                      : "border-gray-300 bg-white"
                   }`}
                 >
-                  {isCurrentExp && <div className="w-2 h-2 bg-white rounded-full" />}
+                  {isCurrentExp && (
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between mb-2 gap-4">
                     <div className="flex-1 min-w-0 max-w-xs sm:max-w-md">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate" title={exp.title}>
+                      <h3
+                        className="text-lg font-semibold text-gray-900 truncate"
+                        title={exp.title}
+                      >
                         {exp.title}
                       </h3>
                       {exp.company && (
-                        <p className="text-[#3E000C] font-medium truncate" title={exp.company}>
+                        <p
+                          className="text-[#3E000C] font-medium truncate"
+                          title={exp.company}
+                        >
                           {exp.company}
                         </p>
                       )}
                       {exp.fieldOfWork && (
-                        <p className="text-sm text-gray-600 truncate" title={exp.fieldOfWork}>
+                        <p
+                          className="text-sm text-gray-600 truncate"
+                          title={exp.fieldOfWork}
+                        >
                           {exp.fieldOfWork}
                         </p>
                       )}
                       {(exp.locationCity || exp.locationType) && (
                         <p className="text-sm text-gray-500 truncate">
-                          {[exp.locationCity, exp.locationType?.replace('_', ' ')].filter(Boolean).join(' • ')}
+                          {[
+                            exp.locationCity,
+                            exp.locationType?.replace("_", " "),
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
                         </p>
                       )}
                     </div>
                     <div className="flex items-start space-x-3 flex-shrink-0">
                       <div className="text-right">
-                        <p className="text-gray-600 font-medium whitespace-nowrap">{labelRange(exp)}</p>
-                        <p className="text-sm text-gray-500 whitespace-nowrap">{labelDuration(exp)}</p>
+                        <p className="text-gray-600 font-medium whitespace-nowrap">
+                          {labelRange(exp)}
+                        </p>
+                        <p className="text-sm text-gray-500 whitespace-nowrap">
+                          {labelDuration(exp)}
+                        </p>
                       </div>
                       {isOwnProfile && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">

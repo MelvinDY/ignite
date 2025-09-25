@@ -54,7 +54,7 @@ export function ProfileSkills() {
         {/* Skills container here */}
         <SkillsContainer
           id="skills"
-          value={skills}
+          skills={skills}
           onChange={(value) => setSkills(value)}
           displayOnly={true}
         />

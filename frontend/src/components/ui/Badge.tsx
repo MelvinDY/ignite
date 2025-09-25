@@ -18,7 +18,7 @@ const Badge = ({ text, onRemove, className, canRemove = true }: BadgeProps) => {
     >
       {text}
       {canRemove && (
-        <button className="ml-1" onClick={onRemove}>
+        <button type="button" className="ml-1" onClick={onRemove}>
           x
         </button>
       )}

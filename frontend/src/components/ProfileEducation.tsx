@@ -58,7 +58,12 @@ function labelDuration(e: Education) {
     : `${years} year${years === 1 ? "" : "s"}`;
 }
 
-export function ProfileEducation({ educations, onEducationAdded, onEducationUpdated, onEducationDeleted }: ProfileEducationProps) {
+export function ProfileEducation({
+  educations,
+  onEducationAdded,
+  onEducationUpdated,
+  onEducationDeleted,
+}: ProfileEducationProps) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -91,14 +96,14 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
     setFieldErrors({});
     setFormError(null);
   };
-  
+
   const openCreate = () => {
     resetModal();
     setModalMode("create");
     setEditingId(null);
     setModalOpen(true);
-  }
-  
+  };
+
   const openEdit = (edu: Education) => {
     setForm({
       school: edu.school ?? "",
@@ -109,18 +114,21 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
       endMonth: edu.endMonth ?? null,
       endYear: edu.endYear ?? null,
     });
-    
+
     setIsCurrent(edu.endYear == null);
     setFieldErrors({});
     setFormError(null);
     setModalMode("edit");
     setEditingId(edu.id);
     setModalOpen(true);
-  }
-  
+  };
+
   const closeModal = () => setModalOpen(false);
 
-  const handleChange = (key: keyof AddEducationRequest, value: string | number | null) => {
+  const handleChange = (
+    key: keyof AddEducationRequest,
+    value: string | number | null
+  ) => {
     setForm((f) => ({ ...f, [key]: value as any }));
   };
 
@@ -159,9 +167,18 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
           setFieldErrors(err.details.fieldErrors as Record<string, string[]>);
           setFormError(err.details.formErrors?.[0] ?? null);
         } else if (err.code === "NOT_AUTHENTICATED") {
-          setFormError(modalMode === "create" ? "Please sign in to add education." : "Please sign in to edit education.");
+          setFormError(
+            modalMode === "create"
+              ? "Please sign in to add education."
+              : "Please sign in to edit education."
+          );
         } else {
-          setFormError(err.message || (modalMode === "create" ? "Failed to add education." : "Failed to edit education."));
+          setFormError(
+            err.message ||
+              (modalMode === "create"
+                ? "Failed to add education."
+                : "Failed to edit education.")
+          );
         }
       } else {
         setFormError("Something went wrong.");
@@ -178,8 +195,8 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
     setFormError(null);
 
     try {
-      await profileApi.deleteEducations(editingId);       // CHANGED
-      onEducationDeleted?.(editingId);                   // CHANGED: notify parent
+      await profileApi.deleteEducation(editingId); // CHANGED
+      onEducationDeleted?.(editingId); // CHANGED: notify parent
       setModalOpen(false);
     } catch (err) {
       if (err instanceof ProfileApiError) {
@@ -229,8 +246,8 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
             fieldErrors={fieldErrors}
             formError={formError}
             mode={modalMode}
-            onDelete={modalMode === "edit" ? handleDelete : undefined}  
-            deleting={deleting}                                         
+            onDelete={modalMode === "edit" ? handleDelete : undefined}
+            deleting={deleting}
           />
         )}
       </div>
@@ -279,8 +296,14 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
                         className="text-left group focus:outline-none"
                         aria-label={`Edit ${edu.school}`}
                       >
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:underline">{edu.school}</h3>
-                        {headline && <p className="text-[#3E000C] font-medium">{headline}</p>}
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:underline">
+                          {edu.school}
+                        </h3>
+                        {headline && (
+                          <p className="text-[#3E000C] font-medium">
+                            {headline}
+                          </p>
+                        )}
                       </button>
                     </div>
                     <div className="mt-2 sm:mt-0 sm:text-right">
@@ -312,8 +335,8 @@ export function ProfileEducation({ educations, onEducationAdded, onEducationUpda
           fieldErrors={fieldErrors}
           formError={formError}
           mode={modalMode}
-          onDelete={modalMode === "edit" ? handleDelete : undefined}  
-          deleting={deleting}                                         
+          onDelete={modalMode === "edit" ? handleDelete : undefined}
+          deleting={deleting}
         />
       )}
     </div>

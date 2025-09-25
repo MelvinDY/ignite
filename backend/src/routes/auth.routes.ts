@@ -477,7 +477,7 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       success: true,
       userId: profileId,
       accessToken,
-      expiresIn: 60 * 60 * 24 * 3
+      expiresIn: 60 * 60 * 24
     });
   } catch (err: any) {
     console.error("login.error", err?.message || err);
@@ -526,7 +526,7 @@ router.post("/auth/refresh", async (req, res) => {
     const accessToken = await generateAccessToken(userId);
     return res
       .status(200)
-      .json({ success: true, accessToken, userId, expiresIn: 60 * 60 * 24 * 3 });
+      .json({ success: true, accessToken, userId, expiresIn: 60 * 60 * 24 });
   } catch (err: any) {
     console.error("refresh.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });

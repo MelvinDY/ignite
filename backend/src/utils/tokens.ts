@@ -125,7 +125,7 @@ export async function generateAccessToken(userId: string): Promise<string> {
   return jwt.sign({
     sub: userId,
     tokenVersion
-  }, process.env.JWT_SECRET!, { expiresIn: '3d' });
+  }, process.env.JWT_SECRET!, { expiresIn: '1d' });
 }
 
 export async function generateRefreshToken(userId: string): Promise<string> {

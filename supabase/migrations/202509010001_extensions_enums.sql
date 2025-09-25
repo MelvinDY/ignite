@@ -28,6 +28,10 @@ do $$ begin
   create type location_type as enum ('on_site','remote','hybrid');
 exception when duplicate_object then null; end $$;
 
+do $$ begin
+  create type citizenship_type as enum ('Permanent Resident', 'Citizen');
+exception when duplicate_object then null; end $$;
+
 create or replace function update_updated_at_column()
 returns trigger as $$
 begin

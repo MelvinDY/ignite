@@ -587,15 +587,15 @@ router.delete('/profile/educations/:id', async (req, res) => {
 router.get("/profile/:handle/educations", async (req, res) => {
   const userId = authenticateUser(req, res);
   if (!userId) return;
-  
+
   const { handle } = req.params;
-  
+
   // Validate handle format
   const handleValidation = HandleSchema.safeParse({ handle });
   if (!handleValidation.success) {
     return res.status(400).json({ code: "VALIDATION_ERROR" });
   }
-  
+
   try {
     const educations = await getProfileEducations(undefined, handle);
     return res.status(200).json(educations);
@@ -604,6 +604,31 @@ router.get("/profile/:handle/educations", async (req, res) => {
       return res.status(404).json({ code: "NOT_FOUND" });
     }
     console.error("getProfileEducationsHandle.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// GET /profile/:handle/skills
+router.get("/profile/:handle/skills", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const { handle } = req.params;
+
+  // Validate handle format
+  const handleValidation = HandleSchema.safeParse({ handle });
+  if (!handleValidation.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    const skills = await getProfileSkills(undefined, handle);
+    return res.status(200).json(skills);
+  } catch (err: any) {
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    console.error("getProfileSkillsHandle.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

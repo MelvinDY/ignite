@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { DashboardHeaderAvatar } from "./DashboardHeaderAvatar";
+import ppiaLogo from "../assets/PPIA_logo_white.png";
 
 const Navbar = () => {
   const location = useLocation();
@@ -26,7 +27,7 @@ const Navbar = () => {
             className="hover:underline"
             onClick={() => handleNavigation("/")}
           >
-            Dashboard
+            <img src={ppiaLogo} className="w-12"></img>
           </button>
           <button
             className="hover:underline"

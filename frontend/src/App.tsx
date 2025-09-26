@@ -19,6 +19,7 @@ import { MyProfilePage } from "./pages/profile/me";
 import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 import { MobileNavbar } from "./components/MobileNavbar";
+import MembershipBenefits from "./pages/membership/MembershipBenefits";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -53,6 +54,7 @@ function App() {
       <Route path="/profile/me" element={<MyProfilePage />} />
       <Route path="/profile/:slug" element={<PublicProfilePage />} />
       <Route path="/feed" element={<FeedPage />} />
+      <Route path="/membership" element={<MembershipBenefits />} />
 
       {/* App routes - with navbar/footer */}
       <Route

@@ -3129,6 +3129,21 @@ paths:
               example:
                 code: "BAD_REQUEST"
         '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                code: "NOT_AUTHENTICATED"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                code: "INTERNAL"
 
   /connections/{profileId}:
     delete:

@@ -12,7 +12,7 @@ const router = Router();
  * Body: { toProfileId: string, message?: string }
  * 201 -> { success:true, requestId, status:'pending' }
  */
-const sendSchema = z.object({
+const Body = z.object({
   toProfileId: z.string().uuid(),
   message: z.string().max(300).optional(),
 });
@@ -26,15 +26,15 @@ router.post("/connections/requests", async (req, res) => {
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
     profileId = decoded.sub;
-    if (!profileId) throw new Error("No userId in token");
+    if (!profileId) throw new Error("No profileId in token");
   } catch {
     return res.status(401).json({ code: "NOT_AUTHENTICATED" });
   }
 
   // 2) Validate
-  const parsed = sendSchema.safeParse(req.body);
+  const parsed = Body.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ code: "VALIDATION_ERROR", details: parsed.error.flatten() });
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
   }
 
   const { toProfileId, message } = parsed.data;

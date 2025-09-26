@@ -51,22 +51,24 @@ export interface DeleteConnectionResult {
 
 export interface IncomingConnectionRequest {
   id: string;
+  message: string | null;
   fromUser: {
     profileId: string;
     fullName: string;
     handle: string;
-    avatar_url: string | null;
+    photo_url: string | null;
   }
   created_at: string;
 }
 
 export interface OutgoingConnectionRequest {
   id: string;
+  message: string | null;
   toUser: {
     profileId: string;
     fullName: string;
     handle: string;
-    avatar_url: string | null;
+    photo_url: string | null;
   }
   created_at: string;
 }
@@ -95,7 +97,7 @@ export interface IncomingConnectionRequestQueryData {
   sender: { 
     full_name: string; 
     handle: string; 
-    avatar_url: string | null; 
+    photo_url: string | null; 
   }[];
   created_at: string;
 }
@@ -107,7 +109,7 @@ export interface OutgoingConnectionRequestQueryData {
   receiver: { 
     full_name: string; 
     handle: string; 
-    avatar_url: string | null; 
+    photo_url: string | null; 
   }[];
   created_at: string;
 }

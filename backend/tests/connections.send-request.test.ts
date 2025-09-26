@@ -1,6 +1,6 @@
 // tests/connections.send-request.test.ts
 import request from "supertest";
-import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 
 /** -------- JWT mock -------- */
 const mockJwtVerify = vi.fn();
@@ -61,6 +61,11 @@ class MockConnectionRequestError extends Error {
   }
 }
 
+// Make sure instanceof matches even if the route imports from types directly
+vi.mock("../src/types/ConnectionRequest", () => ({
+  ConnectionRequestError: MockConnectionRequestError,
+}));
+
 // IMPORTANT: path must match how the router imports it
 vi.mock("../src/services/connections.service", () => ({
   sendConnectionRequest: mockSendConnectionRequest,
@@ -70,13 +75,16 @@ vi.mock("../src/services/connections.service", () => ({
 /** -------- App bootstrapping -------- */
 let app: ReturnType<Awaited<typeof import("../src/app")>["createApp"]>;
 
-beforeAll(async () => {
+async function buildApp() {
   const mod = await import("../src/app");
-  app = mod.createApp();
-});
+  return mod.createApp();
+}
 
-beforeEach(() => {
-  vi.clearAllMocks(); // keep mocks, just reset call counts/behaviors
+// IMPORTANT: resetModules so the app re-imports with our mocks wired
+beforeEach(async () => {
+  vi.clearAllMocks();
+  await vi.resetModules();
+  app = await buildApp();
 });
 
 /** -------- Test constants -------- */

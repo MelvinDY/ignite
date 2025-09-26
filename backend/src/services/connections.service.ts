@@ -265,6 +265,9 @@ export async function cancelConnectionRequest(
   return { success: true };
 }
 
+// helper (optional, keeps the mapper tidy)
+const safe = <T extends object>(o: T | null | undefined) => o ?? ({} as any);
+
 export async function listIncomingConnectionRequest(
   userId: string,
   page: number,
@@ -276,24 +279,30 @@ export async function listIncomingConnectionRequest(
   const { count: totalCount, error: countError } = await supabase
     .from("connection_requests")
     .select("*", { count: "exact", head: true })
-    .eq("receiver_id", userId);
+    .eq("receiver_id", userId)
+    .eq("status", "pending");
 
   if (countError) {
     throw new Error(`Failed to get count: ${countError.message}`);
   }
 
-  const { data: connectionRequestsData, error } = await supabase
+  const { data, error } = await supabase
     .from("connection_requests")
     .select(
       `
       id,
       sender_id,
       receiver_id,
+      message,
       created_at,
-      sender:profiles!sender_id(full_name, avatar_url, handle)
+      status,
+      sender:profiles!connection_requests_sender_id_fkey(
+        id, full_name, handle, photo_url
+      )
     `
     )
     .eq("receiver_id", userId)
+    .eq("status", "pending")
     .range(startIndex, endIndex)
     .order("created_at", { ascending: false });
 
@@ -301,20 +310,24 @@ export async function listIncomingConnectionRequest(
     throw new Error(`Failed to fetch connection requests: ${error.message}`);
   }
 
-  const ret =
-    connectionRequestsData.map((row: IncomingConnectionRequestQueryData) => ({
-      id: row.id,
-      fromUser: {
-        profileId: row.sender_id,
-        fullName: row.sender[0].full_name,
-        handle: row.sender[0].handle,
-        avatar_url: row.sender[0].avatar_url,
-      },
-      created_at: row.created_at,
-    })) || [];
+  const results =
+    (data ?? []).map((row: any) => {
+      const sender = safe(row.sender);
+      return {
+        id: row.id,
+        message: row.message ?? null,
+        fromUser: {
+          profileId: row.sender_id,
+          fullName: sender.full_name ?? null,
+          handle: sender.handle ?? null,
+          photo_url: sender.photo_url ?? null,
+        },
+        created_at: row.created_at,
+      };
+    });
 
   return {
-    results: ret,
+    results,
     pagination: {
       total: totalCount || 0,
       page: page,
@@ -335,24 +348,30 @@ export async function listOutgoingConnectionRequest(
   const { count: totalCount, error: countError } = await supabase
     .from("connection_requests")
     .select("*", { count: "exact", head: true })
-    .eq("receiver_id", userId);
+    .eq("sender_id", userId)
+    .eq("status", "pending");
 
   if (countError) {
     throw new Error(`Failed to get count: ${countError.message}`);
   }
 
-  const { data: connectionRequestsData, error } = await supabase
+  const { data, error } = await supabase
     .from("connection_requests")
     .select(
       `
       id,
       sender_id,
       receiver_id,
+      message,
       created_at,
-      receiver:profiles!receiver_id(full_name, avatar_url, handle)
+      status,
+      receiver:profiles!connection_requests_receiver_id_fkey(
+        id, full_name, handle, photo_url
+      )
     `
     )
     .eq("sender_id", userId)
+    .eq("status", "pending")
     .range(startIndex, endIndex)
     .order("created_at", { ascending: false });
 
@@ -360,20 +379,24 @@ export async function listOutgoingConnectionRequest(
     throw new Error(`Failed to fetch connection requests: ${error.message}`);
   }
 
-  const ret =
-    connectionRequestsData.map((row: OutgoingConnectionRequestQueryData) => ({
-      id: row.id,
-      toUser: {
-        profileId: row.receiver_id,
-        fullName: row.receiver[0].full_name,
-        handle: row.receiver[0].handle,
-        avatar_url: row.receiver[0].avatar_url,
-      },
-      created_at: row.created_at,
-    })) || [];
+  const results =
+    (data ?? []).map((row: any) => {
+      const receiver = safe(row.receiver);
+      return {
+        id: row.id,
+        message: row.message ?? null,
+        toUser: {
+          profileId: row.receiver_id,
+          fullName: receiver.full_name ?? null,
+          handle: receiver.handle ?? null,
+          photo_url: receiver.photo_url ?? null,
+        },
+        created_at: row.created_at,
+      };
+    });
 
   return {
-    results: ret,
+    results,
     pagination: {
       total: totalCount || 0,
       page: page,

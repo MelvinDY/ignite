@@ -2,12 +2,12 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import {
-  sendConnectionRequest
-  cancelConnectionRequest,
+  sendConnectionRequest,
   listIncomingConnectionRequest,
   listOutgoingConnectionRequest,
   getRelationshipStatus,
   deleteConnection,
+  cancelConnectionRequest,
 } from "../services/connections.service";
 import { ConnectionRequestError } from "../types/ConnectionRequest";
 

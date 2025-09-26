@@ -8,7 +8,7 @@ interface AboutUsCardProps {
 
 const AboutUsCard = ({ children, className = "", img = "" }: AboutUsCardProps) => {
   return <div className={twMerge(`relative border border-white/25 shadow-3xl rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8
-      hover:scale-105 ease-in-out transition-all duration-300 bg-cover bg-center bg-no-repeat`, className)}
+      hover:shadow-[0_0_10px_rgba(255,238,255,0.50)] ease-in-out duration-300 bg-cover bg-center bg-no-repeat`, className)}
       style={{ backgroundImage: `url(${img})`}}
   >
     {/* Inner overlay */}

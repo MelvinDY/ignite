@@ -1,14 +1,23 @@
-import { BatikBackground } from "../components/BatikBackground";
-import ngompoel from "../assets/ngompoel.jpg";
-import ICON_event from "../assets/ICON.jpg";
-import INM_event from "../assets/INM.jpg";
-import { MeetTheExecs } from "../components/MeetTheExecs";
-import { GlassCard } from "@/components/ui/GlassCard";
+import ngompoel from "../assets/ngompoel-min.jpg";
+import ICON_event from "../assets/ICON-min.jpg";
+import INM_event from "../assets/INM-min.jpg";
 import { AboutUsCard } from "@/components/AboutUsCard";
+import { useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 
 const Dashboard = () => {
+  const aboutUsSection = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash === "#about") {
+      aboutUsSection.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [location]);
+
+
   return (
-    <div className="w-full flex flex-col justify-start items-center scroll-smooth gap-y-24"
+    <div className="w-full flex flex-col justify-start items-center scroll-smooth gap-y-12"
     >
       <section
         id="welcome-header"
@@ -29,26 +38,27 @@ const Dashboard = () => {
         <MeetTheExecs />
       </section> */}
 
-      <section id="about" className="flex flex-col z-10 min-h-screen px-20 gap-10 w-full">
+      <div ref={aboutUsSection} className="h-5"/>
+      <section id="about" className="flex flex-col z-10 h-[calc(100vh-5rem)] px-20 gap-6 w-full">
         <h1 className="text-4xl font-bold text-center">About Us</h1>
-        <button>
-          <AboutUsCard className="w-full" img={ngompoel}>
+        <button className="flex-1">
+          <AboutUsCard className="h-full w-full" img={ngompoel}>
             <h1 className="text-5xl font-bold">PPIA</h1>
             <p className="text-lg">
               Short desc of PPIA
             </p>
           </AboutUsCard>
         </button>
-        <button>
-          <AboutUsCard className="w-full" img={INM_event}>
+        <button className="flex-1">
+          <AboutUsCard className="h-full w-full" img={INM_event}>
             <h1 className="text-5xl font-bold">International Night Market (INM)</h1>
             <p className="text-lg">
               Short desc of INM
             </p>
           </AboutUsCard>
         </button>
-        <button>
-          <AboutUsCard className="w-full" img={ICON_event}>
+        <button className="flex-1">
+          <AboutUsCard className="h-full w-full" img={ICON_event}>
             <h1 className="text-5xl font-bold">ICON</h1>
             <p className="text-lg">
               Short desc of ICON

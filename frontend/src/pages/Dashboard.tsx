@@ -1,31 +1,30 @@
 import { BatikBackground } from "../components/BatikBackground";
+import ngompoel from "../assets/ngompoel.jpg";
 import { MeetTheExecs } from "../components/MeetTheExecs";
 
 const Dashboard = () => {
   return (
-    <div className="w-full flex flex-col justify-start items-center gap-y-60 scroll-smooth snap-y">
-      <BatikBackground />
+    <div className="w-full flex flex-col justify-start items-center gap-y-60 scroll-smooth"
+    >
       <section
         id="welcome-header"
-        className="flex flex-col justify-center w-full items-center gap-5 z-10"
+        className="flex flex-col justify-center h-screen w-full items-center gap-5 z-10 bg-contain
+                  bg-center"
+        style={{ backgroundImage: `linear-gradient(rgba(159, 0, 0, 0.5), rgba(0,0,0,0.5)), url(${ngompoel})`}}
       >
-        <header className="">
-          <h1 className="text-4xl font-bold">Welcome to</h1>
-          <p className="text-6xl font-bold">(insert logo PPIA UNSW)</p>
-        </header>
-        <div className="relative border rounded-xl h-64 bg-gray-400 w-[70%]">
-          <div className="p-4 gap-4 flex flex-col justify-center items-center h-full z-1">
-            <div className="w-full border rounded-xl bg-white">1</div>
-            <div className="w-full border rounded-xl bg-white">2</div>
-            <div className="w-full flex justify-center gap-2">
-              <div className="w-1/3 border rounded-xl bg-white">Log in</div>
-              <div className="w-1/3 border rounded-xl bg-white">Sign up</div>
-            </div>
+        <header className="flex flex-col items-center mx-2 h-full justify-around mt-20">
+          <div className="flex flex-wrap justify-center items-center">
+            <h1 className="text-6xl text-center font-bold drop-shadow-xl mr-[1rem]">Welcome to</h1>
+            <h1 className="text-6xl text-center font-bold drop-shadow-xl">PPIA UNSW</h1>
           </div>
-        </div>
+          <h2 className="text-center text-3xl font-bold drop-shadow-2xl rounded-xl h-64 w-[70%]">Connecting Indonesian students in Australia</h2>
+        </header>
       </section>
-      <section id="meet-the-execs" className="z-10">
+      {/* <section id="meet-the-execs" className="z-10">
         <MeetTheExecs />
+      </section> */}
+      <section id="events" className="z-10 h-screen">
+        <h1 className="text-4xl font-bold text-center">Upcoming Events</h1>
       </section>
     </div>
   );

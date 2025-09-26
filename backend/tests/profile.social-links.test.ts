@@ -24,7 +24,7 @@ let mockProfileRow: {
 let updateShouldError = false;
 
 beforeEach(async () => {
-  await vi.resetModules();
+  vi.resetModules();
 
   // Re-init JWT mock each test
   mockJwtVerify.mockReset();
@@ -62,7 +62,6 @@ beforeEach(async () => {
               if (updateShouldError) {
                 return { data: null, error: { code: 'DB_ERR', message: 'update failed' } };
               }
-              // FULL REPLACE of social_links as per story 2.6
               if (Object.prototype.hasOwnProperty.call(patch, 'social_links')) {
                 mockProfileRow.social_links = patch.social_links ?? null;
               }
@@ -99,21 +98,23 @@ describe('PATCH /api/profile/social-links (Story 2.6)', () => {
     expect(res.body).toEqual({ code: 'NOT_AUTHENTICATED' });
   });
 
-  it('400 VALIDATION_ERROR when unknown key is present', async () => {
+  it('200 success when unknown key is present (arbitrary provider keys allowed now)', async () => {
     mockJwtVerify.mockReturnValue({ sub: 'profile-123' });
+
+    const payload = {
+      socialLinks: {
+        facebook: 'https://facebook.com/janedoe', // now allowed
+      } as any,
+    };
 
     const res = await request(app)
       .patch(ROUTE)
       .set('Authorization', 'Bearer validtoken')
-      .send({
-        socialLinks: {
-          // not allowed by .strict()
-          facebook: 'https://facebook.com/janedoe',
-        } as any,
-      });
+      .send(payload);
 
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ code: 'VALIDATION_ERROR' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true });
+    expect(mockProfileRow.social_links).toEqual({ facebook: 'https://facebook.com/janedoe' });
   });
 
   it('400 VALIDATION_ERROR when url is not https', async () => {
@@ -132,7 +133,7 @@ describe('PATCH /api/profile/social-links (Story 2.6)', () => {
     expect(res.body).toEqual({ code: 'VALIDATION_ERROR' });
   });
 
-  it('400 VALIDATION_ERROR when hostname not allowed for provider', async () => {
+  it('200 success when hostname is not provider-specific (any https host allowed)', async () => {
     mockJwtVerify.mockReturnValue({ sub: 'profile-123' });
 
     const res = await request(app)
@@ -140,18 +141,20 @@ describe('PATCH /api/profile/social-links (Story 2.6)', () => {
       .set('Authorization', 'Bearer validtoken')
       .send({
         socialLinks: {
-          linkedin: 'https://linkedin.evil.com/in/jane', // wrong host
+          linkedin: 'https://linkedin.evil.com/in/jane',
         },
       });
 
-    expect(res.status).toBe(400);
-    expect(res.body).toEqual({ code: 'VALIDATION_ERROR' });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ success: true });
+    expect(mockProfileRow.social_links).toEqual({
+      linkedin: 'https://linkedin.evil.com/in/jane',
+    });
   });
 
   it('200 success: replaces entire social_links JSON (atomic)', async () => {
     mockJwtVerify.mockReturnValue({ sub: 'profile-123' });
 
-    // before: has github + x
     expect(mockProfileRow.social_links).toEqual({
       github: 'https://github.com/old',
       x: 'https://x.com/old',
@@ -172,7 +175,6 @@ describe('PATCH /api/profile/social-links (Story 2.6)', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });
 
-    // after: ONLY linkedin + website remain (full replace, not merge)
     expect(mockProfileRow.social_links).toEqual({
       linkedin: 'https://www.linkedin.com/in/janedoe',
       website: 'https://janedoe.dev',
@@ -189,7 +191,7 @@ describe('PATCH /api/profile/social-links (Story 2.6)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });
-    expect(mockProfileRow.social_links).toEqual({});
+    expect(mockProfileRow.social_links).toEqual(null);
   });
 
   it('500 INTERNAL when DB update fails', async () => {

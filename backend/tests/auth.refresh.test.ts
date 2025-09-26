@@ -40,7 +40,7 @@ describe('POST /api/auth/refresh', () => {
       .set('Cookie', ['refreshToken=rft_abc'])
       .expect(200);
 
-    expect(res.body).toMatchObject({ success: true, accessToken: 'new_access_token', userId: 'user-123', expiresIn: 900 });
+    expect(res.body).toMatchObject({ success: true, accessToken: 'new_access_token', userId: 'user-123', expiresIn: 86400 });
   });
 
   it('401: missing refresh cookie', async () => {

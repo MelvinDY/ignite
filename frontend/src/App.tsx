@@ -18,6 +18,7 @@ import { HandleSetupPage } from "./pages/profile/handle-setup";
 import { MyProfilePage } from "./pages/profile/me";
 import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
+import { MobileNavbar } from "./components/MobileNavbar";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -32,7 +33,7 @@ function App() {
     const initializeAuth = async () => {
       await attemptSessionRestore();
     };
-    
+
     initializeAuth();
   }, [attemptSessionRestore]);
 
@@ -47,19 +48,24 @@ function App() {
       <Route path="/auth/password/verify" element={<VerifyReset />} />
       <Route path="/auth/password/reset" element={<ResetPassword />} />
       <Route path="/profile/edit" element={<ProfileEdit />} />
-      <Route path="/feed" element={<FeedPage/>}/>
+      <Route path="/feed" element={<FeedPage />} />
       <Route path="/profile/handle-setup" element={<HandleSetupPage />} />
       <Route path="/profile/me" element={<MyProfilePage />} />
       <Route path="/profile/:slug" element={<PublicProfilePage />} />
-      <Route path="/feed" element={<FeedPage/>}/>
+      <Route path="/feed" element={<FeedPage />} />
 
       {/* App routes - with navbar/footer */}
       <Route
         path="/*"
         element={
           <div className="flex flex-col h-full w-full">
-            <Navbar />
-            <div className="flex flex-col">
+            <div className="hidden md:block">
+              <Navbar />
+            </div>
+            <div className="block md:hidden">
+              <MobileNavbar />
+            </div>
+            <div className="flex flex-col m-20 pt-16">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />

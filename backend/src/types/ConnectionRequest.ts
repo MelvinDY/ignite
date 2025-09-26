@@ -1,5 +1,5 @@
 /**
- * Represents a connection request with basic information
+ * Represents the relationship status between two users
  */
 export interface ConnectionRequest {
   id: string;
@@ -26,7 +26,14 @@ export interface CancelResult {
 export class ConnectionRequestError extends Error {
   constructor(
     message: string,
-    public code: 'NOT_FOUND' | 'INVALID_STATE' | 'UNAUTHORIZED',
+    public code:
+      | 'NOT_FOUND'
+      | 'INVALID_STATE'
+      | 'UNAUTHORIZED'
+      | 'ALREADY_CONNECTED'
+      | 'REQUEST_ALREADY_EXISTS'
+      | 'BLOCKED'
+      | 'TOO_MANY_REQUESTS',
     public statusCode: number
   ) {
     super(message);
@@ -34,6 +41,9 @@ export class ConnectionRequestError extends Error {
   }
 }
 
+/**
+ * Result of a delete connection operation
+ */
 export interface DeleteConnectionResult {
   success: boolean;
   wasConnected?: boolean;
@@ -41,22 +51,24 @@ export interface DeleteConnectionResult {
 
 export interface IncomingConnectionRequest {
   id: string;
+  message: string | null;
   fromUser: {
     profileId: string;
     fullName: string;
     handle: string;
-    avatar_url: string | null;
+    photo_url: string | null;
   }
   created_at: string;
 }
 
 export interface OutgoingConnectionRequest {
   id: string;
+  message: string | null;
   toUser: {
     profileId: string;
     fullName: string;
     handle: string;
-    avatar_url: string | null;
+    photo_url: string | null;
   }
   created_at: string;
 }
@@ -85,7 +97,7 @@ export interface IncomingConnectionRequestQueryData {
   sender: { 
     full_name: string; 
     handle: string; 
-    avatar_url: string | null; 
+    photo_url: string | null; 
   }[];
   created_at: string;
 }
@@ -97,7 +109,7 @@ export interface OutgoingConnectionRequestQueryData {
   receiver: { 
     full_name: string; 
     handle: string; 
-    avatar_url: string | null; 
+    photo_url: string | null; 
   }[];
   created_at: string;
 }

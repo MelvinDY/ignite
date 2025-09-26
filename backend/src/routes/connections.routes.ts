@@ -1,6 +1,7 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { cancelConnectionRequest, ConnectionRequestError, getConnections, deleteConnection } from "../services/connections.service";
+import { cancelConnectionRequest, ConnectionRequestError, getConnections, deleteConnection, getRelationshipStatus } from "../services/connections.service";
+import { authenticateUser } from "./profile.routes";
 
 const router = Router();
 
@@ -69,19 +70,8 @@ router.get("/connections", async (req, res) => {
  */
 router.post("/connections/requests/:id/cancel", async (req, res) => {
   // 1. Authenticate user
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // 2. Get request ID from params
   const requestId = req.params.id;
@@ -123,19 +113,8 @@ router.post("/connections/requests/:id/cancel", async (req, res) => {
  */
 router.delete("/connections/:profileId", async (req, res) => {
   // 1. Authenticate user
-  const accessToken = req.headers.authorization?.split(" ")[1];
-  if (!accessToken) {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
-
-  let userId: string;
-  try {
-    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
-    userId = decoded.sub;
-    if (!userId) throw new Error("No userId in token");
-  } catch {
-    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
-  }
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
 
   // 2. Get profile ID from params
   const targetProfileId = req.params.profileId;
@@ -149,6 +128,43 @@ router.delete("/connections/:profileId", async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("delete connection error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * Story 4.8 — Get Relationship Status (helper)
+ * GET /connections/status?withProfileId=xxx
+ */
+router.get("/connections/status", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const withProfileId = String(req.query.withProfileId || "").trim();
+  if (!withProfileId) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  // no request to self
+  if (withProfileId === userId) {
+    return res.status(200).json({
+      connected: false,
+      pendingOutgoing: false,
+      pendingIncoming: false,
+      blockedByMe: false,
+      blockedMe: false,
+      canSendRequest: false,
+    });
+  }
+
+  try {
+    const status = await getRelationshipStatus(userId, withProfileId);
+    return res.status(200).json(status);
+  } catch (err: any) {
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    console.error("connections.status.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

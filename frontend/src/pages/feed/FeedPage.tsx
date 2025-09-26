@@ -1,14 +1,16 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bookmark, Users, Calendar } from "lucide-react";
 import ProfileCard from "../../components/ui/ProfileCardFeed";
 import PostCard from "../../components/ui/PostsCardFeed";
 import TopBar from "../../components/ui/TopBar";
+import SearchModal from "../../components/ui/SearchModal";
 import { useNavigate } from "react-router-dom";
 import {
   profileApi,
   ProfileApiError,
   type ProfileMe,
 } from "../../lib/api/profile";
+import { searchApi, SearchApiError, type SearchFilters, type SearchResponse } from "../../lib/api/search";
 
 type User = {
   name: string;
@@ -53,13 +55,12 @@ export const FeedPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // This is just sample data
-  const currentUser: User = {
-    name: "Degus Sudarmawan",
-    title: "2nd Year Computer Science Student",
-    location: "Surry Hills, New South Wales",
-    avatarUrl: "https://placehold.co/400",
-  };
+  // Search states
+  const [searchResults, setSearchResults] = useState<SearchResponse | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
 
   // This is just sample data
   const posts: Post[] = useMemo(
@@ -159,6 +160,41 @@ export const FeedPage = () => {
 
     checkAuth();
   }, [navigate]);
+
+  const handleSearch = async (filters: SearchFilters) => {
+    try {
+      setSearchLoading(true);
+      setSearchError(null);
+      setIsSearchModalOpen(true);
+
+      const results = await searchApi.searchDirectory(filters);
+      setSearchResults(results);
+    } catch (err) {
+      if (err instanceof SearchApiError) {
+        if (err.code === "NOT_AUTHENTICATED") {
+          setSearchError("Please log in to search profiles. The lookup filters work without login, but searching requires authentication.");
+          setSearchResults({ results: [], pagination: { total: 0, page: 1, pageSize: 20, totalPages: 0 } });
+          return;
+        }
+        setSearchError(err.message);
+      } else {
+        setSearchError("Failed to search. Please try again.");
+      }
+      setSearchResults(null);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setIsSearchModalOpen(false);
+    setSearchResults(null);
+    setSearchError(null);
+  };
+
+  const handleCloseModal = () => {
+    setIsSearchModalOpen(false);
+  };
 
   if (loading) {
     return (
@@ -280,7 +316,8 @@ export const FeedPage = () => {
       <TopBar
         imgSrc={userProfile.photoUrl}
         initials={getInitials(userProfile.fullName)}
-        handle={userProfile.handle ?? undefined}
+        onSearch={handleSearch}
+        onClearSearch={handleClearSearch}
       />
 
       {/* Content grid */}
@@ -323,6 +360,15 @@ export const FeedPage = () => {
           </div>
         </aside>
       </div>
+
+      {/* Search Modal */}
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={handleCloseModal}
+        searchResults={searchResults}
+        loading={searchLoading}
+        error={searchError}
+      />
     </div>
   );
 };

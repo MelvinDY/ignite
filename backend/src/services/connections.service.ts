@@ -74,6 +74,18 @@ export class ConnectionRequestError extends Error {
 }
 
 /**
+ * Represents the relationship status between two users
+ */
+export type RelationshipStatus = {
+  connected: boolean;
+  pendingOutgoing: boolean;
+  pendingIncoming: boolean;
+  blockedByMe: boolean;
+  blockedMe: boolean;
+  canSendRequest: boolean;
+};
+
+/**
  * Get a connection request by ID
  * @param requestId The UUID of the connection request
  * @returns The connection request or null if not found
@@ -272,5 +284,119 @@ export async function deleteConnection(currentUserId: string, targetProfileId: s
   return {
     success: true,
     wasConnected
+  };
+}
+
+/**
+ * Resolve the relationship status between two profiles.
+ * Order of checks: blocks → connection → pending (both ways) → ability to send
+ * @param currentUserId The UUID of the currently authenticated user
+ * @param withProfileId The UUID of the profile to check the relationship with
+ * @returns The relationship status object
+ */
+export async function getRelationshipStatus(
+  currentUserId: string,
+  withProfileId: string
+): Promise<RelationshipStatus> {
+  // 0) Target must exist
+  const { data: target, error: targetErr } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", withProfileId)
+    .maybeSingle();
+
+  if (targetErr) throw targetErr;
+  if (!target) {
+    const e: any = new Error("NOT_FOUND");
+    e.code = "NOT_FOUND";
+    throw e;
+  }
+
+  // 1) Blocks (directed)
+  const { data: blockOut } = await supabase
+    .from("blocks")
+    .select("blocker_id")
+    .eq("blocker_id", currentUserId)
+    .eq("blocked_id", withProfileId)
+    .maybeSingle();
+
+  const { data: blockIn } = await supabase
+    .from("blocks")
+    .select("blocker_id")
+    .eq("blocker_id", withProfileId)
+    .eq("blocked_id", currentUserId)
+    .maybeSingle();
+
+  const blockedByMe = !!blockOut;
+  const blockedMe = !!blockIn;
+
+  if (blockedByMe || blockedMe) {
+    return {
+      connected: false,
+      pendingOutgoing: false,
+      pendingIncoming: false,
+      blockedByMe,
+      blockedMe,
+      canSendRequest: false,
+    };
+  }
+
+  // 2) Connection (undirected)
+  const { data: conn } = await supabase
+    .from("connections")
+    .select("user_id_a")
+    .or(
+      `and(user_id_a.eq.${currentUserId},user_id_b.eq.${withProfileId}),and(user_id_a.eq.${withProfileId},user_id_b.eq.${currentUserId})`
+    )
+    .maybeSingle();
+
+  const connected = !!conn;
+  if (connected) {
+    return {
+      connected: true,
+      pendingOutgoing: false,
+      pendingIncoming: false,
+      blockedByMe: false,
+      blockedMe: false,
+      canSendRequest: false,
+    };
+  }
+
+  // 3) Pending requests (both directions)
+  const { data: outReq } = await supabase
+    .from("connection_requests")
+    .select("id")
+    .eq("sender_id", currentUserId)
+    .eq("receiver_id", withProfileId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  const { data: inReq } = await supabase
+    .from("connection_requests")
+    .select("id")
+    .eq("sender_id", withProfileId)
+    .eq("receiver_id", currentUserId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  const pendingOutgoing = !!outReq;
+  const pendingIncoming = !!inReq;
+
+  // 4) Ability to send request
+  const canSendRequest =
+    !blockedByMe &&
+    !blockedMe &&
+    !connected &&
+    !pendingOutgoing &&
+    !pendingIncoming &&
+    currentUserId !== withProfileId;
+
+  return {
+    connected: false,
+    pendingOutgoing,
+    pendingIncoming,
+    blockedByMe: false,
+    blockedMe: false,
+    canSendRequest,
   };
 }

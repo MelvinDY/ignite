@@ -3135,6 +3135,76 @@ paths:
                   value:
                     code: INTERNAL
 
+  /connections/status:
+    get:
+      tags: ["Connections"]
+      summary: Get relationship status with another profile
+      description: |
+        Returns a compact matrix to drive UI states (Connect / Pending / Connected / Blocked).
+        Checks are performed in this order:
+        - Block status
+        - Existing connection
+        - Pending request (both directions)
+        - Ability to send a new request
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: withProfileId
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The target profile's id
+      responses:
+        "200":
+          description: Relationship status
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [connected, pendingOutgoing, pendingIncoming, blockedByMe, blockedMe, canSendRequest]
+                properties:
+                  connected:        { type: boolean, description: "Already connected (undirected)" }
+                  pendingOutgoing:  { type: boolean, description: "You sent a request and it's pending" }
+                  pendingIncoming:  { type: boolean, description: "They sent you a request and it's pending" }
+                  blockedByMe:      { type: boolean, description: "You blocked the other user" }
+                  blockedMe:        { type: boolean, description: "The other user blocked you" }
+                  canSendRequest:   { type: boolean, description: "You are allowed to send a new request now" }
+              examples:
+                example:
+                  value:
+                    connected: false
+                    pendingOutgoing: true
+                    pendingIncoming: false
+                    blockedByMe: false
+                    blockedMe: false
+                    canSendRequest: false
+        "400":
+          description: Validation error (missing query or malformed)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                missing_param: { value: { code: VALIDATION_ERROR } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Target profile not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   securitySchemes:
     bearerAuth:

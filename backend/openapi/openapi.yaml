@@ -3023,6 +3023,127 @@ paths:
                 internal_error:
                   value:
                     code: INTERNAL
+  /connections/requests:
+    get:
+      tags: ["Connections"]
+      summary: List connection requests
+      description: |
+        Retrieve a paginated list of connection requests. Can filter by type to get either incoming or outgoing requests.
+        Defaults to incoming requests if no type is specified.
+      operationId: listConnectionRequests
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          description: Type of connection requests to retrieve
+          required: false
+          schema:
+            type: string
+            enum: [incoming, outgoing]
+            default: incoming
+          example: incoming
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+      responses:
+        '200':
+          description: Successfully retrieved connection requests
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/IncomingConnectionRequestList'
+                  - $ref: '#/components/schemas/OutgoingConnectionRequestList'
+              examples:
+                incoming_requests:
+                  summary: Incoming connection requests
+                  value:
+                    results:
+                      - id: "req_abc123"
+                        fromUser:
+                          profileId: "user_def456"
+                          fullName: "John Doe"
+                          handle: "johndoe"
+                          avatar_url: "https://example.com/avatar1.jpg"
+                        created_at: "2024-01-15T10:00:00Z"
+                      - id: "req_ghi789"
+                        fromUser:
+                          profileId: "user_jkl012"
+                          fullName: "Jane Smith"
+                          handle: "janesmith"
+                          avatar_url: "https://example.com/avatar2.jpg"
+                        created_at: "2024-01-14T09:00:00Z"
+                    pagination:
+                      total: 25
+                      page: 1
+                      pageSize: 20
+                      totalPages: 2
+                outgoing_requests:
+                  summary: Outgoing connection requests
+                  value:
+                    results:
+                      - id: "req_mno345"
+                        toUser:
+                          profileId: "user_pqr678"
+                          fullName: "Alice Johnson"
+                          handle: "alicejohnson"
+                          avatar_url: "https://example.com/avatar3.jpg"
+                        created_at: "2024-01-13T14:30:00Z"
+                    pagination:
+                      total: 5
+                      page: 1
+                      pageSize: 20
+                      totalPages: 1
+                empty_list:
+                  summary: No requests found
+                  value:
+                    results: []
+                    pagination:
+                      total: 0
+                      page: 1
+                      pageSize: 20
+                      totalPages: 0
+        '400':
+          description: Bad request - invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                code: "BAD_REQUEST"
+        '401':
+          description: Authentication required or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                code: "NOT_AUTHENTICATED"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorSimple'
+              example:
+                code: "INTERNAL"
 
   /connections/{profileId}:
     delete:
@@ -4030,3 +4151,101 @@ components:
         page:       { type: integer, example: 1 }
         pageSize:   { type: integer, example: 20 }
         totalPages: { type: integer, example: 8 }
+    
+    IncomingConnectionRequest:
+      type: object
+      description: A connection request received by the current user
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the connection request
+          example: "req_abc123"
+        fromUser:
+          $ref: '#/components/schemas/UserProfile'
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the request was created
+          example: "2024-01-15T10:00:00Z"
+      required:
+        - id
+        - fromUser
+        - created_at
+
+    OutgoingConnectionRequest:
+      type: object
+      description: A connection request sent by the current user
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the connection request
+          example: "req_abc123"
+        toUser:
+          $ref: '#/components/schemas/UserProfile'
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the request was created
+          example: "2024-01-15T10:00:00Z"
+      required:
+        - id
+        - toUser
+        - created_at
+    
+    IncomingConnectionRequestList:
+      type: object
+      description: Paginated list of incoming connection requests
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IncomingConnectionRequest'
+          description: Array of incoming connection requests
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - results
+        - pagination
+
+    OutgoingConnectionRequestList:
+      type: object
+      description: Paginated list of outgoing connection requests
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutgoingConnectionRequest'
+          description: Array of outgoing connection requests
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+      required:
+        - results
+        - pagination
+    
+    UserProfile:
+      type: object
+      description: Basic user profile information
+      properties:
+        profileId:
+          type: string
+          description: Unique identifier for the user
+          example: "user_abc123"
+        fullName:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        handle:
+          type: string
+          description: User's unique handle/username
+          example: "johndoe"
+        avatar_url:
+          type: string
+          format: uri
+          nullable: true
+          description: URL to user's avatar image
+          example: "https://example.com/avatars/johndoe.jpg"
+      required:
+        - profileId
+        - fullName
+        - handle
+        - avatar_url

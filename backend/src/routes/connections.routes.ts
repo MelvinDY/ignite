@@ -1,8 +1,60 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { cancelConnectionRequest, ConnectionRequestError, deleteConnection } from "../services/connections.service";
+import { z } from "zod";
+import { sendConnectionRequest, cancelConnectionRequest, ConnectionRequestError, deleteConnection } from "../services/connections.service";
 
 const router = Router();
+
+/**
+ * User Story 4.1 – Send Connection Request
+ * POST /connections/requests
+ * Auth: Bearer token
+ * Body: { toProfileId: string, message?: string }
+ * 201 -> { success:true, requestId, status:'pending' }
+ */
+const sendSchema = z.object({
+  toProfileId: z.string().uuid(),
+  message: z.string().max(300).optional(),
+});
+
+router.post("/connections/requests", async (req, res) => {
+  // 1) Auth
+  const accessToken = req.headers.authorization?.split(" ")[1];
+  if (!accessToken) return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+
+  let profileId: string;
+  try {
+    const decoded = jwt.verify(accessToken, process.env.JWT_SECRET!) as any;
+    profileId = decoded.sub;
+    if (!profileId) throw new Error("No userId in token");
+  } catch {
+    return res.status(401).json({ code: "NOT_AUTHENTICATED" });
+  }
+
+  // 2) Validate
+  const parsed = sendSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR", details: parsed.error.flatten() });
+  }
+
+  const { toProfileId, message } = parsed.data;
+
+  // 3) Execute
+  try {
+    const { requestId } = await sendConnectionRequest({
+      senderId: profileId,
+      receiverId: toProfileId,
+      message: message ?? null,
+    });
+    return res.status(201).json({ success: true, requestId, status: "pending" });
+  } catch (err) {
+    if (err instanceof ConnectionRequestError) {
+      return res.status(err.statusCode).json({ code: err.code });
+    }
+    console.error("send connection request error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
 
 /**
  * User Story: Cancel a pending connection request

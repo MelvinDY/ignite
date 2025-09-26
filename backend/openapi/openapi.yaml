@@ -2957,6 +2957,98 @@ paths:
                   value:
                     code: PROFILE_NOT_FOUND
 
+  /connections/requests:
+    post:
+      tags: ["Connections"]
+      summary: Send a connection request
+      description: |
+        Create a **pending** connection request from the authenticated user (sender) to `toProfileId` (receiver).
+
+        **Validation & Logic**
+        - `toProfileId` must be a valid profile UUID and not equal to the caller (no self-send).
+        - Request must not exist already in **either direction** with `status=pending`.
+        - Sender and receiver must **not be already connected**.
+        - Neither side must have **blocked** the other.
+        - Optional `message` is max **300 chars**.
+        - Daily cap may apply (env: `CR_DAILY_SEND_CAP`).
+
+        **Side effects**
+        - Inserts a row in `connection_requests` with `status=pending`.
+        - Emits a `notifications` row of type `connection_request` to the receiver.
+
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConnectionRequestCreate"
+            examples:
+              simple:
+                value:
+                  toProfileId: "123e4567-e89b-12d3-a456-426614174000"
+                  message: "hey, let’s connect!"
+      responses:
+        "201":
+          description: Created (pending request)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConnectionRequestCreated"
+              examples:
+                created:
+                  value:
+                    success: true
+                    requestId: "6a3b2a60-8d3e-4d02-9c7a-3d9d5d2f3a11"
+                    status: "pending"
+        "400":
+          description: Validation error (bad uuid / self-send / message too long)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ValidationError" }
+              examples:
+                bad_uuid: { value: { code: "VALIDATION_ERROR" } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: "NOT_AUTHENTICATED" } }
+        "403":
+          description: Block relationship prevents requesting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                blocked: { value: { code: "BLOCKED" } }
+        "404":
+          description: Receiver profile not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: "NOT_FOUND" } }
+        "409":
+          description: Conflict states (already connected / pending exists / cooldown)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                already_connected:     { value: { code: "ALREADY_CONNECTED" } }
+                request_already_exists: { value: { code: "REQUEST_ALREADY_EXISTS" } }
+                invalid_state:         { value: { code: "INVALID_STATE" } }
+        "429":
+          description: Daily cap exceeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                too_many: { value: { code: "TOO_MANY_REQUESTS" } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /connections/requests/{id}/cancel:
     post:
       tags: ["Connections"]
@@ -3428,6 +3520,9 @@ components:
             - INTERNAL_ERROR
             - NOT_FOUND
             - INVALID_STATE
+            - ALREADY_CONNECTED
+            - REQUEST_ALREADY_EXISTS
+            - BLOCKED
 
         details:
           type: string
@@ -3960,3 +4055,33 @@ components:
         page:       { type: integer, example: 1 }
         pageSize:   { type: integer, example: 20 }
         totalPages: { type: integer, example: 8 }
+
+    ConnectionRequestCreate:
+      type: object
+      required: [toProfileId]
+      properties:
+        toProfileId:
+          type: string
+          format: uuid
+          description: Receiver profile UUID
+        message:
+          type: string
+          maxLength: 300
+          nullable: true
+          description: Optional note to the receiver (≤ 300 chars)
+
+    ConnectionRequestCreated:
+      type: object
+      required: [success, requestId, status]
+      properties:
+        success:
+          type: boolean
+          example: true
+        requestId:
+          type: string
+          format: uuid
+          example: "6a3b2a60-8d3e-4d02-9c7a-3d9d5d2f3a11"
+        status:
+          type: string
+          enum: [pending]
+          example: pending

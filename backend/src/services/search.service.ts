@@ -222,11 +222,7 @@ export async function listMajors(): Promise<{ id: number; name: string }[]> {
 export async function lookupCompanies(query?: string) {
   let builder = supabase
     .from("companies")
-    .select(`
-      id,
-      name,
-      experiences!inner(id)
-    `)
+    .select("id, name")
     .order("name", { ascending: true });
 
   if (query) {
@@ -249,21 +245,28 @@ export async function listWorkFields(): Promise<{ id: number; name: string }[]> 
     return data ?? [];
 };
 
-export async function listCities(): Promise<{ name: string }[]> {
-    const { data, error } = await supabase
+export async function listCities(isIndonesian?: boolean): Promise<{ id: string; name: string }[]> {
+    let query = supabase
         .from('profiles')
         .select('domicile_city')
-        .eq('is_indonesian', true)
-        .eq('domicile_country', 'ID')
         .eq('status', 'ACTIVE')
-        .not('domicile_city', 'is', null)
-        .order('domicile_city', { ascending: true });
-        
+        .not('domicile_city', 'is', null);
+
+    // Apply Indonesian filtering if specified
+    if (isIndonesian === true) {
+        query = query.eq('is_indonesian', true).eq('domicile_country', 'ID');
+    } else if (isIndonesian === false) {
+        query = query.eq('is_indonesian', false);
+    }
+    // If isIndonesian is undefined, show all cities
+
+    const { data, error } = await query.order('domicile_city', { ascending: true });
+
     if (error) throw error;
-    
+
     const uniqueCities = [...new Set(data?.map(row => row.domicile_city) || [])]
         .filter(city => city && city.trim())
-        .map(name => ({ name }));
+        .map(name => ({ id: name!, name: name! }));
 
     return uniqueCities;
 }

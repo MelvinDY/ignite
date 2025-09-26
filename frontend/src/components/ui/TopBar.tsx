@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom"
 import SearchBar from "./SearchBar"
 import { Bell } from "lucide-react"
+import { type SearchFilters } from "../../lib/api/search"
 
 interface TopBarProps {
   imgSrc: string | null;
   initials: string;
   handle?: string | null;
+  onSearch?: (filters: SearchFilters) => void;
+  onClearSearch?: () => void;
 }
 
-const TopBar = ({imgSrc, initials, handle}: TopBarProps) => {
+const TopBar = ({imgSrc, initials, onSearch, onClearSearch}: TopBarProps) => {
   return (
     <header className="sticky top-0 z-20 w-full bg-[#7C0B2B] border-b border-gray-200">
         <div className="mx-auto max-w-6xl px-4 h-16 flex-between gap-2">
@@ -16,8 +19,11 @@ const TopBar = ({imgSrc, initials, handle}: TopBarProps) => {
             <Link className="flex items-center gap-2 mr-8" to='/dashboard'>
                 <div className="w-10 h-10 rounded-60 bg-gray-200 flex-center font-bold text-lg text-gray-600">H</div>
             </Link>
-            
-            <SearchBar/>
+
+            <SearchBar
+              onSearch={onSearch || (() => {})}
+              onClear={onClearSearch}
+            />
 
             <div className="flex-center gap-2">
                 <Link to="/profile/me">

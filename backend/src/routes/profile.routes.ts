@@ -43,7 +43,7 @@ import {
 
 const router = Router();
 
-const authenticateUser: (req: Request, res: Response) => string | null = (req, res) => {
+export const authenticateUser: (req: Request, res: Response) => string | null = (req, res) => {
   // Check for valid token
   const accessToken = req.headers.authorization?.split(' ')[1];
   if (!accessToken) {
@@ -629,6 +629,28 @@ router.get("/profile/:handle/skills", async (req, res) => {
       return res.status(404).json({ code: "NOT_FOUND" });
     }
     console.error("getProfileSkillsHandle.error", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// GET /profile/:handle/experiences
+router.get("/profile/:handle/experiences", async (req, res) => {
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  const { handle } = req.params;
+
+  // Validate handle format
+  const handleValidation = HandleSchema.safeParse({ handle });
+  if (!handleValidation.success) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    const experiences = await getProfileExperiences(undefined, handle);
+    return res.status(200).json(experiences);
+  } catch (err) {
+    console.error("getProfileExperiences.error", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

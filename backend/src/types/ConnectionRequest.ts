@@ -34,6 +34,11 @@ export class ConnectionRequestError extends Error {
   }
 }
 
+export interface DeleteConnectionResult {
+  success: boolean;
+  wasConnected?: boolean;
+}
+
 export interface IncomingConnectionRequest {
   id: string;
   fromUser: {

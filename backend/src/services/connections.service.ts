@@ -204,6 +204,75 @@ export async function getConnectionRequest(
 }
 
 /**
+ * Accept a pending connection request.
+ * - Only the receiver can accept.
+ * - Must be in 'pending' state.
+ * - Idempotent on the connection row (we check + tolerate unique violation).
+ * Errors:
+ * - 404 NOT_FOUND (hidden if requester isn't the receiver)
+ * - 409 INVALID_STATE (not pending)
+ */
+export async function acceptConnectionRequest(
+  requestId: string,
+  receiverProfileId: string
+): Promise<{ success: true }> {
+  // 1) Load request
+  const { data: reqRow, error: loadErr } = await supabase
+    .from("connection_requests")
+    .select("id, sender_id, receiver_id, status")
+    .eq("id", requestId)
+    .maybeSingle();
+
+  if (loadErr) throw loadErr;
+  if (!reqRow) throw new ConnectionRequestError("Not found", "NOT_FOUND", 404);
+
+  // Hide existence if caller isn't the receiver
+  if (reqRow.receiver_id !== receiverProfileId) {
+    throw new ConnectionRequestError("Not found", "NOT_FOUND", 404);
+  }
+  if (reqRow.status !== "pending") {
+    throw new ConnectionRequestError("Invalid state", "INVALID_STATE", 409);
+  }
+
+  // 2) Create connection (normalized order to align with your unique pair)
+  const [a, b] = normalizePair(reqRow.sender_id, reqRow.receiver_id);
+
+  // Avoid error spam; race-safe (unique idx will guard).
+  if (!(await alreadyConnected(a, b))) {
+    const { error: insErr } = await supabase
+      .from("connections")
+      .insert({
+        user_id_a: a,
+        user_id_b: b,
+        connected_at: new Date().toISOString(),
+      });
+
+    // If someone else connected them first between our check & insert,
+    // ignore unique-violation (23505); otherwise bubble up.
+    if (insErr && (insErr as any).code !== "23505") throw insErr;
+  }
+
+  // 3) Mark request accepted
+  const { error: updErr } = await supabase
+    .from("connection_requests")
+    .update({ status: "accepted", acted_at: new Date().toISOString() })
+    .eq("id", requestId)
+    .eq("receiver_id", receiverProfileId)
+    .eq("status", "pending");
+
+  if (updErr) throw updErr;
+
+  // 4) (Optional) notifications - later
+  // await supabase.from("notifications").insert([
+  //   { user_id: reqRow.sender_id,   type: "connection_accepted", data: { otherId: receiverProfileId } },
+  //   { user_id: receiverProfileId,  type: "connection_accepted", data: { otherId: reqRow.sender_id } },
+  // ]);
+
+  return { success: true };
+}
+
+
+/**
  * Cancel a pending connection request
  * @param requestId The UUID of the connection request to cancel
  * @param userId The UUID of the user attempting to cancel (must be the sender)

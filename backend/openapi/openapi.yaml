@@ -3015,14 +3015,14 @@ paths:
                           profileId: "user_def456"
                           fullName: "John Doe"
                           handle: "johndoe"
-                          avatar_url: "https://example.com/avatar1.jpg"
+                          photo_url: "https://example.com/avatar1.jpg"
                         created_at: "2024-01-15T10:00:00Z"
                       - id: "req_ghi789"
                         fromUser:
                           profileId: "user_jkl012"
                           fullName: "Jane Smith"
                           handle: "janesmith"
-                          avatar_url: "https://example.com/avatar2.jpg"
+                          photo_url: "https://example.com/avatar2.jpg"
                         created_at: "2024-01-14T09:00:00Z"
                     pagination:
                       total: 25
@@ -3038,7 +3038,7 @@ paths:
                           profileId: "user_pqr678"
                           fullName: "Alice Johnson"
                           handle: "alicejohnson"
-                          avatar_url: "https://example.com/avatar3.jpg"
+                          photo_url: "https://example.com/avatar3.jpg"
                         created_at: "2024-01-13T14:30:00Z"
                     pagination:
                       total: 5
@@ -3170,11 +3170,62 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /connections/requests/{id}/accept:
+    post:
+      tags: ["Connections"]
+      summary: Accept a pending connection request
+      description: |
+        Accept a **pending** connection request. Only the **receiver** of the request can accept.
+        Idempotent with respect to the `connections` row (unique pair).
+      operationId: acceptConnectionRequest
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+          description: UUID of the connection request
+      responses:
+        "200":
+          description: Request accepted; users are now connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                ok: { value: { success: true } }
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                no_auth: { value: { code: NOT_AUTHENTICATED } }
+        "404":
+          description: Request not found OR not addressed to caller
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                not_found: { value: { code: NOT_FOUND } }
+        "409":
+          description: Request not in a valid state to accept (e.g., not pending)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorSimple" }
+              examples:
+                invalid_state: { value: { code: INVALID_STATE } }
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /connections/requests/{id}/cancel:
     post:
       tags: ["Connections"]
       summary: Cancel a pending connection request
       description: Withdraw a pending request.
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: id
@@ -3317,6 +3368,7 @@ paths:
           content:
             application/json:
               schema:
+                $ref: '#/components/schemas/RelationshipStatus'
                 type: object
                 required:
                   [connected, pendingOutgoing, pendingIncoming, blockedByMe, blockedMe, canSendRequest]
@@ -4285,6 +4337,7 @@ components:
           type: string
           description: Unique identifier for the connection request
           example: "req_abc123"
+        message: { type: string, nullable: true, example: "hey!" }
         fromUser:
           $ref: '#/components/schemas/UserProfile'
         created_at:
@@ -4305,6 +4358,7 @@ components:
           type: string
           description: Unique identifier for the connection request
           example: "req_abc123"
+        message: { type: string, nullable: true, example: null }
         toUser:
           $ref: '#/components/schemas/UserProfile'
         created_at:
@@ -4363,7 +4417,7 @@ components:
           type: string
           description: User's unique handle/username
           example: "johndoe"
-        avatar_url:
+        photo_url:
           type: string
           format: uri
           nullable: true
@@ -4373,4 +4427,14 @@ components:
         - profileId
         - fullName
         - handle
-        - avatar_url
+        - photo_url
+    RelationshipStatus:
+      type: object
+      required: [connected, pendingOutgoing, pendingIncoming, blockedByMe, blockedMe, canSendRequest]
+      properties:
+        connected:       { type: boolean }
+        pendingOutgoing: { type: boolean }
+        pendingIncoming: { type: boolean }
+        blockedByMe:     { type: boolean }
+        blockedMe:       { type: boolean }
+        canSendRequest:  { type: boolean }

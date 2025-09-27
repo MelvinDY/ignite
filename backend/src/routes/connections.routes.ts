@@ -8,6 +8,7 @@ import {
   getRelationshipStatus,
   deleteConnection,
   cancelConnectionRequest,
+  acceptConnectionRequest,
 } from "../services/connections.service";
 import { ConnectionRequestError } from "../types/ConnectionRequest";
 
@@ -62,6 +63,35 @@ router.post("/connections/requests", async (req, res) => {
       return res.status(err.statusCode).json({ code: err.code });
     }
     console.error("send connection request error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * User Story 4.3 – Accept Connection Request
+ * POST /connections/requests/:id/accept
+ * Auth: Bearer token
+ * 200 -> { success: true }
+ * Errors:
+ * - 401 { code: NOT_AUTHENTICATED }
+ * - 404 { code: NOT_FOUND }
+ * - 409 { code: INVALID_STATE }
+ */
+router.post("/connections/requests/:id/accept", async (req, res) => {
+  const profileId = authenticateUser(req, res);
+  if (!profileId) return;
+
+  const requestId = String(req.params.id || "").trim();
+  if (!requestId) return res.status(400).json({ code: "VALIDATION_ERROR" });
+
+  try {
+    await acceptConnectionRequest(requestId, profileId);
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    if (err instanceof ConnectionRequestError) {
+      return res.status(err.statusCode).json({ code: err.code });
+    }
+    console.error("accept connection request error:", err);
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

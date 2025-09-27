@@ -1,4 +1,5 @@
 import React from 'react';
+import { twMerge } from 'tailwind-merge';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -7,7 +8,7 @@ interface GlassCardProps {
 
 export function GlassCard({ children, className = '' }: GlassCardProps) {
   return (
-    <div className={`relative bg-white/[0.15] backdrop-blur-2xl border border-white/25 shadow-2xl rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/[0.18] transition-all duration-300 ${className}`}>
+    <div className={twMerge("relative bg-white/[0.15] backdrop-blur-2xl border border-white/25 shadow-2xl rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/[0.18] transition-all duration-300 ", className)}>
       {/* Inner glow effect */}
       <div className="absolute inset-0 rounded-xl sm:rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
       

@@ -1,26 +1,18 @@
 import { supabase } from "../lib/supabase";
+import {
+  ConnectionRequest,
+  CancelResult,
+  ConnectionRequestError,
+  IncomingConnectionRequestList,
+  IncomingConnectionRequestQueryData,
+  OutgoingConnectionRequestList,
+  OutgoingConnectionRequestQueryData,
+  DeleteConnectionResult
+} from "../types/ConnectionRequest";
 
-/**
- * Represents a connection request with basic information
- */
-export interface ConnectionRequest {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  status: 'pending' | 'accepted' | 'declined' | 'canceled';
-  message?: string;
-  created_at: string;
-  updated_at: string;
-  acted_at?: string;
-}
-
-/**
- * Result of a cancel operation
- */
-export interface CancelResult {
-  success: boolean;
-  alreadyCanceled?: boolean;
-}
+// ==== ENV knobs (soft caps / cooldowns) ====
+const DAILY_SEND_CAP = Number(process.env.CR_DAILY_SEND_CAP ?? 20);
+const DECLINE_COOLDOWN_MIN = Number(process.env.CR_PAIR_COOLDOWN_MIN ?? 10);
 
 /**
  * Connection profile information for listing
@@ -51,31 +43,6 @@ export interface GetConnectionsResult {
   pagination: PaginationInfo;
 }
 
-/**
- * Result of a delete connection operation
- */
-export interface DeleteConnectionResult {
-  success: boolean;
-  wasConnected?: boolean;
-}
-
-/**
- * Custom error for connection request operations
- */
-export class ConnectionRequestError extends Error {
-  constructor(
-    message: string,
-    public code: 'NOT_FOUND' | 'INVALID_STATE' | 'UNAUTHORIZED',
-    public statusCode: number
-  ) {
-    super(message);
-    this.name = 'ConnectionRequestError';
-  }
-}
-
-/**
- * Represents the relationship status between two users
- */
 export type RelationshipStatus = {
   connected: boolean;
   pendingOutgoing: boolean;
@@ -85,20 +52,180 @@ export type RelationshipStatus = {
   canSendRequest: boolean;
 };
 
+// --- Types for the new flow ---
+type SendArgs = {
+  senderId: string;
+  receiverId: string;
+  message: string | null;
+};
+
+export interface SendConnectionResult {
+  requestId: string;
+}
+
+// --- Helpers ---
+function normalizePair(a: string, b: string) {
+  return a < b ? [a, b] as const : [b, a] as const;
+}
+
+async function assertTargetExistsAndNotSelf(senderId: string, receiverId: string) {
+  if (senderId === receiverId) {
+    throw new ConnectionRequestError("Cannot send to self", "INVALID_STATE", 400);
+  }
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", receiverId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new ConnectionRequestError("User not found", "NOT_FOUND", 404);
+}
+
+async function isBlockedEitherWay(a: string, b: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("blocks")
+    .select("blocker_id")
+    .or(`and(blocker_id.eq.${a},blocked_id.eq.${b}),and(blocker_id.eq.${b},blocked_id.eq.${a})`)
+    .limit(1);
+  if (error) throw error;
+  return !!data?.length;
+}
+
+
+async function alreadyConnected(a: string, b: string): Promise<boolean> {
+  const [x, y] = normalizePair(a, b);
+  const { data, error } = await supabase
+    .from("connections")
+    .select("user_id_a")
+    .eq("user_id_a", x)
+    .eq("user_id_b", y)
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+async function pendingExistsEitherWay(a: string, b: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("connection_requests")
+    .select("id")
+    .eq("status", "pending")
+    .or(`and(sender_id.eq.${a},receiver_id.eq.${b}),and(sender_id.eq.${b},receiver_id.eq.${a})`)
+    .limit(1);
+  if (error) throw error;
+  return !!data?.length;
+}
+
+async function pairDeclineCooldownActive(senderId: string, receiverId: string): Promise<boolean> {
+  // Has this sender been declined by this receiver recently?
+  const { data, error } = await supabase
+    .from("connection_requests")
+    .select("acted_at")
+    .eq("status", "declined")
+    .eq("sender_id", senderId)
+    .eq("receiver_id", receiverId)
+    .order("acted_at", { ascending: false })
+    .limit(1);
+
+  if (error) throw error;
+  if (!data?.length || !data[0].acted_at) return false;
+
+  const lastDeclinedAt = new Date(data[0].acted_at);
+  const diffMin = (Date.now() - lastDeclinedAt.getTime()) / 60000;
+  return diffMin < DECLINE_COOLDOWN_MIN;
+}
+
+async function overDailyCap(senderId: string): Promise<boolean> {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase.rpc("count_recent_connection_requests", {
+    p_sender_id: senderId,
+    p_since: since,
+  });
+  if (error) throw error;
+  return Number(data ?? 0) >= DAILY_SEND_CAP;
+}
+
+async function insertPendingRequest(args: SendArgs): Promise<string> {
+  const { data, error } = await supabase
+    .from("connection_requests")
+    .insert({
+      sender_id: args.senderId,
+      receiver_id: args.receiverId,
+      message: args.message,
+      status: "pending",
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
+async function emitNotificationConnectionRequest(receiverId: string, actorId: string) {
+  // Adjust type if your enum differs
+  await supabase.from("notifications").insert({
+    user_id: receiverId,
+    type: "connection_request",
+    data: { actorId },
+  });
+}
+
+// --- Main: Send connection request ---
+export async function sendConnectionRequest(args: SendArgs): Promise<SendConnectionResult> {
+  // 1) basic checks
+  await assertTargetExistsAndNotSelf(args.senderId, args.receiverId);
+
+  // 2) blocked?
+  if (await isBlockedEitherWay(args.senderId, args.receiverId)) {
+    throw new ConnectionRequestError("User is blocked", "BLOCKED", 403);
+  }
+
+  // 3) already connected?
+  if (await alreadyConnected(args.senderId, args.receiverId)) {
+    throw new ConnectionRequestError("Already connected", "ALREADY_CONNECTED", 409);
+  }
+
+  // 4) pending exists either way?
+  if (await pendingExistsEitherWay(args.senderId, args.receiverId)) {
+    throw new ConnectionRequestError("Request already exists", "REQUEST_ALREADY_EXISTS", 409);
+  }
+
+  // 5) pair cooldown after decline?
+  if (await pairDeclineCooldownActive(args.senderId, args.receiverId)) {
+    throw new ConnectionRequestError("Request already exists (cooldown)", "REQUEST_ALREADY_EXISTS", 409);
+  }
+
+  // 6) daily cap?
+  if (await overDailyCap(args.senderId)) {
+    throw new ConnectionRequestError("Too many requests today", "TOO_MANY_REQUESTS", 429);
+  }
+
+  // 7) create + notify
+  const requestId = await insertPendingRequest(args);
+  await emitNotificationConnectionRequest(args.receiverId, args.senderId);
+
+  return { requestId };
+}
+
 /**
  * Get a connection request by ID
  * @param requestId The UUID of the connection request
  * @returns The connection request or null if not found
  */
-export async function getConnectionRequest(requestId: string): Promise<ConnectionRequest | null> {
+export async function getConnectionRequest(
+  requestId: string
+): Promise<ConnectionRequest | null> {
   const { data, error } = await supabase
     .from("connection_requests")
-    .select("id, sender_id, receiver_id, status, message, created_at, updated_at, acted_at")
+    .select(
+      "id, sender_id, receiver_id, status, message, created_at, updated_at, acted_at"
+    )
     .eq("id", requestId)
     .single();
 
   if (error || !data) {
-    console.log("Connection request not found:", { requestId, error: error?.message });
+    console.log("Connection request not found:", {
+      requestId,
+      error: error?.message,
+    });
     return null;
   }
 
@@ -111,19 +238,30 @@ export async function getConnectionRequest(requestId: string): Promise<Connectio
  * @param userId The UUID of the user attempting to cancel (must be the sender)
  * @returns Result indicating success and whether it was already canceled
  */
-export async function cancelConnectionRequest(requestId: string, userId: string): Promise<CancelResult> {
+export async function cancelConnectionRequest(
+  requestId: string,
+  userId: string
+): Promise<CancelResult> {
   // 1. Get the connection request
   const connectionRequest = await getConnectionRequest(requestId);
   console.log("Found connection request:", connectionRequest);
 
   if (!connectionRequest) {
     console.log("Connection request not found, throwing error");
-    throw new ConnectionRequestError("Connection request not found", "NOT_FOUND", 404);
+    throw new ConnectionRequestError(
+      "Connection request not found",
+      "NOT_FOUND",
+      404
+    );
   }
 
   // 2. Verify the caller is the sender
   if (connectionRequest.sender_id !== userId) {
-    throw new ConnectionRequestError("Connection request not found", "NOT_FOUND", 404);
+    throw new ConnectionRequestError(
+      "Connection request not found",
+      "NOT_FOUND",
+      404
+    );
   }
 
   // 3. Check if the request is in a valid state to be canceled
@@ -145,7 +283,7 @@ export async function cancelConnectionRequest(requestId: string, userId: string)
     .from("connection_requests")
     .update({
       status: "canceled",
-      acted_at: new Date().toISOString()
+      acted_at: new Date().toISOString(),
     })
     .eq("id", requestId);
 
@@ -156,6 +294,146 @@ export async function cancelConnectionRequest(requestId: string, userId: string)
   return { success: true };
 }
 
+// helper (optional, keeps the mapper tidy)
+const safe = <T extends object>(o: T | null | undefined) => o ?? ({} as any);
+
+export async function listIncomingConnectionRequest(
+  userId: string,
+  page: number,
+  pageSize: number
+): Promise<IncomingConnectionRequestList> {
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize - 1;
+
+  const { count: totalCount, error: countError } = await supabase
+    .from("connection_requests")
+    .select("*", { count: "exact", head: true })
+    .eq("receiver_id", userId)
+    .eq("status", "pending");
+
+  if (countError) {
+    throw new Error(`Failed to get count: ${countError.message}`);
+  }
+
+  const { data, error } = await supabase
+    .from("connection_requests")
+    .select(
+      `
+      id,
+      sender_id,
+      receiver_id,
+      message,
+      created_at,
+      status,
+      sender:profiles!connection_requests_sender_id_fkey(
+        id, full_name, handle, photo_url
+      )
+    `
+    )
+    .eq("receiver_id", userId)
+    .eq("status", "pending")
+    .range(startIndex, endIndex)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch connection requests: ${error.message}`);
+  }
+
+  const results =
+    (data ?? []).map((row: any) => {
+      const sender = safe(row.sender);
+      return {
+        id: row.id,
+        message: row.message ?? null,
+        fromUser: {
+          profileId: row.sender_id,
+          fullName: sender.full_name ?? null,
+          handle: sender.handle ?? null,
+          photo_url: sender.photo_url ?? null,
+        },
+        created_at: row.created_at,
+      };
+    });
+
+  return {
+    results,
+    pagination: {
+      total: totalCount || 0,
+      page: page,
+      pageSize: pageSize,
+      totalPages: Math.ceil((totalCount || 0) / pageSize),
+    },
+  };
+}
+
+export async function listOutgoingConnectionRequest(
+  userId: string,
+  page: number,
+  pageSize: number
+): Promise<OutgoingConnectionRequestList> {
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = startIndex + pageSize - 1;
+
+  const { count: totalCount, error: countError } = await supabase
+    .from("connection_requests")
+    .select("*", { count: "exact", head: true })
+    .eq("sender_id", userId)
+    .eq("status", "pending");
+
+  if (countError) {
+    throw new Error(`Failed to get count: ${countError.message}`);
+  }
+
+  const { data, error } = await supabase
+    .from("connection_requests")
+    .select(
+      `
+      id,
+      sender_id,
+      receiver_id,
+      message,
+      created_at,
+      status,
+      receiver:profiles!connection_requests_receiver_id_fkey(
+        id, full_name, handle, photo_url
+      )
+    `
+    )
+    .eq("sender_id", userId)
+    .eq("status", "pending")
+    .range(startIndex, endIndex)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to fetch connection requests: ${error.message}`);
+  }
+
+  const results =
+    (data ?? []).map((row: any) => {
+      const receiver = safe(row.receiver);
+      return {
+        id: row.id,
+        message: row.message ?? null,
+        toUser: {
+          profileId: row.receiver_id,
+          fullName: receiver.full_name ?? null,
+          handle: receiver.handle ?? null,
+          photo_url: receiver.photo_url ?? null,
+        },
+        created_at: row.created_at,
+      };
+    });
+
+  return {
+    results,
+    pagination: {
+      total: totalCount || 0,
+      page: page,
+      pageSize: pageSize,
+      totalPages: Math.ceil((totalCount || 0) / pageSize),
+    },
+  };
+}
 /**
  * Get paginated connections for a user
  * @param userId The UUID of the user whose connections to fetch

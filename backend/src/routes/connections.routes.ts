@@ -266,7 +266,10 @@ router.get("/connections/status", async (req, res) => {
   }
 });
 
-// POST /users/:profileId/block
+/**
+ * Story 4.9 — Block user
+ * POST /users/:profileId/block
+ */
 router.post("/users/:profileId/block", async (req, res) => {
   // Authenticate user
   const userId = authenticateUser(req, res);

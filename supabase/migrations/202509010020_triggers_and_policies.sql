@@ -20,7 +20,7 @@ BEGIN
          (LEAST(NEW.blocker_id, NEW.blocked_id), GREATEST(NEW.blocker_id, NEW.blocked_id));
 
   UPDATE public.connection_requests cr
-     SET status   = CASE WHEN cr.receiver_id = NEW.blocker_id THEN 'declined' ELSE 'canceled' END,
+     SET status   = CASE WHEN cr.receiver_id = NEW.blocker_id THEN 'declined'::connection_request_status ELSE 'canceled'::connection_request_status END,
          acted_at = now(),
          updated_at = now()
    WHERE status = 'pending'

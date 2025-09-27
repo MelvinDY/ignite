@@ -1,6 +1,8 @@
 import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { cancelConnectionRequest, ConnectionRequestError, deleteConnection } from "../services/connections.service";
+import { blockUser } from "../services/block.service";
+import { authenticateUser } from "./profile.routes";
 
 const router = Router();
 
@@ -104,6 +106,32 @@ router.delete("/connections/:profileId", async (req, res) => {
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error("delete connection error:", err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+// POST /users/:profileId/block
+router.post("/users/:profileId/block", async (req, res) => {
+  // Authenticate user
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  // Get profile ID (target blocked user) from params
+  const targetProfileId = req.params.profileId;
+  if (!targetProfileId) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await blockUser(userId, targetProfileId);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

@@ -3475,7 +3475,7 @@ paths:
   /users/{profileId}/block:
     post:
       tags: ["Connections"]
-      summary: Block a user to stop all contact
+      summary: Block a user
       description: |
         Block another user to prevent all future contact and interaction.
         

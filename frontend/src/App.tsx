@@ -20,7 +20,6 @@ import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 import { MobileNavbar } from "./components/MobileNavbar";
 import AboutPPIA from "./pages/about/PPIA";
-import AboutICON from "./pages/about/ICON";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -72,7 +71,6 @@ function App() {
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/about" element={<AboutPPIA />} />
-                <Route path="/about/ICON" element={<AboutICON />} />
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}

@@ -61,7 +61,7 @@ const eventsData: Event[] = [
 
 const HeroSection: FC<{ scrollOffset: number }> = ({ scrollOffset }) => (
   <section
-    className="h-screen flex flex-col items-center text-center relative pt-40"
+    className="h-screen flex flex-col items-center text-center relative pt-48 mt-20"
     style={{
       transform: `translateY(${scrollOffset * 0.4}px)`,
       willChange: "transform",
@@ -74,7 +74,7 @@ const HeroSection: FC<{ scrollOffset: number }> = ({ scrollOffset }) => (
           "radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)",
       }}
     />
-    <div className="absolute top-24 z-10">
+    <div className="absolute top-28 z-10">
       <p className="tracking-[0.2em]">
         PPIA <span className="font-bold">UNSW</span>
       </p>

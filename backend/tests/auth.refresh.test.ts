@@ -25,8 +25,8 @@ describe('POST /api/auth/refresh', () => {
     // Mock tokens to produce deterministic access token and verify token version
     vi.doMock('../src/utils/tokens', async (importOriginal) => {
       const original = await importOriginal<typeof import('../src/utils/tokens')>();
-      return { 
-        ...original, 
+      return {
+        ...original,
         generateAccessToken: () => 'new_access_token',
         verifyTokenVersion: () => true // Mock token version verification to always return true
       };

@@ -93,3 +93,26 @@ export async function blockUser(userId: string, blockedId: string): Promise<void
   
   return;
 }
+/**
+ * Unblocks a user
+ * Idempotent: deleting a non-existing block still success
+ * @param userId The UUID of the currently authenticated user
+ * @param blockedId The UUID of the currently blocked user to unblock
+ * @returns 
+ */
+export async function unblockUser(userId: string, blockedId: string): Promise<void> {
+
+  const { error } = await supabase
+    .from("blocks")
+    .delete()
+    .eq("blocker_id", userId)
+    .eq("blocked_id", blockedId);
+
+  if (error) {
+    // Some other unexpected database error
+    console.error("Unexpected error when unblocking user:", error);
+    throw error;
+  }
+
+  return;
+}

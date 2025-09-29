@@ -12,6 +12,10 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (location.pathname === "/" && !location.hash) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     if (location.hash === "#about") {
       aboutUsSection.current?.scrollIntoView({ behavior: "smooth" });
     }

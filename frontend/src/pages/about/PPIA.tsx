@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import type { JSX, FC } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { EventCard } from "@/components/EventCard";
-import logoPPIA from "@/assets/Copy of PPIA.png";
+import logoPPIA from "@/assets/PPIA_logo_white.png";
+import { BsInstagram } from "react-icons/bs";
 
 // --- Type Definitions ---
 interface Event {
@@ -240,24 +241,6 @@ const JoinUsSection: FC = () => (
   </section>
 );
 
-const InstagramIcon: FC = () => (
-  <svg
-    width="60"
-    height="60"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.5"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className="text-white"
-  >
-    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" strokeWidth="2"></line>
-  </svg>
-);
-
 const InstagramSection: FC = () => (
   <section className="py-24 max-w-xl mx-auto flex flex-col items-center">
     <a
@@ -268,7 +251,7 @@ const InstagramSection: FC = () => (
     >
       <div className="transition-transform duration-300 ease-in-out group-hover:scale-110">
         <div className="absolute -inset-8 z-0 bg-black/50 rounded-full blur-3xl scale-125" />
-        <InstagramIcon />
+        <BsInstagram size={64} className="text-white/70" />
       </div>
     </a>
   </section>

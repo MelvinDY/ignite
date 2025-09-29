@@ -47,7 +47,19 @@ const Footer = () => {
           </div>
         </div>
       </div>
-      © 2025 Ignite. All rights reserved.
+
+      {/* Bottom section with copyright and acknowledgment link */}
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-2 mt-6 pt-4 border-t border-white/20">
+        <div>© 2025 Ignite. All rights reserved.</div>
+        <div
+          className="flex items-center gap-1 text-sm cursor-pointer hover:text-[var(--secondary-text)] transition-colors duration-300"
+          onClick={() => navigate("/acknowledgment")}
+        >
+          <span>Made with</span>
+          <span className="text-red-400">❤️</span>
+          <span>by PPIA IT Team</span>
+        </div>
+      </div>
     </footer>
   );
 };

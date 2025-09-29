@@ -33,7 +33,8 @@ const Navbar = () => {
             </button>
             <button
               className="hover:underline"
-              onClick={() => handleNavigation("/")}
+              onClick={() => handleNavigation("/about")}
+
             >
               Home
             </button>

@@ -22,6 +22,7 @@ import { MobileNavbar } from "./components/MobileNavbar";
 import MembershipBenefits from "./pages/membership/MembershipBenefits";
 import AboutPPIA from "./pages/about/PPIA";
 import { AcknowledgmentPage } from "./pages/AcknowledgmentPage";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -41,7 +42,9 @@ function App() {
   }, [attemptSessionRestore]);
 
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Auth routes - full screen, no navbar/footer */}
       <Route path="/auth/login" element={<Login />} />
       <Route path="/auth/register" element={<Register />} />
@@ -87,6 +90,7 @@ function App() {
         }
       />
     </Routes>
+    </>
   );
 }
 

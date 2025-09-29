@@ -4,17 +4,17 @@ const AcknowledgmentPage = () => {
   const [activeFilter, setActiveFilter] = useState('all');
 
   const teamMembers = [
-    { id: 1, name: 'John Doe', role: 'Backend Developer', stream: 'backend', avatar: 'JD' },
-    { id: 2, name: 'John Doe', role: 'Backend Developer', stream: 'backend', avatar: 'JD' },
-    { id: 3, name: 'John Doe', role: 'Backend Developer', stream: 'backend', avatar: 'JD' },
-    { id: 4, name: 'John Doe', role: 'Backend Developer', stream: 'backend', avatar: 'JD' },
-    { id: 5, name: 'John Doe', role: 'Frontend Developer', stream: 'frontend', avatar: 'JD' },
-    { id: 6, name: 'John Doe', role: 'Frontend Developer', stream: 'frontend', avatar: 'JD' },
-    { id: 7, name: 'John Doe', role: 'Frontend Developer', stream: 'frontend', avatar: 'JD' },
-    { id: 8, name: 'John Doe', role: 'Frontend Developer', stream: 'frontend', avatar: 'JD' },
-    { id: 9, name: 'John Doe', role: 'UI/UX Designer', stream: 'uiux', avatar: 'JD' },
-    { id: 10, name: 'John Doe', role: 'UI/UX Designer', stream: 'uiux', avatar: 'JD' },
-    { id: 11, name: 'John Doe', role: 'UI/UX Designer', stream: 'uiux', avatar: 'JD' },
+    { id: 1, name: 'Jansen', role: 'Lead Backend Developer', stream: 'backend', avatar: 'JJ' },
+    { id: 2, name: 'Melvin Darial Yogiana', role: 'Lead Frontend Developer', stream: 'frontend', avatar: 'MDY' },
+    { id: 3, name: 'Danar Abiyoga Prakosa', role: 'Backend Developer', stream: 'backend', avatar: 'DAP' },
+    { id: 4, name: 'Gilbert Sebastian Yogiana', role: 'Backend Developer', stream: 'backend', avatar: 'GSY' },
+    { id: 5, name: 'Kurniawan Hartadi Chuadri', role: 'backend Developer', stream: 'backend', avatar: 'KHC' },
+    { id: 6, name: 'Wesly Yong', role: 'Backend Developer', stream: 'Backend', avatar: 'WY' },
+    { id: 7, name: 'Dicko Evaldo', role: 'Backend Developer', stream: 'backend', avatar: 'DE' },
+    { id: 8, name: 'Andrew Davindra Hans', role: 'Frontend Developer', stream: 'frontend', avatar: 'ADH' },
+    { id: 9, name: 'Giselle Angela Hanjaya Putri', role: 'Frontend Developer', stream: 'frontend', avatar: 'GA' },
+    { id: 10, name: 'Gede Agus Sudarmawan', role: 'UI/UX Designer', stream: 'uiux', avatar: 'GAS' },
+    { id: 11, name: 'Kelly Valerie', role: 'UI/UX Designer', stream: 'uiux', avatar: 'KV' },
   ];
 
   const filteredMembers = activeFilter === 'all'

@@ -32,7 +32,7 @@ const Navbar = () => {
             </button>
             <button
               className="hover:underline"
-              onClick={() => handleNavigation("/#about")}
+              onClick={() => handleNavigation("/about")}
             >
               About
             </button>

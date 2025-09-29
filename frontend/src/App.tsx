@@ -70,7 +70,12 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/about" element={<AboutPPIA />} />
+                {/* About subpages */}
+                <Route path="/about">
+                  <Route path="ppia" element={<AboutPPIA />} />
+                  <Route path="icon" element={<AboutPPIA />} />
+                  <Route path="inm" element={<AboutPPIA />} />
+                </Route>
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}

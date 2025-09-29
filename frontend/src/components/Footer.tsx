@@ -12,7 +12,7 @@ const Footer = () => {
 
   return (
     <footer className="text-center p-10 bg-[var(--secondary-red)] text-white mt-20 w-full z-20">
-      <div className="flex justify-center mb-4 gap-10 flex-wrap min-h-72 md:text-xl text-sm">
+      <div className="flex justify-center mb-4 gap-10 flex-wrap min-h-72 md:text-lg text-sm">
         {/* Sign up for membership */}
         <div className="text-left flex-1">
           <h2 className="text-wrap max-w-80 font-bold text-4xl mb-2 text-[var(--secondary-text)]">Love the chuckle?</h2>

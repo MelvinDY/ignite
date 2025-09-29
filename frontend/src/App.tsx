@@ -79,6 +79,12 @@ function App() {
                 <Route path="/about" element={<AboutPPIA />} />
                 <Route path="/acknowledgment" element={<AcknowledgmentPage />} />
                 <Route path="/membership" element={<MembershipBenefits />} />
+                {/* About subpages */}
+                <Route path="/about">
+                  <Route path="ppia" element={<AboutPPIA />} />
+                  <Route path="icon" element={<AboutPPIA />} />
+                  <Route path="inm" element={<AboutPPIA />} />
+                </Route>
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}

@@ -73,7 +73,10 @@ const MobileNavbar: FC = () => {
 
   const handleNavigation = (path: string): void => {
     if (location.pathname === path) {
+      // smooth scroll to top
+      window.history.pushState({}, '', '/');
       window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
     } else {
       navigate(path);
     }
@@ -82,7 +85,7 @@ const MobileNavbar: FC = () => {
 
   const navLinks: NavLink[] = [
     { path: "/", label: "Dashboard" },
-    { path: "/about", label: "About" },
+    { path: "/#about", label: "About" },
     { path: "/events", label: "event" },
     { path: "/feed", label: "feed" },
   ];

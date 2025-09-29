@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
 import ICONLogo from "@/assets/Icon Logo White.png";
 
 const ICON = () => {
@@ -57,14 +56,22 @@ const ICON = () => {
   const selectedDayData = days.find((d) => d.id === selectedDay);
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-red-950 via-red-900 to-black text-white">
+    // bg-gradient-to-b from-red-950 via-red-900 to-black
+    <div className="w-full text-white translate-y-12">
       {/* Hero Section with ICON Logo */}
       <div className="mt-32 relative flex flex-row justify-between items-center px-8">
-        <div className=" max-w-xs text-sm">
-          Lorem ipsum dolor, sit amet consectetur adipisicing elit. Cumque omnis ratione tempora. Aliquam, impedit? Voluptate non tenetur velit hic, illo ratione est molestiae, tempore eos vero veritatis nobis asperiores. Odio saepe libero numquam velit eaque, fugiat ut corporis sit deleniti dignissimos voluptatem nulla et explicabo nobis corrupti vero enim praesentium!
+        <div className="max-w-xs">
+          Lorem ipsum dolor, sit amet consectetur adipisicing elit. Cumque omnis
+          ratione tempora. Aliquam, impedit? Voluptate non tenetur velit hic,
+          illo ratione est molestiae, tempore eos vero veritatis nobis
+          asperiores. Odio saepe libero numquam velit eaque, fugiat ut corporis
+          sit deleniti dignissimos voluptatem nulla et explicabo nobis corrupti
+          vero enim praesentium!
         </div>
         <div className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter">
-          <img src={ICONLogo} alt="Icon" className="w-40 h-45" />
+          <div className="px-16">
+            <img src={ICONLogo} alt="Icon" className="w-[200px] h-45" />
+          </div>
         </div>
       </div>
 
@@ -72,7 +79,7 @@ const ICON = () => {
       <div
         className="mt-32 relative grid grid-cols-1 md:grid-cols-2 border-t border-white/20"
         style={{
-          transform: `translateY(${scrollY * 0.2}px)`,
+          transform: `translateY(${scrollY * 0.1}px)`,
           transition: "transform 0.1s ease-out",
         }}
       >
@@ -121,22 +128,12 @@ const ICON = () => {
         className="relative mt-16 md:mt-24"
         ref={galleryRef}
         style={{
-          transform: `translateY(${scrollY * 0.1}px)`,
+          transform: `translateY(${scrollY * -0.05}px)`,
           transition: "transform 0.1s ease-out",
         }}
       >
-        {/* Up Arrow */}
-        <div className="flex justify-center mb-4">
-          <button
-            className="hover:scale-110 transition-transform"
-            aria-label="Scroll up"
-          >
-            <ChevronUp className="w-6 h-6" />
-          </button>
-        </div>
-
+        <h1 className="text-6xl font-bold px-20 mb-16">ICON Recap 2024</h1>
         <div className="flex flex-col md:flex-row items-start justify-center">
-          {/* Vertical Carousel - Left Side */}
           <div className="relative w-full md:w-auto flex justify-center md:justify-start mb-4 md:mb-0">
             <div
               ref={carouselRef}
@@ -170,7 +167,7 @@ const ICON = () => {
           </div>
 
           {/* Main Image */}
-          <div className="flex-1 w-full max-w-4xl px-4 md:px-8">
+          <div className="flex flex-col flex-1 w-full max-w-4xl px-4 md:px-8">
             <div className="relative w-full aspect-video overflow-hidden border-4 border-white/20 shadow-2xl">
               <img
                 src={selectedDayData?.image}
@@ -179,42 +176,33 @@ const ICON = () => {
                 key={selectedDay}
               />
             </div>
-          </div>
-        </div>
+            {/* Day Information Section */}
+            <div 
+              className="mt-8 mx-4 md:mx-auto md:max-w-5xl border-4 border-white/30 bg-red-950/80 backdrop-blur -translate-y-20 w-[90%] ml-auto"
+            >
+              <div className="bg-red-950/90 p-6 md:p-8">
+                <h2 className="text-5xl md:text-7xl font-bold text-right mb-6">
+                  DAY {selectedDay}
+                </h2>
 
-        {/* Day Information Section */}
-        <div className="mt-8 mx-4 md:mx-auto md:max-w-5xl border-4 border-white/30 bg-red-950/80 backdrop-blur">
-          <div className="bg-red-950/90 p-6 md:p-8">
-            <h2 className="text-5xl md:text-7xl font-bold text-right mb-6">
-              DAY {selectedDay}
-            </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Left Box - Day Description */}
+                  <div className="border-2 border-white/30 p-6 bg-black/20">
+                    <p className="text-sm leading-relaxed">
+                      {selectedDayData?.description}
+                    </p>
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Left Box - Day Description */}
-              <div className="border-2 border-white/30 p-6 bg-black/20">
-                <p className="text-sm leading-relaxed">
-                  {selectedDayData?.description}
-                </p>
-              </div>
-
-              {/* Right Box - Image Detail */}
-              <div className="border-2 border-white/30 p-6 bg-black/20">
-                <p className="text-sm leading-relaxed">
-                  {selectedDayData?.imageDetail}
-                </p>
+                  {/* Right Box - Image Detail */}
+                  <div className="border-2 border-white/30 p-6 bg-black/20">
+                    <p className="text-sm leading-relaxed">
+                      {selectedDayData?.imageDetail}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Down Arrow */}
-        <div className="flex justify-center mt-8">
-          <button
-            className="hover:scale-110 transition-transform"
-            aria-label="Scroll down"
-          >
-            <ChevronDown className="w-6 h-6" />
-          </button>
         </div>
       </div>
     </div>

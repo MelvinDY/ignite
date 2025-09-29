@@ -3,11 +3,12 @@ import ICON_event from "../assets/ICON-min.jpg";
 import INM_event from "../assets/INM-min.jpg";
 import { AboutUsCard } from "@/components/AboutUsCard";
 import { useEffect, useRef } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const aboutUsSection = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (location.hash === "#about") {
@@ -41,7 +42,7 @@ const Dashboard = () => {
       <div ref={aboutUsSection} className="h-5"/>
       <section id="about" className="flex flex-col z-10 h-[calc(100vh-5rem)] px-20 gap-6 w-full">
         <h1 className="text-4xl font-bold text-center">About Us</h1>
-        <button className="flex-1">
+        <button className="flex-1" onClick={() => navigate("/about/PPIA")}>
           <AboutUsCard className="h-full w-full" img={ngompoel}>
             <h1 className="text-5xl font-bold">PPIA</h1>
             <p className="text-lg">
@@ -49,7 +50,7 @@ const Dashboard = () => {
             </p>
           </AboutUsCard>
         </button>
-        <button className="flex-1">
+        <button className="flex-1" onClick={() => navigate("/about/INM")}>
           <AboutUsCard className="h-full w-full" img={INM_event}>
             <h1 className="text-5xl font-bold">International Night Market (INM)</h1>
             <p className="text-lg">
@@ -57,7 +58,7 @@ const Dashboard = () => {
             </p>
           </AboutUsCard>
         </button>
-        <button className="flex-1">
+        <button className="flex-1" onClick={() => navigate("/about/ICON")}>
           <AboutUsCard className="h-full w-full" img={ICON_event}>
             <h1 className="text-5xl font-bold">ICON</h1>
             <p className="text-lg">

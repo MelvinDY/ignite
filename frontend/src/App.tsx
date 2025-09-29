@@ -20,6 +20,9 @@ import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 import { MobileNavbar } from "./components/MobileNavbar";
 import AboutPPIA from "./pages/about/PPIA";
+import PPIA from "./pages/aboutus/PPIA";
+import INM from "./pages/aboutus/INM";
+import ICON from "./pages/aboutus/ICON";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -74,6 +77,18 @@ function App() {
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}
+                />
+                <Route 
+                  path="/about/PPIA"
+                  element={<PPIA />}
+                />
+                <Route 
+                  path="/about/INM"
+                  element={<INM />}
+                />
+                <Route 
+                  path="/about/ICON"
+                  element={<ICON />}
                 />
               </Routes>
             </div>

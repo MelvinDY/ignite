@@ -43,7 +43,7 @@ const Dashboard = () => {
         <h1 className="text-4xl font-bold text-center">About Us</h1>
         <button className="flex-1">
           <AboutUsCard className="h-full w-full" img={ngompoel}>
-            <h1 className="text-5xl font-bold">PPIA</h1>
+            <h1 className="sm:text-5xl text-3xl font-bold">PPIA</h1>
             <p className="text-lg">
               Short desc of PPIA
             </p>
@@ -51,7 +51,7 @@ const Dashboard = () => {
         </button>
         <button className="flex-1">
           <AboutUsCard className="h-full w-full" img={INM_event}>
-            <h1 className="text-5xl font-bold">International Night Market (INM)</h1>
+            <h1 className="sm:text-5xl text-3xl font-bold">International Night Market (INM)</h1>
             <p className="text-lg">
               Short desc of INM
             </p>
@@ -59,7 +59,7 @@ const Dashboard = () => {
         </button>
         <button className="flex-1">
           <AboutUsCard className="h-full w-full" img={ICON_event}>
-            <h1 className="text-5xl font-bold">ICON</h1>
+            <h1 className="sm:text-5xl text-3xl font-bold">ICON</h1>
             <p className="text-lg">
               Short desc of ICON
             </p>

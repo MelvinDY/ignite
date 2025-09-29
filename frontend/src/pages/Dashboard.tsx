@@ -41,30 +41,26 @@ const Dashboard = () => {
       <div ref={aboutUsSection} className="h-5"/>
       <section id="about" className="flex flex-col z-10 h-[calc(100vh-5rem)] px-20 gap-6 w-full">
         <h1 className="text-4xl font-bold text-center">About Us</h1>
-        <button className="flex-1">
-          <AboutUsCard className="h-full w-full" img={ngompoel}>
-            <h1 className="sm:text-5xl text-3xl font-bold">PPIA</h1>
-            <p className="text-lg">
-              Short desc of PPIA
-            </p>
-          </AboutUsCard>
-        </button>
-        <button className="flex-1">
-          <AboutUsCard className="h-full w-full" img={INM_event}>
-            <h1 className="sm:text-5xl text-3xl font-bold">International Night Market (INM)</h1>
-            <p className="text-lg">
-              Short desc of INM
-            </p>
-          </AboutUsCard>
-        </button>
-        <button className="flex-1">
-          <AboutUsCard className="h-full w-full" img={ICON_event}>
-            <h1 className="sm:text-5xl text-3xl font-bold">ICON</h1>
-            <p className="text-lg">
-              Short desc of ICON
-            </p>
-          </AboutUsCard>
-        </button>
+        <AboutUsCard className="flex-1 h-full w-full" img={ngompoel}>
+          <h1 className="sm:text-5xl text-3xl font-bold">PPIA</h1>
+          <p className="text-md mt-2">
+            Perhimpunan Pelajar Indonesia Australia (PPIA) or the Indonesian Student Association University of New Sourh Wales (UNSW)  is an organization of varsity Indonesian students in UNSW.
+          </p>
+        </AboutUsCard>
+        <AboutUsCard className="flex-1 h-full w-full" img={INM_event}>
+          <h1 className="sm:text-5xl text-3xl font-bold">International Night Market (INM)</h1>
+          <p className="text-md mt-2">
+            The Indonesian Night Market (INM) is PPIA UNSW’s annual flagship event, aimed to showcase Indonesian cuisine, culture, and festivities.
+          </p>
+        </AboutUsCard>
+ 
+        <AboutUsCard className="flex-1 h-full w-full" img={ICON_event}>
+          <h1 className="sm:text-5xl text-3xl font-bold">ICON</h1>
+          <p className="text-md mt-2">
+            ICON 2025 is an immersive, week-long educational and career event proudly organized by PPIA UNSW.
+          </p>
+        </AboutUsCard>
+
       </section>
     </div>
   );

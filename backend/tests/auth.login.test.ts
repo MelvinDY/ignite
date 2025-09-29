@@ -48,7 +48,7 @@ describe("POST /api/auth/login", () => {
 
     const res = await request(app).post(route).send(credentials).expect(200);
 
-    expect(res.body).toMatchObject({ success: true, userId: "user-123", accessToken: "fake_access_token", expiresIn: 900 });
+    expect(res.body).toMatchObject({ success: true, userId: "user-123", accessToken: "fake_access_token", expiresIn: 86400 });
     const setCookie = res.headers["set-cookie"][0];
     expect(setCookie).toContain("refreshToken=fake_refresh_token");
     expect(setCookie).toContain("HttpOnly");

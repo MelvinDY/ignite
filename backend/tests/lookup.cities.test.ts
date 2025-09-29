@@ -317,9 +317,9 @@ describe('GET /api/lookup/cities', () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
-            { name: 'Bandung' },
-            { name: 'Jakarta' },
-            { name: 'Surabaya' },
+            { id: 'Bandung', name: 'Bandung' },
+            { id: 'Jakarta', name: 'Jakarta' },
+            { id: 'Surabaya', name: 'Surabaya' },
         ]);
     });
 
@@ -337,8 +337,8 @@ describe('GET /api/lookup/cities', () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
-            { name: 'Bandung' },
-            { name: 'Jakarta' },
+            { id: 'Bandung', name: 'Bandung' },
+            { id: 'Jakarta', name: 'Jakarta' },
         ]);
     });
 
@@ -370,8 +370,8 @@ describe('GET /api/lookup/cities', () => {
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
-            { name: 'Jakarta' },
-            { name: 'Medan' },
+            { id: 'Jakarta', name: 'Jakarta' },
+            { id: 'Medan', name: 'Medan' },
         ]);
     });
 

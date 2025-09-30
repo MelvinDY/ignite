@@ -19,6 +19,10 @@ import { MyProfilePage } from "./pages/profile/me";
 import { PublicProfilePage } from "./pages/profile/PublicProfile";
 import { useAuth } from "./hooks/useAuth";
 import { MobileNavbar } from "./components/MobileNavbar";
+import MembershipBenefits from "./pages/membership/MembershipBenefits";
+import AboutPPIA from "./pages/about/PPIA";
+import { AcknowledgmentPage } from "./pages/AcknowledgmentPage";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -38,7 +42,9 @@ function App() {
   }, [attemptSessionRestore]);
 
   return (
-    <Routes>
+    <>
+      <ScrollToTop />
+      <Routes>
       {/* Auth routes - full screen, no navbar/footer */}
       <Route path="/auth/login" element={<Login />} />
       <Route path="/auth/register" element={<Register />} />
@@ -53,6 +59,7 @@ function App() {
       <Route path="/profile/me" element={<MyProfilePage />} />
       <Route path="/profile/:slug" element={<PublicProfilePage />} />
       <Route path="/feed" element={<FeedPage />} />
+      <Route path="/membership" element={<MembershipBenefits />} />
 
       {/* App routes - with navbar/footer */}
       <Route
@@ -65,10 +72,19 @@ function App() {
             <div className="block md:hidden">
               <MobileNavbar />
             </div>
-            <div className="flex flex-col m-20 pt-16">
+            <div className="flex flex-col">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/about" element={<AboutPPIA />} />
+                <Route path="/acknowledgment" element={<AcknowledgmentPage />} />
+                <Route path="/membership" element={<MembershipBenefits />} />
+                {/* About subpages */}
+                <Route path="/about">
+                  <Route path="ppia" element={<AboutPPIA />} />
+                  <Route path="icon" element={<AboutPPIA />} />
+                  <Route path="inm" element={<AboutPPIA />} />
+                </Route>
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}
@@ -80,6 +96,7 @@ function App() {
         }
       />
     </Routes>
+    </>
   );
 }
 

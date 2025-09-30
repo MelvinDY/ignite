@@ -1,32 +1,78 @@
-import { BatikBackground } from "../components/BatikBackground";
-import { MeetTheExecs } from "../components/MeetTheExecs";
+import ngompoel from "../assets/ngompoel-min.jpg";
+import ICON_event from "../assets/ICON-min.jpg";
+import INM_event from "../assets/INM-min.jpg";
+import { AboutUsCard } from "@/components/AboutUsCard";
+import { useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FadeInSection } from "@/components/FadeInSection";
 
 const Dashboard = () => {
+  const aboutUsSection = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (location.pathname === "/" && !location.hash) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (location.hash === "#about") {
+      aboutUsSection.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [location]);
+
+
   return (
-    <div className="w-full flex flex-col justify-start items-center gap-y-60 scroll-smooth snap-y">
-      <BatikBackground />
-      <section
-        id="welcome-header"
-        className="flex flex-col justify-center w-full items-center gap-5 z-10"
-      >
-        <header className="">
-          <h1 className="text-4xl font-bold">Welcome to</h1>
-          <p className="text-6xl font-bold">(insert logo PPIA UNSW)</p>
-        </header>
-        <div className="relative border rounded-xl h-64 bg-gray-400 w-[70%]">
-          <div className="p-4 gap-4 flex flex-col justify-center items-center h-full z-1">
-            <div className="w-full border rounded-xl bg-white">1</div>
-            <div className="w-full border rounded-xl bg-white">2</div>
-            <div className="w-full flex justify-center gap-2">
-              <div className="w-1/3 border rounded-xl bg-white">Log in</div>
-              <div className="w-1/3 border rounded-xl bg-white">Sign up</div>
+    <div className="w-full flex flex-col justify-start items-center scroll-smooth gap-y-12"
+    >
+      <FadeInSection>
+        {/* Welcome header */}
+        <section
+          id="welcome-header"
+          className="flex flex-col justify-center min-h-screen w-full items-center gap-5 z-10 bg-contain
+                    bg-center"
+          style={{ backgroundImage: `linear-gradient(rgba(159, 0, 0, 0.5), rgba(0,0,0,0.5)), url(${ngompoel})`}}
+        >
+          <header className="flex flex-col items-center mx-2 h-full justify-around mt-20">
+            <div className="flex flex-wrap justify-center items-center">
+              <h1 className="text-6xl text-center font-bold drop-shadow-xl mr-[1rem]">Welcome to</h1>
+              <h1 className="text-6xl text-center font-bold drop-shadow-xl">PPIA UNSW</h1>
             </div>
-          </div>
-        </div>
-      </section>
-      <section id="meet-the-execs" className="z-10">
+            <h2 className="text-center text-3xl font-bold drop-shadow-2xl rounded-xl h-64 w-[70%]">Connecting Indonesian students in Australia</h2>
+          </header>
+        </section>
+      </FadeInSection>
+
+      {/* <section id="meet-the-execs" className="z-10">
         <MeetTheExecs />
-      </section>
+      </section> */}
+
+      <FadeInSection>
+        <div ref={aboutUsSection} className="h-5"/>
+        <section id="about" className="flex flex-col z-10 min-h-[calc(100vh-5rem)] px-20 gap-6 w-full">
+          <h1 className="text-4xl font-bold text-center">About Us</h1>
+          <AboutUsCard className="flex-1 h-full w-full" img={ngompoel} onClick={() => navigate("/about/ppia")}>
+            <h1 className="sm:text-5xl text-3xl font-bold">PPIA</h1>
+            <p className="text-md mt-5">
+              Perhimpunan Pelajar Indonesia Australia (PPIA) or the Indonesian Student Association University of New Sourh Wales (UNSW)  is an organization of varsity Indonesian students in UNSW.
+            </p>
+          </AboutUsCard>
+
+          <AboutUsCard className="flex-1 h-full w-full" img={INM_event} onClick={() => navigate("/about/inm")}>
+            <h1 className="sm:text-5xl text-3xl font-bold">International Night Market (INM)</h1>
+            <p className="text-md mt-5">
+              The Indonesian Night Market (INM) is PPIA UNSW’s annual flagship event, aimed to showcase Indonesian cuisine, culture, and festivities.
+            </p>
+          </AboutUsCard>
+  
+          <AboutUsCard className="flex-1 h-full w-full" img={ICON_event} onClick={() => navigate("/about/icon")}>
+            <h1 className="sm:text-5xl text-3xl font-bold">ICON</h1>
+            <p className="text-md mt-5">
+              ICON 2025 is an immersive, week-long educational and career event proudly organized by PPIA UNSW.
+            </p>
+          </AboutUsCard>
+        </section>
+      </FadeInSection>
     </div>
   );
 };

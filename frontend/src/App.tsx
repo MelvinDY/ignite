@@ -72,7 +72,7 @@ function App() {
             <div className="block md:hidden">
               <MobileNavbar />
             </div>
-            <div className="flex flex-col m-20 pt-16">
+            <div className="flex flex-col">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />

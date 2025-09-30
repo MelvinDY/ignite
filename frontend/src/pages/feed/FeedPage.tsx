@@ -389,6 +389,7 @@ export const FeedPage = () => {
         searchResults={searchResults}
         loading={searchLoading}
         error={searchError}
+        currentProfileId={profile.id}
       />
 
       {/* ✅ Connection Requests Modal */}

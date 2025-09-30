@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Filter, X, ChevronDown } from 'lucide-react';
+import { Search, Filter, X } from 'lucide-react';
 import { searchApi, type LookupOption, type SearchFilters } from '../../lib/api/search';
 
 interface SearchBarProps {
@@ -8,17 +8,25 @@ interface SearchBarProps {
   onClear?: () => void;
 }
 
+function debounce<T extends (...args: any[]) => void>(fn: T, delay = 250) {
+  let t: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), delay);
+  };
+}
+
 const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
   const [searchTerm, setSearchTerm] = useState(query || '');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Filter options
+  // Lookup options
   const [majors, setMajors] = useState<LookupOption[]>([]);
   const [companies, setCompanies] = useState<LookupOption[]>([]);
   const [workFields, setWorkFields] = useState<LookupOption[]>([]);
   const [cities, setCities] = useState<LookupOption[]>([]);
 
-  // Selected filters
+  // Selected filters (store IDs from options)
   const [selectedMajors, setSelectedMajors] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [selectedWorkFields, setSelectedWorkFields] = useState<string[]>([]);
@@ -26,77 +34,119 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
   const [selectedCitizenship, setSelectedCitizenship] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('relevance');
 
-  const citizenshipOptions = [
-    { id: 'citizen', name: 'Citizen' },
-    { id: 'permanent-resident', name: 'Permanent Resident' }
+  // Citizenship — set ids equal to names so mapping stays simple
+  const citizenshipOptions: LookupOption[] = [
+    { id: 'Citizen', name: 'Citizen' },
+    { id: 'Permanent Resident', name: 'Permanent Resident' },
   ];
 
-  // Load lookup data when filters are first opened
-  const loadLookupData = async () => {
-    if (majors.length > 0) return; // Already loaded
+  // Companies server-autocomplete query
+  const [companiesQuery, setCompaniesQuery] = useState('');
 
+  // Load lookup data (majors, work fields, cities, base companies) when panel opens
+  const loadLookupData = useCallback(async () => {
     try {
       const [majorsData, companiesData, workFieldsData, citiesData] = await Promise.all([
-        searchApi.getMajors(),
-        searchApi.getCompanies(),
-        searchApi.getWorkFields(),
-        searchApi.getCities()
+        majors.length ? Promise.resolve(majors) : searchApi.getMajors(),
+        // Start companies with a baseline list (no query)
+        companies.length ? Promise.resolve(companies) : searchApi.getCompanies(),
+        workFields.length ? Promise.resolve(workFields) : searchApi.getWorkFields(),
+        cities.length ? Promise.resolve(cities) : searchApi.getCities(),
       ]);
-      setMajors(majorsData);
-      setCompanies(companiesData);
-      setWorkFields(workFieldsData);
-      setCities(citiesData);
+      if (majors.length === 0) setMajors(majorsData);
+      if (companies.length === 0) setCompanies(companiesData);
+      if (workFields.length === 0) setWorkFields(workFieldsData);
+      if (cities.length === 0) setCities(citiesData);
     } catch (error) {
       console.error('Failed to load lookup data:', error);
     }
-  };
+  }, [majors, companies, workFields, cities]);
+
+  useEffect(() => {
+    if (showFilters) {
+      loadLookupData();
+    }
+  }, [showFilters, loadLookupData]);
+
+  // Debounced fetch for companies when typing inside the Companies multiselect
+  const debouncedFetchCompanies = useCallback(
+    debounce(async (q: string) => {
+      try {
+        const data = await searchApi.getCompanies(q || undefined);
+        setCompanies(data);
+      } catch (e) {
+        console.error('Failed to fetch companies', e);
+      }
+    }, 250),
+    []
+  );
+
+  useEffect(() => {
+    if (showFilters) {
+      debouncedFetchCompanies(companiesQuery);
+    }
+  }, [companiesQuery, showFilters, debouncedFetchCompanies]);
 
   const handleSearch = useCallback(() => {
-    const trimmedSearchTerm = searchTerm.trim();
+    const trimmed = searchTerm.trim();
 
-    // Check if at least one search criterion is provided
-    const hasSearchCriteria = trimmedSearchTerm ||
-                              selectedMajors.length > 0 ||
-                              selectedCompanies.length > 0 ||
-                              selectedWorkFields.length > 0 ||
-                              selectedCities.length > 0 ||
-                              selectedCitizenship.length > 0;
+    const hasSearchCriteria =
+      !!trimmed ||
+      selectedMajors.length > 0 ||
+      selectedCompanies.length > 0 ||
+      selectedWorkFields.length > 0 ||
+      selectedCities.length > 0 ||
+      selectedCitizenship.length > 0;
 
-    if (!hasSearchCriteria) {
-      // Don't perform search if no criteria are provided
-      return;
-    }
+    if (!hasSearchCriteria) return;
 
-    // Convert IDs to names for the backend
-    const majorNames = selectedMajors.map(id =>
-      majors.find(m => m.id === id)?.name
-    ).filter(Boolean) as string[];
+    // Convert selected IDs -> names
+    const majorNames = selectedMajors
+      .map((id) => majors.find((m) => m.id === id)?.name)
+      .filter(Boolean) as string[];
 
-    const companyNames = selectedCompanies.map(id =>
-      companies.find(c => c.id === id)?.name
-    ).filter(Boolean) as string[];
+    const companyNames = selectedCompanies
+      .map((id) => companies.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
 
-    const workFieldNames = selectedWorkFields.map(id =>
-      workFields.find(w => w.id === id)?.name
-    ).filter(Boolean) as string[];
+    const workFieldNames = selectedWorkFields
+      .map((id) => workFields.find((w) => w.id === id)?.name)
+      .filter(Boolean) as string[];
 
-    const cityNames = selectedCities.map(id =>
-      cities.find(c => c.id === id)?.name
-    ).filter(Boolean) as string[];
+    const cityNames = selectedCities
+      .map((id) => cities.find((c) => c.id === id)?.name)
+      .filter(Boolean) as string[];
+
+    // Citizenship already uses ids equal to names
+    const citizenshipNames = selectedCitizenship;
 
     const filters: SearchFilters = {
-      q: trimmedSearchTerm || undefined,
+      q: trimmed || undefined,
       majors: majorNames.length ? majorNames : undefined,
       companies: companyNames.length ? companyNames : undefined,
       workFields: workFieldNames.length ? workFieldNames : undefined,
       cities: cityNames.length ? cityNames : undefined,
-      citizenship: selectedCitizenship.length ? selectedCitizenship : undefined,
+      citizenship: citizenshipNames.length ? citizenshipNames : undefined,
       sortBy: sortBy !== 'relevance' ? sortBy : undefined,
       page: 1,
-      pageSize: 20
+      pageSize: 20,
     };
+
     onSearch(filters);
-  }, [searchTerm, selectedMajors, selectedCompanies, selectedWorkFields, selectedCities, selectedCitizenship, sortBy, onSearch, majors, companies, workFields, cities]);
+  }, [
+    searchTerm,
+    selectedMajors,
+    selectedCompanies,
+    selectedWorkFields,
+    selectedCities,
+    selectedCitizenship,
+    sortBy,
+    onSearch,
+    majors,
+    companies,
+    workFields,
+    cities,
+  ]);
 
   const handleClear = () => {
     setSearchTerm('');
@@ -107,41 +157,50 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
     setSelectedCitizenship([]);
     setSortBy('relevance');
     setShowFilters(false);
+    setCompaniesQuery('');
     onClear?.();
   };
 
-  const hasActiveFilters = selectedMajors.length > 0 || selectedCompanies.length > 0 ||
-    selectedWorkFields.length > 0 || selectedCities.length > 0 || selectedCitizenship.length > 0;
+  const hasActiveFilters =
+    selectedMajors.length > 0 ||
+    selectedCompanies.length > 0 ||
+    selectedWorkFields.length > 0 ||
+    selectedCities.length > 0 ||
+    selectedCitizenship.length > 0;
+
+  type MultiSelectProps = {
+    options: LookupOption[];
+    selected: string[];
+    onChange: (values: string[]) => void;
+    placeholder: string;
+    onQueryChange?: (q: string) => void; // used for Companies only
+  };
 
   const MultiSelect = ({
     options,
     selected,
     onChange,
-    placeholder
-  }: {
-    options: LookupOption[];
-    selected: string[];
-    onChange: (values: string[]) => void;
-    placeholder: string;
-  }) => {
+    placeholder,
+    onQueryChange,
+  }: MultiSelectProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [localQuery, setLocalQuery] = useState('');
 
     const toggleOption = (optionId: string) => {
       if (selected.includes(optionId)) {
-        onChange(selected.filter(id => id !== optionId));
+        onChange(selected.filter((id) => id !== optionId));
       } else {
         onChange([...selected, optionId]);
       }
     };
 
-    const filteredOptions = options.filter(option =>
-      option.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredOptions = options.filter((option) =>
+      (option?.name || '').toLowerCase().includes(localQuery.toLowerCase())
     );
 
     const selectedNames = options
-      .filter(option => selected.includes(option.id))
-      .map(option => option.name);
+      .filter((option) => selected.includes(option.id))
+      .map((option) => option.name);
 
     return (
       <div className="relative">
@@ -160,7 +219,7 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const optionToRemove = options.find(opt => opt.name === name);
+                    const optionToRemove = options.find((opt) => opt.name === name);
                     if (optionToRemove) toggleOption(optionToRemove.id);
                   }}
                   className="ml-1 text-blue-600 hover:text-blue-800"
@@ -172,9 +231,13 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
           </div>
           <input
             type="text"
-            placeholder={selected.length > 0 ? "Type to add more..." : placeholder}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder={selected.length > 0 ? 'Type to add more...' : placeholder}
+            value={localQuery}
+            onChange={(e) => {
+              const q = e.target.value;
+              setLocalQuery(q);
+              onQueryChange?.(q);
+            }}
             onFocus={() => setIsOpen(true)}
             className="w-full outline-none text-sm text-gray-900 bg-transparent"
           />
@@ -184,7 +247,10 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
           <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => (
-                <label key={option.id} className="flex items-center p-2 hover:bg-gray-50 cursor-pointer">
+                <label
+                  key={option.id}
+                  className="flex items-center p-2 hover:bg-gray-50 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={selected.includes(option.id)}
@@ -196,7 +262,7 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
               ))
             ) : (
               <div className="p-2 text-sm text-gray-500">
-                No options found for "{searchTerm}"
+                No options found for &quot;{localQuery}&quot;
               </div>
             )}
           </div>
@@ -207,7 +273,8 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
             className="fixed inset-0 z-40"
             onClick={() => {
               setIsOpen(false);
-              setSearchTerm('');
+              setLocalQuery('');
+              onQueryChange?.(''); // reset companies query when closing
             }}
           />
         )}
@@ -239,17 +306,13 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
 
         <button
           type="button"
-          onClick={async () => {
-            if (!showFilters) {
-              await loadLookupData();
-            }
-            setShowFilters(!showFilters);
-          }}
+          onClick={() => setShowFilters((v) => !v)}
           className={`p-2 rounded-full transition-colors ${
             hasActiveFilters || showFilters
               ? 'text-[#fbbf39] bg-yellow-50'
               : 'text-white hover:text-[#fbbf39]'
           }`}
+          aria-label="Toggle filters"
         >
           <Filter className="w-5 h-5" />
         </button>
@@ -257,6 +320,7 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
         <button
           onClick={handleSearch}
           className="text-white hover:text-[#fbbf39] transition-colors"
+          aria-label="Search"
         >
           <Search className="w-5 h-5" />
         </button>
@@ -266,47 +330,58 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
         <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-40">
           <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Majors</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Majors
+              </label>
               <MultiSelect
                 options={majors}
                 selected={selectedMajors}
                 onChange={setSelectedMajors}
-                placeholder="Select majors"
+                placeholder="Type to filter majors (e.g., Electrical Engineering)"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Companies</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Companies
+              </label>
               <MultiSelect
                 options={companies}
                 selected={selectedCompanies}
                 onChange={setSelectedCompanies}
-                placeholder="Select companies"
+                placeholder="Type to search companies"
+                onQueryChange={setCompaniesQuery} // enables server autocomplete
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Work Fields</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Work Fields
+              </label>
               <MultiSelect
                 options={workFields}
                 selected={selectedWorkFields}
                 onChange={setSelectedWorkFields}
-                placeholder="Select work fields"
+                placeholder="Type to filter work fields"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cities</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cities
+              </label>
               <MultiSelect
                 options={cities}
                 selected={selectedCities}
                 onChange={setSelectedCities}
-                placeholder="Select cities"
+                placeholder="Type to filter cities"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Citizenship</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Citizenship
+              </label>
               <MultiSelect
                 options={citizenshipOptions}
                 selected={selectedCitizenship}
@@ -316,7 +391,9 @@ const SearchBar = ({ query, onSearch, onClear }: SearchBarProps) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sort By
+              </label>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}

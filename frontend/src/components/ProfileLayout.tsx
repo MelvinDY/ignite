@@ -12,6 +12,7 @@ import {
   X,
   Bell,
   Search,
+  WalletCards,
 } from 'lucide-react';
 
 interface ProfileLayoutProps {
@@ -35,7 +36,7 @@ export function ProfileLayout({ children }: ProfileLayoutProps) {
     { path: '/profile/me', icon: User, label: 'Profile' },
     { path: '/feed', icon: BookOpen, label: 'Feed' },
     { path: '/events', icon: Calendar, label: 'Events' },
-    { path: '/settings', icon: Settings, label: 'Settings' },
+    { path: '/membership', icon: WalletCards, label: 'Membership' },
   ];
 
   return (

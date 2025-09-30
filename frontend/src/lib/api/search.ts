@@ -113,9 +113,7 @@ export const searchApi = {
   async getMajors(): Promise<LookupOption[]> {
     const response = await fetch(`${API_BASE}/lookup/majors`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
 
     await handleApiError(response);
@@ -126,9 +124,7 @@ export const searchApi = {
     const params = query ? `?q=${encodeURIComponent(query)}` : "";
     const response = await fetch(`${API_BASE}/lookup/companies${params}`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
 
     await handleApiError(response);
@@ -138,21 +134,24 @@ export const searchApi = {
   async getWorkFields(): Promise<LookupOption[]> {
     const response = await fetch(`${API_BASE}/lookup/work-fields`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
 
     await handleApiError(response);
     return response.json();
   },
 
-  async getCities(): Promise<LookupOption[]> {
-    const response = await fetch(`${API_BASE}/lookup/cities`, {
+  async getCities(isIndonesian?: boolean): Promise<LookupOption[]> {
+    const params = new URLSearchParams();
+    if (typeof isIndonesian === 'boolean') {
+      params.append('isIndonesian', isIndonesian.toString());
+    }
+    const queryString = params.toString();
+    const url = `${API_BASE}/lookup/cities${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await fetch(url, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
     });
 
     await handleApiError(response);

@@ -4,13 +4,19 @@ import ProfileCard from "../../components/ui/ProfileCardFeed";
 import PostCard from "../../components/ui/PostsCardFeed";
 import TopBar from "../../components/ui/TopBar";
 import SearchModal from "../../components/ui/SearchModal";
+import ConnectionRequestsModal from "../../components/ui/ConnectionRequestsModal"; // ✅ NEW
 import { useNavigate } from "react-router-dom";
 import {
   profileApi,
   ProfileApiError,
   type ProfileMe,
 } from "../../lib/api/profile";
-import { searchApi, SearchApiError, type SearchFilters, type SearchResponse } from "../../lib/api/search";
+import {
+  searchApi,
+  SearchApiError,
+  type SearchFilters,
+  type SearchResponse,
+} from "../../lib/api/search";
 
 type User = {
   name: string;
@@ -29,7 +35,7 @@ type Post = {
   likes: number;
 };
 
-function NavItem({ label }: { label: string }) {
+function NavItem({ label, onClick }: { label: string; onClick?: () => void }) {
   let Icon;
   if (label.toLowerCase() === "connections") {
     Icon = Users;
@@ -42,7 +48,10 @@ function NavItem({ label }: { label: string }) {
   }
 
   return (
-    <li className="flex items-center gap-2 px-4 h-11 hover:bg-gray-50 cursor-pointer">
+    <li
+      className="flex items-center gap-2 px-4 h-11 hover:bg-gray-50 cursor-pointer"
+      onClick={onClick} // ✅ allow click handler
+    >
       <Icon className="size-4 text-gray-700" />
       <span className="capitalize text-lg">{label}</span>
     </li>
@@ -61,30 +70,25 @@ export const FeedPage = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
+  // ✅ Connection Requests modal state
+  const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
 
-  // This is just sample data
+  // Sample posts
   const posts: Post[] = useMemo(
     () => [
       {
         id: "p1",
-        author: {
-          name: "degus sudarmawan",
-          title: "Software Engineer • Google",
-          location: "",
-        },
+        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
         createdAt: "2 hr",
-        text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiatshfsofsojfsojfsjofjsjfosofjsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        text:
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiatshfsofsojfsojfsjofjsjfosofjsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         mediaUrl: "https://placehold.co/600x400",
         views: 27,
         likes: 16,
       },
       {
         id: "p2",
-        author: {
-          name: "degus sudarmawan",
-          title: "Software Engineer • Google",
-          location: "",
-        },
+        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
         createdAt: "2 hr",
         text: `Dengan bangga saya mengumumkan bahwa saya telah menyelesaikan program pelatihan \"Fundamental of Machine Learning\" dari Digital Talent Scholarship melalui platform DQLab.
               Selama pelatihan ini, saya mempelajari berbagai materi penting antara lain :
@@ -106,7 +110,7 @@ export const FeedPage = () => {
               ✅Pengantar Storytelling dengan Visualisasi menggunakan Python
               ✅Data Science in Marketing : Customer Segmentation with Python - Part 1
               ✅Data Science in Marketing : Customer Segmentation with Python - Part 2
-              ✅Master Data and Handling Duplicate Data with LinkR
+              ✅Master Data and Handling Duplicate Data dengan LinkR
 
               Pengalaman ini semakin memperkuat kemampuan saya dalam data science dan machine learning, serta mempersiapkan saya untuk menghadapi tantangan di dunia digital yang terus berkembang. Terima kasih Digital Talent Scholarship dan DQLab atas kesempatan dan ilmunya!
               hashtag#MachineLearning hashtag#DataScience hashtag#Python hashtag#Digitalent hashtag#DQLab hashtag#LearningJourney hashtag#CustomerSegmentation hashtag#DataVisualization`,
@@ -116,11 +120,7 @@ export const FeedPage = () => {
       },
       {
         id: "p3",
-        author: {
-          name: "degus sudarmawan",
-          title: "Software Engineer • Google",
-          location: "",
-        },
+        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
         createdAt: "2 hr",
         text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiat...",
         mediaUrl: "https://placehold.co/600x400",
@@ -145,10 +145,7 @@ export const FeedPage = () => {
 
         setProfile(profileData);
       } catch (err) {
-        if (
-          err instanceof ProfileApiError &&
-          err.code === "NOT_AUTHENTICATED"
-        ) {
+        if (err instanceof ProfileApiError && err.code === "NOT_AUTHENTICATED") {
           navigate("/auth/login");
         } else {
           setError("Failed to load profile. Please try again later.");
@@ -161,26 +158,52 @@ export const FeedPage = () => {
     checkAuth();
   }, [navigate]);
 
-  const handleSearch = async (filters: SearchFilters) => {
-    try {
-      setSearchLoading(true);
-      setSearchError(null);
-      setIsSearchModalOpen(true);
+  /**
+   * Accept either a plain query string from TopBar or a full SearchFilters.
+   * Normalizes to SearchFilters with default pagination.
+   */
+  const handleSearch = async (input: string | SearchFilters) => {
+    // Open modal immediately so users see the loading state
+    setIsSearchModalOpen(true);
+    setSearchLoading(true);
+    setSearchError(null);
 
+    // Normalize input
+    const filters: SearchFilters =
+      typeof input === "string"
+        ? {
+            q: input.trim() || undefined,
+            page: 1,
+            pageSize: 20,
+          }
+        : {
+            ...input,
+            q: input.q?.trim() || input.q,
+            page: input.page ?? 1,
+            pageSize: input.pageSize ?? 20,
+          };
+
+    try {
       const results = await searchApi.searchDirectory(filters);
       setSearchResults(results);
     } catch (err) {
       if (err instanceof SearchApiError) {
         if (err.code === "NOT_AUTHENTICATED") {
-          setSearchError("Please log in to search profiles. The lookup filters work without login, but searching requires authentication.");
-          setSearchResults({ results: [], pagination: { total: 0, page: 1, pageSize: 20, totalPages: 0 } });
-          return;
+          setSearchError(
+            "Please log in to search profiles. The lookup filters work without login, but searching requires authentication."
+          );
+          setSearchResults({
+            results: [],
+            pagination: { total: 0, page: 1, pageSize: 20, totalPages: 0 },
+          });
+        } else {
+          setSearchError(err.message);
+          setSearchResults(null);
         }
-        setSearchError(err.message);
       } else {
         setSearchError("Failed to search. Please try again.");
+        setSearchResults(null);
       }
-      setSearchResults(null);
     } finally {
       setSearchLoading(false);
     }
@@ -273,9 +296,7 @@ export const FeedPage = () => {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            Error Loading Feed
-          </h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Error Loading Feed</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
             onClick={() => navigate("/")}
@@ -301,14 +322,13 @@ export const FeedPage = () => {
     bio: profile.bio,
   };
 
-  const getInitials = (name: string) => {
-    return name
+  const getInitials = (name: string) =>
+    name
       .split(" ")
       .map((part) => part.charAt(0))
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa]">
@@ -316,6 +336,7 @@ export const FeedPage = () => {
       <TopBar
         imgSrc={userProfile.photoUrl}
         initials={getInitials(userProfile.fullName)}
+        // Allow TopBar to send either a plain query or full filters
         onSearch={handleSearch}
         onClearSearch={handleClearSearch}
       />
@@ -328,6 +349,10 @@ export const FeedPage = () => {
 
           <nav className="mt-4 overflow-hidden white-card">
             <ul className="divide-y text-sm">
+              <NavItem
+                label="Connection Requests"
+                onClick={() => setIsRequestsModalOpen(true)} // ✅ open modal
+              />
               <NavItem label="Connections" />
               <NavItem label="Bookmarks" />
               <NavItem label="Events" />
@@ -347,15 +372,11 @@ export const FeedPage = () => {
           <div className="h-[520px] flex flex-col white-card">
             <div className="flex items-center gap-2 p-5">
               <Calendar className="size-5 text-gray-700" />
-              <span className="text-black font-semibold text-lg">
-                Upcoming Events
-              </span>
+              <span className="text-black font-semibold text-lg">Upcoming Events</span>
             </div>
             <div className="h-full flex-center flex-col p-5 pb-7">
               <Calendar className="w-20 h-20 text-gray-300 mb-4" />
-              <span className="text-gray-500 text-lg font-medium">
-                No upcoming events
-              </span>
+              <span className="text-gray-500 text-lg font-medium">No upcoming events</span>
             </div>
           </div>
         </aside>
@@ -368,6 +389,12 @@ export const FeedPage = () => {
         searchResults={searchResults}
         loading={searchLoading}
         error={searchError}
+      />
+
+      {/* ✅ Connection Requests Modal */}
+      <ConnectionRequestsModal
+        isOpen={isRequestsModalOpen}
+        onClose={() => setIsRequestsModalOpen(false)}
       />
     </div>
   );

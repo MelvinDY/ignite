@@ -12,6 +12,7 @@ import {
   getConnections,
 } from "../services/connections.service";
 import { ConnectionRequestError } from "../types/ConnectionRequest";
+import { blockUser, unblockUser } from "../services/block.service";
 import { authenticateUser } from "./profile.routes";
 
 const router = Router();
@@ -291,6 +292,58 @@ router.get("/connections/status", async (req, res) => {
       return res.status(404).json({ code: "NOT_FOUND" });
     }
     console.error("connections.status.error", err?.message || err);
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * Story 4.9 — Block user
+ * POST /users/:profileId/block
+ */
+router.post("/users/:profileId/block", async (req, res) => {
+  // Authenticate user
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  // Get profile ID (target blocked user) from params
+  const targetProfileId = req.params.profileId;
+  if (!targetProfileId) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await blockUser(userId, targetProfileId);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
+    if (err?.code === "VALIDATION_ERROR") {
+      return res.status(400).json({ code: "VALIDATION_ERROR" });
+    }
+    if (err?.code === "NOT_FOUND") {
+      return res.status(404).json({ code: "NOT_FOUND" });
+    }
+    return res.status(500).json({ code: "INTERNAL" });
+  }
+});
+
+/**
+ * Story 4.10 — Unblock user
+ * DELETE /users/:profileId/block
+ */
+router.delete("/users/:profileId/block", async (req, res) => {
+  // Authenticate user
+  const userId = authenticateUser(req, res);
+  if (!userId) return;
+
+  // Get profile ID (target unblocked user) from params
+  const targetProfileId = req.params.profileId;
+  if (!targetProfileId) {
+    return res.status(400).json({ code: "VALIDATION_ERROR" });
+  }
+
+  try {
+    await unblockUser(userId, targetProfileId);
+    return res.status(200).json({ success: true });
+  } catch (err: any) {
     return res.status(500).json({ code: "INTERNAL" });
   }
 });

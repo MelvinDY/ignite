@@ -3472,6 +3472,146 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /users/{profileId}/block:
+    post:
+      tags: ["Connections"]
+      summary: Block a user
+      description: |
+        Block another user to prevent all future contact and interaction.
+        
+        **Flow:**
+        1. Validate user cannot block themselves
+        2. Verify target user exists
+        3. Create block relationship in database
+        4. Remove existing connection if present
+        5. Auto-decline/cancel any pending requests between users (handled by other stories)
+        
+        **Effects:**
+        - Adds row to blocks table (unique per pair)
+        - Removes existing connection if present
+        - Future requests between users are prevented
+        - Users are excluded from each other's search results
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: UUID of the user to block
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User successfully blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "400":
+          description: Validation error (cannot block self)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                cannot_block_self:
+                  value:
+                    code: "VALIDATION_ERROR"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: "NOT_AUTHENTICATED"
+        "404":
+          description: Target user not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                user_not_found:
+                  value:
+                    code: "NOT_FOUND"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: "INTERNAL"
+    
+    delete:
+      tags: ["Connections"]
+      summary: Unblock a user
+      description: |
+        Unblock a previously blocked user to restore their ability to connect.
+        
+        **Effects:**
+        - Removes row from blocks table
+        - Does NOT restore prior connection (users must reconnect manually)
+        - User becomes visible in Directory/Search again
+        - Future requests are now allowed
+        
+        **Idempotent:** Unblocking a non-blocked user still returns success.
+        
+        **Auth:** Bearer token required.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: profileId
+          in: path
+          required: true
+          description: UUID of the user to unblock
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User successfully unblocked (or was not blocked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessOnly"
+              examples:
+                success:
+                  value:
+                    success: true
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                not_authenticated:
+                  value:
+                    code: "NOT_AUTHENTICATED"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorSimple"
+              examples:
+                internal_error:
+                  value:
+                    code: "INTERNAL"
+
 components:
   securitySchemes:
     bearerAuth:

@@ -21,6 +21,8 @@ import { useAuth } from "./hooks/useAuth";
 import { MobileNavbar } from "./components/MobileNavbar";
 import MembershipBenefits from "./pages/membership/MembershipBenefits";
 import AboutPPIA from "./pages/about/PPIA";
+import AboutINM from "./pages/about/INM";
+import AboutICON from "./pages/about/ICON";
 import { AcknowledgmentPage } from "./pages/AcknowledgmentPage";
 import { ScrollToTop } from "./components/ScrollToTop";
 
@@ -72,19 +74,16 @@ function App() {
             <div className="block md:hidden">
               <MobileNavbar />
             </div>
-            <div className="flex flex-col m-20 pt-16">
+            <div className="flex flex-col pt-16">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/about" element={<AboutPPIA />} />
+                <Route path="/about/ppia" element={<AboutPPIA />} />
+                <Route path="/about/inm" element={<AboutINM />} />
+                <Route path="/about/icon" element={<AboutICON />} />
                 <Route path="/acknowledgment" element={<AcknowledgmentPage />} />
                 <Route path="/membership" element={<MembershipBenefits />} />
-                {/* About subpages */}
-                <Route path="/about">
-                  <Route path="ppia" element={<AboutPPIA />} />
-                  <Route path="icon" element={<AboutPPIA />} />
-                  <Route path="inm" element={<AboutPPIA />} />
-                </Route>
                 <Route
                   path="/add"
                   element={<AddUser onUserAdded={handleUserAdded} />}

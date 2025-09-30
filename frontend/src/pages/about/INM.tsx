@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import type { JSX, FC } from "react";
-import logoPPIA from "@/assets/Copy of PPIA.png";
+import logoPPIA from "@/assets/PPIA_logo_white.png";
+import inmPhoto1 from "@/assets/INM/GF500004.JPG";
+import inmPhoto2 from "@/assets/INM/PIX06792.JPG";
+import inmPhoto3 from "@/assets/INM/PIX06973.JPG";
+import inmPhoto4 from "@/assets/INM/XT5J2830.JPG";
+import inmPhoto5 from "@/assets/INM/XT5J2874.JPG";
+import inmPhoto6 from "@/assets/INM/XT5J2931.JPG";
+import inmPhoto7 from "@/assets/INM/XT5J3007.JPG";
+import inmPhoto8 from "@/assets/INM/XT5J3057.JPG";
 
 const HeroSection: FC<{ scrollOffset: number; blur?: number }> = ({ scrollOffset, blur = 0 }) => (
   <section
@@ -56,7 +64,7 @@ const HeroSection: FC<{ scrollOffset: number; blur?: number }> = ({ scrollOffset
 );
 
 const VisionMissionSection: FC = () => (
-  <section className="py-24 max-w-3xl mx-auto space-y-20">
+  <section className="h-screen flex flex-col justify-center max-w-3xl mx-auto space-y-20">
     <div className="text-left">
       <div className="relative inline-block">
         <div className="absolute -inset-24 z-0 bg-black/50 rounded-full blur-3xl" />
@@ -91,220 +99,190 @@ const VisionMissionSection: FC = () => (
   </section>
 );
 
-const LegacyEventCard: FC<{
-  index: number;
-  id: string;
-  image: string;
-  title: string;
-  theme: string;
-  activeEvent: number;
-}> = ({ index, id, image, title, theme, activeEvent }) => {
-  const offset = index - activeEvent;
-  const isVisible = Math.abs(offset) <= 2;
-
-  let transform, zIndex, opacity;
-
-  if (!isVisible) {
-    transform = `translateX(${offset * 100}%)`;
-    opacity = 0;
-    zIndex = 0;
-  } else {
-    const rotateY = offset * -25;
-    const translateX = offset * 50;
-    const translateZ = -Math.abs(offset) * 200;
-
-    transform = `translateX(${translateX}%) rotateY(${rotateY}deg) translateZ(${translateZ}px)`;
-    zIndex = 10 - Math.abs(offset);
-    opacity = offset === 0 ? 1 : 0.7;
-  }
-
-  return (
-    <div
-      key={id}
-      className="absolute top-0 left-0 right-0 mx-auto transition-all duration-500 ease-out"
-      style={{
-        width: "320px",
-        height: "480px",
-        transform,
-        zIndex,
-        opacity,
-      }}
-    >
-      <div className="relative w-full h-full bg-[#3E000C] text-white shadow-2xl shadow-black/50 overflow-hidden rounded-2xl border border-white/20">
-        <div
-          className="absolute inset-0 transition-opacity duration-500 rounded-2xl"
-          style={{
-            background: "radial-gradient(circle, transparent 20%, rgba(0,0,0,0.6) 100%)",
-            opacity: offset === 0 ? 0 : 1,
-          }}
-        />
-
-        {/* Event Image */}
-        <img src={image} alt={title} className="w-full h-[70%] object-cover" />
-
-        {/* Event Details */}
-        <div className="p-6 relative h-[30%] flex flex-col justify-between">
-          <div>
-            <h3 className="font-bold text-2xl text-white truncate tracking-wider uppercase">
-              {title}
-            </h3>
-            <p className="text-white text-sm mt-2 uppercase tracking-widest font-medium">
-              {theme}
-            </p>
-          </div>
-
-          {/* Traditional Indonesian decorative element */}
-          <div className="flex items-center justify-center space-x-2 mt-4 opacity-60">
-            <div className="w-2 h-2 bg-white transform rotate-45" />
-            <div className="w-2 h-2 bg-red-600 rounded-full" />
-            <div className="w-2 h-2 bg-white transform rotate-45" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const EventsSection: FC<{ scrollOffset: number }> = ({ scrollOffset }) => {
-  const [activeEvent, setActiveEvent] = useState<number>(2);
+  const [currentSlide, setCurrentSlide] = useState<number>(0);
+  const [startX, setStartX] = useState<number>(0);
+  const [endX, setEndX] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const events = [
     {
       id: 1,
-      title: "NAWASENA",
-      year: "2025",
-      theme: "Nine Realms of Heritage",
-      image: "https://placehold.co/400x300/3E000C/FFFFFF?text=NAWASENA+2025"
+      image: inmPhoto1
     },
     {
       id: 2,
-      title: "HERITAGE",
-      year: "2023",
-      theme: "Celebrating Tradition",
-      image: "https://placehold.co/400x300/8B0000/FFFFFF?text=HERITAGE+2023"
+      image: inmPhoto2
     },
     {
       id: 3,
-      title: "LEGACY",
-      year: "2022",
-      theme: "Timeless Flavors",
-      image: "https://placehold.co/400x300/654321/FFFFFF?text=LEGACY+2022"
+      image: inmPhoto3
     },
     {
       id: 4,
-      title: "CULTURE",
-      year: "2021",
-      theme: "Unity in Diversity",
-      image: "https://placehold.co/400x300/2F4F4F/FFFFFF?text=CULTURE+2021"
+      image: inmPhoto4
     },
     {
       id: 5,
-      title: "MALIOBORO",
-      year: "2020",
-      theme: "Streets of Indonesia",
-      image: "https://placehold.co/400x300/800080/FFFFFF?text=MALIOBORO+2020"
+      image: inmPhoto5
     },
     {
       id: 6,
-      title: "WARISAN",
-      year: "2019",
-      theme: "Cultural Legacy",
-      image: "https://placehold.co/400x300/006400/FFFFFF?text=WARISAN+2019"
+      image: inmPhoto6
     },
     {
       id: 7,
-      title: "PASAR MALAM",
-      year: "2018",
-      theme: "Night Market Spirit",
-      image: "https://placehold.co/400x300/4B0082/FFFFFF?text=PASAR+MALAM+2018"
+      image: inmPhoto7
     },
     {
       id: 8,
-      title: "MENUJU",
-      year: "2016",
-      theme: "Moving Forward",
-      image: "https://placehold.co/400x300/8B4513/FFFFFF?text=MENUJU+2016"
+      image: inmPhoto8
     }
   ];
 
-  const handlePrev = (): void => {
-    setActiveEvent((prev) => (prev > 0 ? prev - 1 : events.length - 1));
+  const totalSlides = events.length;
+
+  const updateSlide = () => {
+    const photoTrack = document.getElementById('photoTrack');
+    if (photoTrack) {
+      photoTrack.style.transform = `translateX(-${currentSlide * 100}vw)`;
+    }
   };
 
-  const handleNext = (): void => {
-    setActiveEvent((prev) => (prev < events.length - 1 ? prev + 1 : 0));
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % totalSlides);
   };
 
-  // Auto-advance based on scroll
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + totalSlides) % totalSlides);
+  };
+
   useEffect(() => {
-    const scrollBasedIndex = Math.floor(scrollOffset / 100) % events.length;
-    setActiveEvent(scrollBasedIndex);
-  }, [scrollOffset, events.length]);
+    updateSlide();
+  }, [currentSlide]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    setEndX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    const diff = startX - endX;
+    const threshold = 50;
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setStartX(e.clientX);
+    setIsDragging(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setEndX(e.clientX);
+  };
+
+  const handleMouseUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    const diff = startX - endX;
+    const threshold = 50;
+
+    if (Math.abs(diff) > threshold) {
+      if (diff > 0) {
+        nextSlide();
+      } else {
+        prevSlide();
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+  };
 
   return (
-    <section className="py-24 h-[600px] relative flex flex-col items-center justify-center bg-gradient-to-b from-[#3E000C] to-[#2A0008]">
-      {/* Section Title */}
-      <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold text-center mb-16 uppercase tracking-wider text-white">
-        Legacy Events
-      </h2>
-
-      {/* Navigation Buttons */}
-      <button
-        onClick={handlePrev}
-        className="absolute left-4 md:left-24 text-white/50 hover:text-white transition-colors z-20 top-1/2 -translate-y-1/2 group"
-        aria-label="Previous event"
+    <section className="relative w-full h-screen overflow-hidden">
+      <div
+        className="flex w-full h-full transition-transform duration-400 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+        id="photoTrack"
+        style={{
+          width: `${totalSlides * 100}vw`,
+          cursor: isDragging ? 'grabbing' : 'grab'
+        }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
       >
-        <div className="w-12 h-12 border border-white/30 rounded-full flex items-center justify-center group-hover:border-white transition-colors">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6"/>
-          </svg>
-        </div>
-      </button>
-
-      {/* 3D Card Display */}
-      <div className="relative w-full h-full" style={{ perspective: "1200px" }}>
-        <div
-          className="absolute w-full h-full"
-          style={{ transformStyle: "preserve-3d" }}
-        >
-          {events.map((event, index) => (
-            <LegacyEventCard
-              key={event.id}
-              index={index}
-              id={event.id.toString()}
-              image={event.image}
-              title={event.title}
-              theme={event.theme}
-              activeEvent={activeEvent}
+        {events.map((event) => (
+          <div key={event.id} className="w-screen h-screen flex-shrink-0 relative">
+            <img
+              src={event.image}
+              alt={`INM Legacy Event ${event.id}`}
+              className="w-full h-full object-cover"
             />
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
+      {/* Navigation Arrows */}
       <button
-        onClick={handleNext}
-        className="absolute right-4 md:right-24 text-white/50 hover:text-white transition-colors z-20 top-1/2 -translate-y-1/2 group"
-        aria-label="Next event"
+        onClick={prevSlide}
+        className="absolute top-1/2 left-8 transform -translate-y-1/2 w-12 h-12 bg-white/10 border-none rounded-full text-white text-xl cursor-pointer z-20 transition-all duration-300 backdrop-blur-md hover:bg-white/20 hover:scale-110 hidden md:flex items-center justify-center"
       >
-        <div className="w-12 h-12 border border-white/30 rounded-full flex items-center justify-center group-hover:border-white transition-colors">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6"/>
-          </svg>
-        </div>
+        &#8249;
       </button>
 
-      {/* Event Indicators */}
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-2">
+      <button
+        onClick={nextSlide}
+        className="absolute top-1/2 right-8 transform -translate-y-1/2 w-12 h-12 bg-white/10 border-none rounded-full text-white text-xl cursor-pointer z-20 transition-all duration-300 backdrop-blur-md hover:bg-white/20 hover:scale-110 hidden md:flex items-center justify-center"
+      >
+        &#8250;
+      </button>
+
+      {/* Navigation Dots */}
+      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex gap-3 z-20">
         {events.map((_, index) => (
           <button
             key={index}
-            onClick={() => setActiveEvent(index)}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              index === activeEvent
-                ? 'bg-white'
-                : 'bg-white/30 hover:bg-white/50'
+            onClick={() => setCurrentSlide(index)}
+            className={`w-2 h-2 rounded-full cursor-pointer transition-all duration-300 ${
+              index === currentSlide
+                ? 'bg-white/90 scale-125'
+                : 'bg-white/40 hover:bg-white/60'
             }`}
-            aria-label={`Go to event ${index + 1}`}
+            aria-label={`Go to slide ${index + 1}`}
           />
         ))}
       </div>
@@ -391,7 +369,7 @@ export default function AboutINM(): JSX.Element {
       className="bg-[#3E000C] min-h-screen text-white overflow-x-hidden"
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
-      <main>
+      <main className="border-l-[10px] border-r-[10px] border-white/20">
         <HeroSection scrollOffset={scrollOffset} blur={blurAmount} />
         <VisionMissionSection />
         <EventsSection scrollOffset={scrollOffset} />

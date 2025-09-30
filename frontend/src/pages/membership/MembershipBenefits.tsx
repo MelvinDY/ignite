@@ -2,6 +2,31 @@ import { useEffect, useRef, useState } from 'react';
 import { Navbar } from "../../components/Navbar";
 import { MobileNavbar } from "../../components/MobileNavbar";
 
+// Import sponsor logos
+import LittleIndoTown from '@/assets/Membership/LittleIndoTown.png';
+import DapurSate from '@/assets/Membership/DapurSate.webp';
+import KenanganCoffee from '@/assets/Membership/KenanganCoffee.png';
+import BintangBro from '@/assets/Membership/BintangBro.png';
+import SweetRepublic from '@/assets/Membership/SweetRepublic.png';
+import Dedy from '@/assets/Membership/Dedy.png';
+import ViciousCycle from '@/assets/Membership/ViciousCycle.webp';
+import AyamGoreng from '@/assets/Membership/AyamGoreng.png';
+import SquidPocha from '@/assets/Membership/SquidPocha.png';
+import Panda from '@/assets/Membership/Panda.png';
+import WooTea from '@/assets/Membership/WooTea.png';
+import EscapeHunt from '@/assets/Membership/EscapeHunt.png';
+import QuizRoom from '@/assets/Membership/QuizRoom.png';
+import VirtualRoom from '@/assets/Membership/VirtualRoom.jpeg';
+import GeprekInAus from '@/assets/Membership/GeprekInAus.jpeg';
+import C9 from '@/assets/Membership/C9.png';
+import KangenIndo from '@/assets/Membership/KangenIndo.png';
+import Truffles from '@/assets/Membership/Truffles.jpg';
+import MieZilla from '@/assets/Membership/MieZilla.png';
+import HairZone from '@/assets/Membership/HairZone.jpeg';
+import NailedByElla from '@/assets/Membership/NailedByElla.jpeg';
+import QBill from '@/assets/Membership/QBill-Logo-Final-Neon.png';
+import ShareTea from '@/assets/Membership/ShareTea.png';
+
 export default function MembershipBenefits() {
   const stepsRef = useRef<(HTMLDivElement | null)[]>([]);
   const [hoveredBenefit, setHoveredBenefit] = useState<number | null>(null);
@@ -30,40 +55,142 @@ export default function MembershipBenefits() {
 
   const benefits = [
     {
-      name: "Bintang BRO",
+      name: "Little Indo Town",
       discount: "10% OFF",
-      condition: "Only for orders made from the counter",
-      logo: "/images/bintang-bro-logo.png" // Replace with actual logo path
+      condition: "When dining for PPIA Card Holders",
+      logo: LittleIndoTown
     },
     {
-      name: "SHARE TEA",
+      name: "Dapur Sate",
+      discount: "10% OFF",
+      condition: "When dining for PPIA Card Holders",
+      logo: DapurSate
+    },
+    {
+      name: "Kenangan Coffee",
+      discount: "10% OFF",
+      condition: "When dining for PPIA Card Holders",
+      logo: KenanganCoffee
+    },
+    {
+      name: "Bintang Bro",
+      discount: "10% OFF + FREE MEAL",
+      condition: "10% for PPIA holders. Buy 3 main meals ($12.50+) get 1 free, Mon–Fri 2:30–4:00 PM",
+      logo: BintangBro
+    },
+    {
+      name: "Sweet Republic",
+      discount: "10% OFF + FREE TOPPINGS",
+      condition: "10% for PPIA holders. Free selected toppings Mon–Fri 2:30–4:00 PM",
+      logo: SweetRepublic
+    },
+    {
+      name: "Dedy's Cafe",
+      discount: "10% OFF",
+      condition: "On all purchases",
+      logo: Dedy
+    },
+    {
+      name: "Vicious Cycle",
+      discount: "20% OFF",
+      condition: "For 5, 10, or 20 class credit packages (RIDE + REFORMFIT + RECOVERY)",
+      logo: ViciousCycle
+    },
+    {
+      name: "Ayam Goreng 99",
+      discount: "10% OFF",
+      condition: "Off total bill",
+      logo: AyamGoreng
+    },
+    {
+      name: "Squid Pocha",
+      discount: "10% OFF",
+      condition: "Sunday–Thursday only",
+      logo: SquidPocha
+    },
+    {
+      name: "Panda",
+      discount: "FREE ENTRY",
+      condition: "For PPIA members before 11pm",
+      logo: Panda
+    },
+    {
+      name: "WooTea",
+      discount: "10% OFF",
+      condition: "Off total bill",
+      logo: WooTea
+    },
+    {
+      name: "EscapeHunt",
+      discount: "15% OFF",
+      condition: "Use discount code: PPIA15",
+      logo: EscapeHunt
+    },
+    {
+      name: "Quiz Room",
+      discount: "15% OFF",
+      condition: "Use discount code: PPIA15",
+      logo: QuizRoom
+    },
+    {
+      name: "Virtual Room",
+      discount: "15% OFF",
+      condition: "Use discount code: PPIA15",
+      logo: VirtualRoom
+    },
+    {
+      name: "Geprek in Sydney",
+      discount: "FREE TEH KOTAK",
+      condition: "With minimum purchase of 1 Geprek Bowl",
+      logo: GeprekInAus
+    },
+    {
+      name: "Innit Cafe & Bar",
+      discount: "10% OFF",
+      condition: "All food and drinks anytime (excluding bar side)",
+      logo: C9
+    },
+    {
+      name: "Kangen Indo",
+      discount: "10% OFF + FREE PANGSIT",
+      condition: "10% off base and free pangsit with every purchase",
+      logo: KangenIndo
+    },
+    {
+      name: "Truffles",
+      discount: "10% OFF + 5% EXTRA",
+      condition: "10% for PPIA holders, plus additional 5% for Google Review",
+      logo: Truffles
+    },
+    {
+      name: "Miezilla",
+      discount: "15% OFF",
+      condition: "With PPIA card",
+      logo: MieZilla
+    },
+    {
+      name: "Hairzone Sydney",
+      discount: "15% OFF",
+      condition: "On all services",
+      logo: HairZone
+    },
+    {
+      name: "Nailed by Ella",
+      discount: "10% OFF",
+      condition: "On any Gel X designs",
+      logo: NailedByElla
+    },
+    {
+      name: "Q Billiards",
+      discount: "10% OFF",
+      condition: "Table hire and food/beverage items from Qafe",
+      logo: QBill
+    },
+    {
+      name: "Share Tea",
       discount: "FREE UPSIZE",
       condition: "Only at Haymarket Branch",
-      logo: "/images/share-tea-logo.png" // Replace with actual logo path
-    },
-    {
-      name: "Kirribilli Pizzeria",
-      discount: "10% OFF",
-      condition: "Order in, for purchases over $30",
-      logo: "/images/kirribilli-logo.png" // Replace with actual logo path
-    },
-    {
-      name: "The Sambal",
-      discount: "10% OFF",
-      condition: "On all dine-in and takeaway orders",
-      logo: "/images/sambal-logo.png" // Replace with actual logo path
-    },
-    {
-      name: "The Bowls",
-      discount: "15% OFF",
-      condition: "On all menu items",
-      logo: "/images/bowls-logo.png" // Replace with actual logo path
-    },
-    {
-      name: "Mie Kocok Bandung",
-      discount: "10% OFF",
-      condition: "On main Courses, Dine in only",
-      logo: "/images/mie-kocok-logo.png" // Replace with actual logo path
+      logo: ShareTea
     }
   ];
 
@@ -363,19 +490,23 @@ export default function MembershipBenefits() {
           </div>
 
           {/* Marquee */}
-          <div className="marquee-container overflow-hidden relative my-[80px] py-6 glass-effect rounded-3xl">
+          <div className="marquee-container overflow-hidden relative my-[80px] py-10 glass-effect rounded-3xl">
             <div className="marquee flex w-fit">
               {[...benefits, ...benefits].map((benefit, index) => (
-                <div key={index} className="flex-shrink-0 mx-8">
-                  <div className="px-8 py-4 rounded-2xl glass-effect flex items-center gap-4">
-                    <div className="w-10 h-10 flex items-center justify-center rounded-md" 
-                         style={{ 
-                           backgroundColor: 'rgba(245, 230, 211, 0.2)',
-                           border: '2px solid rgba(245, 230, 211, 0.5)'
+                <div key={index} className="flex-shrink-0 mx-10">
+                  <div className="px-10 py-6 rounded-2xl glass-effect flex items-center gap-6">
+                    <div className="w-16 h-16 flex items-center justify-center rounded-lg overflow-hidden"
+                         style={{
+                           backgroundColor: benefit.logo ? 'white' : 'rgba(245, 230, 211, 0.2)',
+                           border: benefit.logo ? 'none' : '2px solid rgba(245, 230, 211, 0.5)'
                          }}>
-                      <span className="text-white font-bold text-sm">{benefit.name.substring(0, 2).toUpperCase()}</span>
+                      {benefit.logo ? (
+                        <img src={benefit.logo} alt={benefit.name} className="w-full h-full object-contain p-1" />
+                      ) : (
+                        <span className="text-white font-bold text-lg">{benefit.name.substring(0, 2).toUpperCase()}</span>
+                      )}
                     </div>
-                    <span className="text-white font-semibold text-lg">{benefit.name}</span>
+                    <span className="text-white font-semibold text-xl">{benefit.name}</span>
                   </div>
                 </div>
               ))}
@@ -409,15 +540,11 @@ export default function MembershipBenefits() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
                   {benefits.map((benefit, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="benefit-card rounded-3xl p-8 cursor-pointer"
                       onMouseEnter={() => setHoveredBenefit(index)}
                       onMouseLeave={() => setHoveredBenefit(null)}
-                      style={{ 
-                        animation: 'fadeInUp 0.5s ease forwards',
-                        animationDelay: `${index * 0.1}s`
-                      }}
                     >
                       <div className="flex items-start justify-between mb-6">
                         <div className="flex-1">
@@ -426,14 +553,18 @@ export default function MembershipBenefits() {
                             Member Exclusive
                           </span>
                         </div>
-                        <div className="w-16 h-16 ml-4 flex items-center justify-center rounded-lg" 
-                             style={{ 
-                               backgroundColor: '#F5E6D3',
-                               border: '3px solid #3E000C',
+                        <div className="w-20 h-20 ml-4 flex items-center justify-center rounded-lg overflow-hidden"
+                             style={{
+                               backgroundColor: benefit.logo ? 'transparent' : '#F5E6D3',
+                               border: benefit.logo ? 'none' : '3px solid #3E000C',
                                transform: hoveredBenefit === index ? 'rotate(5deg) scale(1.1)' : 'rotate(0) scale(1)',
                                transition: 'transform 0.3s ease'
                              }}>
-                          <span className="text-2xl font-bold" style={{ color: '#3E000C' }}>{benefit.name.charAt(0)}</span>
+                          {benefit.logo ? (
+                            <img src={benefit.logo} alt={benefit.name} className="w-full h-full object-contain" />
+                          ) : (
+                            <span className="text-2xl font-bold" style={{ color: '#3E000C' }}>{benefit.name.charAt(0)}</span>
+                          )}
                         </div>
                       </div>
                       

@@ -17,6 +17,7 @@ import {
   type SearchFilters,
   type SearchResponse,
 } from "../../lib/api/search";
+import ConnectionsModal from "../../components/ui/ConnectionsModal";
 
 type User = {
   name: string;
@@ -70,8 +71,9 @@ export const FeedPage = () => {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-  // ✅ Connection Requests modal state
+  // Connection Requests modal state
   const [isRequestsModalOpen, setIsRequestsModalOpen] = useState(false);
+  const [isConnectionsModalOpen, setIsConnectionsModalOpen] = useState(false);
 
   // Sample posts
   const posts: Post[] = useMemo(
@@ -349,11 +351,8 @@ export const FeedPage = () => {
 
           <nav className="mt-4 overflow-hidden white-card">
             <ul className="divide-y text-sm">
-              <NavItem
-                label="Connection Requests"
-                onClick={() => setIsRequestsModalOpen(true)} // ✅ open modal
-              />
-              <NavItem label="Connections" />
+              <NavItem label="Connection Requests" onClick={() => setIsRequestsModalOpen(true)} />
+              <NavItem label="Connections" onClick={() => setIsConnectionsModalOpen(true)} />
               <NavItem label="Bookmarks" />
               <NavItem label="Events" />
             </ul>
@@ -392,10 +391,16 @@ export const FeedPage = () => {
         currentProfileId={profile.id}
       />
 
-      {/* ✅ Connection Requests Modal */}
+      {/* Connection Requests Modal */}
       <ConnectionRequestsModal
         isOpen={isRequestsModalOpen}
         onClose={() => setIsRequestsModalOpen(false)}
+      />
+
+      {/* Connections List Modal */}
+      <ConnectionsModal
+        isOpen={isConnectionsModalOpen}
+        onClose={() => setIsConnectionsModalOpen(false)}
       />
     </div>
   );

@@ -126,6 +126,17 @@ const mapRequest = (raw: any, listType: Direction): ConnectionRequest => {
   };
 };
 
+/** Map a connection item (shape from GET /connections)*/
+const mapConnectionMini = (u: any): MiniProfile => ({
+  id: u?.profileId ?? u?.id ?? "",
+  fullName: u?.fullName ?? "",
+  handle: u?.handle ?? "",
+  photoUrl: u?.photoUrl ?? u?.photo_url ?? null,
+  headline: u?.headline ?? null,
+  domicileCity: u?.domicileCity ?? null,
+  domicileCountry: u?.domicileCountry ?? null,
+});
+
 /** === API surface === */
 export const connectionsApi = {
   /** Send Connection Request (POST /connections/requests) */
@@ -194,17 +205,17 @@ export const connectionsApi = {
   },
 
   /** Accept incoming (keep commented until your route is live) */
-  // async accept(requestId: string): Promise<void> {
-  //   const res = await fetch(
-  //     `${API_BASE}/connections/requests/${encodeURIComponent(requestId)}/accept`,
-  //     {
-  //       method: "POST",
-  //       headers: getAuthHeaders(),
-  //       credentials: "include",
-  //     }
-  //   );
-  //   await handleApiError(res);
-  // },
+  async accept(requestId: string): Promise<void> {
+    const res = await fetch(
+      `${API_BASE}/connections/requests/${encodeURIComponent(requestId)}/accept`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+        credentials: "include",
+      }
+    );
+    await handleApiError(res);
+  },
 
   /** Decline incoming (keep commented until your route is live) */
   // async decline(requestId: string): Promise<void> {
@@ -231,7 +242,22 @@ export const connectionsApi = {
       credentials: "include",
     });
     await handleApiError(res);
-    return res.json();
+    const raw = await res.json();
+
+    // Normalize so each connection has a proper MiniProfile.id
+    const results: MiniProfile[] = Array.isArray(raw?.results)
+      ? raw.results.map((u: any) => mapConnectionMini(u))
+      : [];
+
+    return {
+      results,
+      pagination: raw?.pagination ?? {
+        total: results.length,
+        page,
+        pageSize,
+        totalPages: 1,
+      },
+    };
   },
 
   /** Remove a connection (DELETE /connections/:profileId) */

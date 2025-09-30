@@ -18,7 +18,7 @@ const PAGE_SIZE = 20;
  * Accept:  POST /connections/requests/:id/accept
  * Decline: POST /connections/requests/:id/decline
  */
-const HAS_ACCEPT = false;   // set to true when accept route is live
+const HAS_ACCEPT = true;   // set to true when accept route is live
 const HAS_DECLINE = false;  // set to true when decline route is live
 
 const ConnectionRequestsModal: React.FC<Props> = ({ isOpen, onClose }) => {
@@ -117,7 +117,7 @@ const ConnectionRequestsModal: React.FC<Props> = ({ isOpen, onClose }) => {
     }
     setActionBusy(req.requestId, true);
     try {
-      await connectionsApi.accept!(req.requestId);
+      await connectionsApi.accept(req.requestId);
       removeFromIncoming(req.requestId);
       setTotalIncoming((t) => Math.max(0, t - 1));
     } catch (e: any) {

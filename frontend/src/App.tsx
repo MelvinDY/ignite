@@ -25,6 +25,7 @@ import AboutINM from "./pages/about/INM";
 import AboutICON from "./pages/about/ICON";
 import { AcknowledgmentPage } from "./pages/AcknowledgmentPage";
 import { ScrollToTop } from "./components/ScrollToTop";
+import Chat from "./pages/Chat";
 
 function App() {
   const [, setRefreshKey] = useState(0);
@@ -62,6 +63,7 @@ function App() {
       <Route path="/profile/:slug" element={<PublicProfilePage />} />
       <Route path="/feed" element={<FeedPage />} />
       <Route path="/membership" element={<MembershipBenefits />} />
+      <Route path="/chat" element={<Chat />} />
 
       {/* App routes - with navbar/footer */}
       <Route

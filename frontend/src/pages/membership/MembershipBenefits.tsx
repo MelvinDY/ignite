@@ -195,10 +195,26 @@ export default function MembershipBenefits() {
   ];
 
   const registrationSteps = [
-    "Reach out to us via email or Instagram.",
-    "Complete the registration form provided.",
-    "Proceed with the payment process.",
-    "Receive your PPIA membership card and member number."
+    {
+      text: "Sign up on the Arc Portal: Create an Arc membership account using your email and password. Log in, search for Indonesian Students Association under the Clubs tab, and click 'Join.'",
+      link: "https://member.arc.unsw.edu.au/login",
+      linkText: "Visit Arc Portal"
+    },
+    {
+      text: "Fill out the Google Form in our O-Week Stall: Scan the QR code at our booth to access the form. Complete your details and leave the Membership Card Number question blank if you're a new member.",
+      link: null,
+      linkText: null
+    },
+    {
+      text: "Pay the $15 Membership Fee: Pay at the booth to receive your PPIA membership card.",
+      link: null,
+      linkText: null
+    },
+    {
+      text: "Complete the Form: Input your membership card number into the form and submit it.",
+      link: null,
+      linkText: null
+    }
   ];
 
   return (
@@ -609,7 +625,7 @@ export default function MembershipBenefits() {
             {/* Header Bar */}
             <div className="relative py-8 px-12" style={{ background: 'linear-gradient(135deg, #3E000C, #6B0015)' }}>
               <h2 className="text-5xl md:text-6xl font-black text-white text-center tracking-tight">
-                REGISTRATION
+                UNSW PPIA MEMBERSHIP REGISTRATION
               </h2>
               <div className="absolute inset-0 opacity-20" style={{
                 backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.1) 10px, rgba(255,255,255,0.1) 20px)'
@@ -621,7 +637,7 @@ export default function MembershipBenefits() {
               <div className="max-w-[900px] mx-auto">
                 <div className="modern-border rounded-3xl p-10 mb-10" style={{ background: 'linear-gradient(135deg, #3E000C, #5A0010)' }}>
                   <p className="text-white text-xl mb-8 font-semibold">
-                    To register as a new member of PPIA, follow these simple steps:
+                    Follow these simple steps to join:
                   </p>
                   
                   <div className="space-y-6 mb-10">
@@ -629,23 +645,40 @@ export default function MembershipBenefits() {
                       <div
                         key={index}
                         ref={el => { stepsRef.current[index] = el; }}
-                        className="registration-step flex items-center gap-6 p-5 rounded-2xl glass-effect"
+                        className="registration-step flex items-start gap-6 p-5 rounded-2xl glass-effect"
                         style={{ background: 'rgba(255, 255, 255, 0.1)' }}
                       >
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-lg" 
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center font-black text-lg flex-shrink-0"
                              style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#FFF' }}>
                           {index + 1}
                         </div>
-                        <p className="text-white text-lg flex-1">{step}</p>
+                        <div className="flex-1">
+                          <p className="text-white text-lg mb-3">{step.text}</p>
+                          {step.link && (
+                            <a
+                              href={step.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-semibold text-sm transition-all duration-300 hover:scale-105"
+                              style={{
+                                background: 'linear-gradient(135deg, #F5E6D3, #FAF0E6)',
+                                color: '#3E000C'
+                              }}
+                            >
+                              <span>{step.linkText}</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
 
                   <div className="p-6 rounded-2xl" style={{ background: 'rgba(255, 255, 255, 0.1)' }}>
                     <p className="text-white text-lg leading-relaxed">
-                      Alternatively, new members can register during <span className="font-bold">O-Week</span> at PPIA's annual booth. 
-                      This booth offers a convenient opportunity to sign up on the spot and immediately receive your 
-                      membership card and member number.
+                      <span className="font-bold">Congratulations!</span> You're now an official member of PPIA UNSW. Welcome aboard!
                     </p>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { JSX, FC } from "react";
-import logoPPIA from "@/assets/PPIA_logo_white.png";
+import logoINM from "@/assets/INM/PURE_WHITE_INM_NO_YEAR.png";
 import inmPhoto1 from "@/assets/INM/GF500004.JPG";
 import inmPhoto2 from "@/assets/INM/PIX06792.JPG";
 import inmPhoto3 from "@/assets/INM/PIX06973.JPG";
@@ -12,12 +12,7 @@ import inmPhoto8 from "@/assets/INM/XT5J3057.JPG";
 
 const HeroSection: FC<{ scrollOffset: number; blur?: number }> = ({ scrollOffset, blur = 0 }) => (
   <section
-    className="h-screen relative pt-20"
-    style={{
-      transform: `translateY(${scrollOffset * 0.4}px)`,
-      filter: `blur(${blur}px)`,
-      willChange: "transform",
-    }}
+    className="h-[calc(100vh-80px)] relative"
   >
     <div
       className="absolute inset-0 z-0"
@@ -28,20 +23,20 @@ const HeroSection: FC<{ scrollOffset: number; blur?: number }> = ({ scrollOffset
     />
 
     {/* Main Title - Top Right */}
-    <div className="absolute top-20 right-0 z-10 text-right">
-      <h1 className="m-0 leading-none text-4xl md:text-6xl lg:text-7xl font-bold tracking-wider uppercase text-white">
+    <div className="absolute top-[15px] right-0 z-10 text-right">
+      <h1 className="m-0 leading-none text-6xl md:text-8xl lg:text-9xl font-bold tracking-wider uppercase text-white">
         INDONESIAN
       </h1>
-      <h1 className="m-0 -mt-1 md:-mt-3 lg:-mt-5 leading-none text-4xl md:text-6xl lg:text-7xl font-bold tracking-wider uppercase text-white">
+      <h1 className="m-0 -mt-3 md:-mt-6 lg:-mt-9 leading-none text-6xl md:text-8xl lg:text-9xl font-bold tracking-wider uppercase text-white">
         NIGHT MARKET
       </h1>
-      <h1 className="m-0 -mt-1 md:-mt-3 lg:-mt-5 leading-none text-4xl md:text-6xl lg:text-7xl font-bold tracking-wider uppercase text-white">
+      <h1 className="m-0 -mt-3 md:-mt-6 lg:-mt-9 leading-none text-6xl md:text-8xl lg:text-9xl font-bold tracking-wider uppercase text-white">
         2025
       </h1>
     </div>
 
     {/* Subtitle - Below main title */}
-    <div className="absolute top-60 right-0 z-10 text-right">
+    <div className="absolute top-[350px] right-0 z-10 text-right">
       <h2 className="text-2xl md:text-3xl lg:text-4xl font-medium tracking-widest uppercase text-white/90">
         NAWASENA
       </h2>
@@ -49,12 +44,12 @@ const HeroSection: FC<{ scrollOffset: number; blur?: number }> = ({ scrollOffset
 
     {/* Logo - Bottom Left */}
     <div className="absolute bottom-48 left-0 z-10">
-      <img src={logoPPIA} alt="PPIA UNSW Logo" className="w-32 h-32 md:w-40 md:h-40" />
+      <img src={logoINM} alt="INM Logo" className="w-32 h-32 md:w-40 md:h-40" />
     </div>
 
     {/* Description - Bottom Left, under logo */}
     <div className="absolute bottom-8 left-0 z-10 max-w-md">
-      <p className="text-sm md:text-base text-white/80 leading-relaxed">
+      <p className="text-base md:text-lg text-white/80 leading-relaxed">
         Experience the vibrant flavors, sounds, and colors of Indonesia at Sydney's premier cultural celebration.
         A night market bringing authentic Indonesian street food, traditional performances, and cultural experiences
         to the heart of UNSW, connecting communities through the rich heritage of the archipelago.
@@ -369,7 +364,7 @@ export default function AboutINM(): JSX.Element {
       className="bg-[#3E000C] min-h-screen text-white overflow-x-hidden"
       style={{ fontFamily: "'Figtree', sans-serif" }}
     >
-      <main className="border-l-[10px] border-r-[10px] border-white/20">
+      <main className="border-l-[15px] border-r-[15px] border-[#3E000C]">
         <HeroSection scrollOffset={scrollOffset} blur={blurAmount} />
         <VisionMissionSection />
         <EventsSection scrollOffset={scrollOffset} />

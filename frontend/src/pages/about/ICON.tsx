@@ -53,12 +53,12 @@ const ICON: FC = (): JSX.Element => {
       images: [icon1_1, icon1_2, icon1_3],
       theme: "DAY 1 ACTIVITIES",
       descriptions: [
-        "Opening ceremony and welcome activities for ICON 2024. Participants gathered for the first day of innovative networking and collaboration.",
+        "Opening ceremony and welcome activities for ICON 2025. Participants gathered for the first day of innovative networking and collaboration.",
         "Workshop sessions and interactive activities continued throughout the day, fostering connections between Indonesian students.",
         "Day 1 concluded with networking dinner and cultural performances, setting the tone for the upcoming days."
       ],
       imageDetails: [
-        "Opening ceremony capturing the excitement and energy of ICON 2024's first day with participants ready to engage.",
+        "Opening ceremony capturing the excitement and energy of ICON 2025's first day with participants ready to engage.",
         "Mid-day workshop activities showcasing collaborative learning and skill development among Indonesian students.",
         "Evening networking session highlighting cultural exchange and community building through shared experiences."
       ],
@@ -68,7 +68,7 @@ const ICON: FC = (): JSX.Element => {
       images: [icon2_1, icon2_2, icon2_3],
       theme: "DAY 2 WORKSHOPS",
       descriptions: [
-        "Professional development workshops and skill-building sessions dominated the second day of ICON 2024.",
+        "Professional development workshops and skill-building sessions dominated the second day of ICON 2025.",
         "Interactive seminars and guest speaker presentations provided valuable insights for career development.",
         "Collaborative projects and team-building exercises strengthened the Indonesian student community bonds."
       ],
@@ -98,14 +98,14 @@ const ICON: FC = (): JSX.Element => {
       images: [icon4_1, icon4_2, icon4_3],
       theme: "DAY 4 CELEBRATION",
       descriptions: [
-        "Cultural celebration and Indonesian heritage showcase marked the final day of ICON 2024.",
+        "Cultural celebration and Indonesian heritage showcase marked the final day of ICON 2025.",
         "Traditional performances, food festival, and cultural exhibitions celebrated Indonesian diversity.",
-        "Closing ceremony and farewell celebration concluded the successful ICON 2024 event with lasting memories."
+        "Closing ceremony and farewell celebration concluded the successful ICON 2025 event with lasting memories."
       ],
       imageDetails: [
         "Cultural celebration featuring traditional Indonesian performances and heritage showcase for the community.",
         "Food festival and cultural exhibitions highlighting the rich diversity of Indonesian culture and traditions.",
-        "Closing ceremony capturing the emotional farewell and lasting connections made during ICON 2024."
+        "Closing ceremony capturing the emotional farewell and lasting connections made during ICON 2025."
       ],
     },
   ];
@@ -136,18 +136,26 @@ const ICON: FC = (): JSX.Element => {
 
   return (
     <div className="bg-[#3E000C] min-h-screen text-white overflow-x-hidden" style={{ fontFamily: "'Figtree', sans-serif" }}>
-      <main className="border-l-[10px] border-r-[10px] border-white/20">
+      <main>
         {/* Hero Section with ICON Logo */}
-        <div className="pt-32 relative flex flex-row justify-between items-center px-8 min-h-screen">
-          <div className="max-w-xs">
-            Lorem ipsum dolor, sit amet consectetur adipisicing elit. Cumque omnis
-            ratione tempora. Aliquam, impedit? Voluptate non tenetur velit hic,
-            illo ratione est molestiae, tempore eos vero veritatis nobis
-            asperiores. Odio saepe libero numquam velit eaque, fugiat ut corporis
-            sit deleniti dignissimos voluptatem nulla et explicabo nobis corrupti
-            vero enim praesentium!
+        <div className="relative flex flex-row justify-between items-center px-8 h-[calc(100vh-80px)]">
+          <div
+            className="absolute inset-0 z-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)",
+            }}
+          />
+          <div className="max-w-md relative z-10">
+            <p className="text-sm md:text-base leading-relaxed text-white/80">
+              ICON 2025 is an immersive, week-long educational and career event proudly organized by PPIA UNSW.
+              This year's ICON marks a pivotal shift—from bringing innovative speakers from Indonesia to Australia,
+              to spotlighting the achievements and potential of innovative Indonesians already residing in Australia.
+              The event features distinguished panels, interactive workshops, exciting competitions, and valuable
+              networking opportunities across diverse academic disciplines.
+            </p>
           </div>
-          <div className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter">
+          <div className="text-[12rem] md:text-[16rem] font-bold leading-none tracking-tighter relative z-10">
             <div className="px-16">
               <img src={ICONLogo} alt="Icon" className="w-[200px] h-45" />
             </div>
@@ -164,8 +172,15 @@ const ICON: FC = (): JSX.Element => {
         >
           {/* Vision - Left */}
           <div className="relative min-h-[50vh] p-8 md:p-16 border-r border-white/20 flex items-center">
+            <div
+              className="absolute inset-0 z-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)",
+              }}
+            />
             {/* Rotated ICON text */}
-            <div className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2">
+            <div className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-10">
               <div className="-rotate-90 origin-center">
                 <h2 className="text-3xl md:text-5xl font-bold tracking-widest whitespace-nowrap">
                   ICON
@@ -173,30 +188,34 @@ const ICON: FC = (): JSX.Element => {
               </div>
             </div>
 
-            <div className="ml-12 md:ml-20 max-w-md">
+            <div className="ml-12 md:ml-20 max-w-md relative z-10">
               <h3 className="text-4xl md:text-5xl font-bold mb-6 uppercase tracking-widest">VISION</h3>
               <p className="text-sm md:text-base leading-relaxed text-white/80">
-                We strive to further increase community interactions through
-                innovative initiatives, including sports, collaborative efforts,
-                fundraising, and networking. With the aim of sustainable growth,
-                we will restructure our organization to maintain a consistently
-                high level of quality in our initiatives.
+                To empower students at UNSW by fostering meaningful industry connections,
+                cultural pride, and leadership growth through impactful events like ICON,
+                while representing the voice and ambition of our community with professionalism and heart.
               </p>
             </div>
           </div>
 
           {/* Mission - Right */}
           <div className="relative min-h-[50vh] p-8 md:p-16 flex items-center justify-end">
-            <div className="max-w-md">
+            <div
+              className="absolute inset-0 z-0"
+              style={{
+                background:
+                  "radial-gradient(ellipse 70% 60% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)",
+              }}
+            />
+            <div className="max-w-md relative z-10">
               <h3 className="text-4xl md:text-5xl font-bold mb-6 text-right uppercase tracking-widest">
                 MISSION
               </h3>
               <p className="text-sm md:text-base leading-relaxed text-right text-white/80">
-                We strive to further increase community interactions through
-                innovative initiatives, including sports, collaborative efforts,
-                fundraising, and networking. With the aim of sustainable growth,
-                we will restructure our organization to maintain a consistently
-                high level of quality in our initiatives.
+                We aim to elevate ICON as a premier educational and industry networking platform for
+                local and international students at UNSW. Through curated speaker sessions, professional
+                development opportunities, and meaningful collaborations, ICON empowers students to gain
+                real-world insights, build connections, and develop the confidence to lead beyond university.
               </p>
             </div>
           </div>
@@ -211,7 +230,7 @@ const ICON: FC = (): JSX.Element => {
             transition: "transform 0.1s ease-out",
           }}
         >
-          <h1 className="text-6xl font-bold px-20 mb-16 uppercase tracking-wider">ICON Recap 2024</h1>
+          <h1 className="text-6xl font-bold px-20 mb-16 uppercase tracking-wider">ICON Recap 2025</h1>
           <div className="flex flex-col md:flex-row items-start justify-center">
             <div className="relative w-full md:w-auto flex justify-center md:justify-start mb-4 md:mb-0">
               <div
@@ -318,7 +337,7 @@ const ICON: FC = (): JSX.Element => {
         {/* Instagram Section */}
         <section className="py-24 max-w-xl mx-auto flex flex-col items-center">
           <a
-            href="https://www.instagram.com/icon_unsw"
+            href="https://www.instagram.com/iconunsw"
             target="_blank"
             rel="noopener noreferrer"
             className="group relative z-10 mb-8 block"

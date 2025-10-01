@@ -31,13 +31,6 @@ const Navbar = () => {
             >
               <img src={ppiaLogo} className="w-10"></img>
             </button>
-            <button
-              className="hover:underline"
-              onClick={() => handleNavigation("/about")}
-
-            >
-              Home
-            </button>
             <div className="flex flex-col items-center justify-center group">
               {/* About button */}
               <button
@@ -51,21 +44,21 @@ const Navbar = () => {
                               group-hover:visible transition-opacity duration-500 ease-in-out">
                 <ul className="flex flex-col gap-2">
                   {/* Submenu for About */}
-                  <Link to="/about/ppia" 
+                  <Link to="/about/ppia"
                     className="px-3 rounded-lg hover:underline transition-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     PPIA
                   </Link>
                   <div className="h-px bg-gray-300 my-1" />
-                  <Link to="/about/inm" 
+                  <Link to="/about/inm"
                     className="px-3 rounded-lg hover:underline transition-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     INM
                   </Link>
                   <div className="h-px bg-gray-300 my-1" />
-                  <Link to="/about/icon" 
+                  <Link to="/about/icon"
                     className="px-3 rounded-lg hover:underline transition-all"
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -74,12 +67,6 @@ const Navbar = () => {
                 </ul>
               </div>
             </div>
-            <button
-              className="hover:underline"
-              onClick={() => handleNavigation("/events")}
-            >
-              Events
-            </button>
             <button
               className="hover:underline"
               onClick={() => handleNavigation("/feed")}

@@ -477,7 +477,7 @@ router.post("/auth/login", loginLimiter, async (req, res) => {
       success: true,
       userId: profileId,
       accessToken,
-      expiresIn: 60 * 15,
+      expiresIn: 60 * 60 * 24
     });
   } catch (err: any) {
     console.error("login.error", err?.message || err);
@@ -526,7 +526,7 @@ router.post("/auth/refresh", async (req, res) => {
     const accessToken = await generateAccessToken(userId);
     return res
       .status(200)
-      .json({ success: true, accessToken, userId, expiresIn: 60 * 15 });
+      .json({ success: true, accessToken, userId, expiresIn: 60 * 60 * 24 });
   } catch (err: any) {
     console.error("refresh.error", err?.message || err);
     return res.status(500).json({ code: "INTERNAL" });
@@ -678,10 +678,10 @@ router.patch("/auth/pending/email", async (req, res) => {
       success: true,
       resumeToken: newResumeToken,
     });
-   } catch (err: any) {
+  } catch (err: any) {
     console.error('change-email-pre-verify.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
-   }
+  }
 });
 
 /**
@@ -755,7 +755,7 @@ router.get('/auth/pending/context', async (req, res) => {
   } catch (err: any) {
     console.error('pending-context.error', err?.message || err);
     return res.status(500).json({ code: 'INTERNAL' });
-  }     
+  }
 });
 
 /**

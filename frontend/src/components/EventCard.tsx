@@ -6,6 +6,7 @@ export function EventCard({
   date,
   desc,
   activeEvent,
+  onSeeMore,
 }: {
   id: string;
   image: string;
@@ -14,6 +15,7 @@ export function EventCard({
   desc: string;
   index: number;
   activeEvent: number;
+  onSeeMore?: () => void;
 }) {
   const offset = index - activeEvent;
   const isVisible = Math.abs(offset) <= 1;
@@ -62,12 +64,12 @@ export function EventCard({
           <p className="text-sm text-gray-700 mt-3 h-10 overflow-hidden">
             {desc}
           </p>
-          <a
-            href="#"
-            className="absolute bottom-[-8px] right-4 text-xs font-bold tracking-widest uppercase text-gray-800 hover:underline"
+          <button
+            onClick={onSeeMore}
+            className="absolute bottom-[-8px] right-4 text-xs font-bold tracking-widest uppercase text-gray-800 hover:underline cursor-pointer"
           >
             see more
-          </a>
+          </button>
         </div>
       </div>
     </div>

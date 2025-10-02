@@ -1,9 +1,24 @@
 import { useState, useEffect } from "react";
 import type { JSX, FC } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { EventCard } from "@/components/EventCard";
 import logoPPIA from "@/assets/PPIA_logo_white.png";
 import { BsInstagram } from "react-icons/bs";
+
+// Import event images
+import Welcome1 from "@/assets/WelcomingEvent/20250404_191622.jpg";
+import Welcome2 from "@/assets/WelcomingEvent/20250404_192058.jpg";
+import Welcome3 from "@/assets/WelcomingEvent/Welcome1.jpg";
+
+import Hero1 from "@/assets/ProjectHero/_TRY1764.JPG";
+import Hero2 from "@/assets/ProjectHero/_TRY1779.JPG";
+import Hero3 from "@/assets/ProjectHero/_TRY1794.JPG";
+
+import Matcha1 from "@/assets/Matchilates/Matcha1.jpeg";
+
+import Ngoempoel1 from "@/assets/NgoempoelAja/Ngoempoel1.JPG";
+import Ngoempoel2 from "@/assets/NgoempoelAja/Ngoempoel2.JPG";
+import Ngoempoel3 from "@/assets/NgoempoelAja/Ngoempoel3.JPG";
 
 // --- Type Definitions ---
 interface Event {
@@ -12,57 +27,62 @@ interface Event {
   date: string;
   desc: string;
   image: string;
+  images?: string[];
+  fullDesc?: string;
 }
 
 // --- Data & Constants ---
 const eventsData: Event[] = [
   {
     id: 0,
-    title: "Event title 1",
-    date: "15th Feb 2025",
-    desc: "descp event 1",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
+    title: "Welcoming Event",
+    date: "April 2025",
+    desc: "Welcome new students to PPIA UNSW",
+    image: Welcome1,
+    images: [Welcome1, Welcome2, Welcome3],
+    fullDesc: "A warm welcome event for new Indonesian students at UNSW, featuring introductions, networking opportunities, and cultural activities to help students feel at home in their new academic journey."
   },
   {
     id: 1,
-    title: "Event title 2",
-    date: "22nd Mar 2025",
-    desc: "descp event 2",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
+    title: "Project Hero",
+    date: "2025",
+    desc: "Community service initiative",
+    image: Hero1,
+    images: [Hero1, Hero2, Hero3],
+    fullDesc: "Project Hero is a community service initiative by PPIA UNSW aimed at giving back to the local community through various charitable activities and volunteer work."
   },
   {
     id: 2,
-    title: "Event title 3",
-    date: "10th Apr 2025",
-    desc: "descp event 3",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
+    title: "Sport Day",
+    date: "2025",
+    desc: "Annual sports competition",
+    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Sport+Day",
+    images: [],
+    fullDesc: "An exciting day of sports and friendly competition where Indonesian students come together to showcase their athletic abilities and team spirit."
   },
   {
     id: 3,
-    title: "Event title 4",
-    date: "5th May 2025",
-    desc: "descp event 4",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
+    title: "Matchilates",
+    date: "2025",
+    desc: "Wellness and fitness event",
+    image: Matcha1,
+    images: [Matcha1],
+    fullDesc: "A unique wellness event combining matcha tea culture with pilates exercises, promoting health and mindfulness among PPIA members."
   },
   {
     id: 4,
-    title: "Event title 5",
-    date: "18th Jun 2025",
-    desc: "descp event 5",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
-  },
-  {
-    id: 5,
-    title: "Event title 6",
-    date: "30th Jul 2025",
-    desc: "descp event 6",
-    image: "https://placehold.co/400x300/e8e8e8/3E000C?text=Event",
+    title: "Ngoempoel Aja",
+    date: "2025",
+    desc: "Casual gathering and networking",
+    image: Ngoempoel1,
+    images: [Ngoempoel1, Ngoempoel2, Ngoempoel3],
+    fullDesc: "Ngoempoel Aja is a casual gathering event where Indonesian students can relax, socialize, and strengthen bonds within the PPIA community in a laid-back atmosphere."
   },
 ];
 
 const HeroSection: FC<{ scrollOffset: number }> = ({ scrollOffset }) => (
   <section
-    className="h-screen flex flex-col items-center text-center relative pt-48 mt-20"
+    className="h-[calc(100vh-80px)] flex flex-col items-center text-center relative pt-48 mt-20"
     style={{
       transform: `translateY(${scrollOffset * 0.4}px)`,
       willChange: "transform",
@@ -138,11 +158,94 @@ const VisionMissionSection: FC = () => (
   </section>
 );
 
+const EventModal: FC<{
+  event: Event | null;
+  onClose: () => void;
+}> = ({ event, onClose }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  if (!event) return null;
+
+  const images = event.images && event.images.length > 0 ? event.images : [event.image];
+
+  const handlePrevImage = () => {
+    setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+  };
+
+  const handleNextImage = () => {
+    setCurrentImageIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+        >
+          <X size={24} />
+        </button>
+
+        {/* Image slider */}
+        <div className="relative w-full h-[60vh] bg-gray-900">
+          <img
+            src={images[currentImageIndex]}
+            alt={`${event.title} - ${currentImageIndex + 1}`}
+            className="w-full h-full object-contain"
+          />
+
+          {/* Navigation arrows */}
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button
+                onClick={handleNextImage}
+                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+              >
+                <ChevronRight size={32} />
+              </button>
+            </>
+          )}
+
+          {/* Image counter */}
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/50 rounded-full text-white text-sm">
+              {currentImageIndex + 1} / {images.length}
+            </div>
+          )}
+        </div>
+
+        {/* Event details */}
+        <div className="p-6 text-black">
+          <h3 className="text-2xl font-bold mb-2">{event.title}</h3>
+          <p className="text-sm text-gray-500 mb-4">{event.date}</p>
+          <p className="text-gray-700 leading-relaxed">
+            {event.fullDesc || event.desc}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const EventsSection: FC<{
   activeEvent: number;
   onPrev: () => void;
   onNext: () => void;
-}> = ({ activeEvent, onPrev, onNext }) => (
+  onEventClick: (event: Event) => void;
+}> = ({ activeEvent, onPrev, onNext, onEventClick }) => (
   <section className="py-24 h-[40rem] relative flex flex-col items-center justify-center">
     <h2 className="text-5xl font-medium text-center mb-12 uppercase tracking-widest">
       Event
@@ -168,6 +271,7 @@ const EventsSection: FC<{
             desc={event.desc}
             image={event.image}
             activeEvent={activeEvent}
+            onSeeMore={() => onEventClick(event)}
           />
         ))}
       </div>
@@ -280,6 +384,7 @@ const Footer: FC = () => (
 export default function AboutPPIA(): JSX.Element {
   const [activeEvent, setActiveEvent] = useState<number>(2);
   const [scrollOffset, setScrollOffset] = useState<number>(0);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
 
   useEffect(() => {
     const handleScroll = () => setScrollOffset(window.pageYOffset);
@@ -322,6 +427,14 @@ export default function AboutPPIA(): JSX.Element {
     setActiveEvent((prev) => (prev < eventsData.length - 1 ? prev + 1 : 0));
   };
 
+  const handleEventClick = (event: Event): void => {
+    setSelectedEvent(event);
+  };
+
+  const handleCloseModal = (): void => {
+    setSelectedEvent(null);
+  };
+
   return (
     <div
       className="bg-[#3E000C] min-h-screen text-white overflow-x-hidden"
@@ -334,11 +447,16 @@ export default function AboutPPIA(): JSX.Element {
           activeEvent={activeEvent}
           onPrev={handlePrev}
           onNext={handleNext}
+          onEventClick={handleEventClick}
         />
         <JoinUsSection />
         <InstagramSection />
         <Footer />
       </main>
+
+      {selectedEvent && (
+        <EventModal event={selectedEvent} onClose={handleCloseModal} />
+      )}
     </div>
   );
 }

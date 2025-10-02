@@ -1,7 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { GlassCard } from "../ui/GlassCard";
-import { BatikBackground } from "../BatikBackground";
 import connectImage from "../../assets/Connect.png";
 
 interface AuthLayoutProps {
@@ -12,7 +11,17 @@ interface AuthLayoutProps {
 export function AuthLayout({ children, title }: AuthLayoutProps) {
   return (
     <div className="min-h-screen w-full relative overflow-hidden flex items-center justify-center p-2 sm:p-4 lg:p-6">
-      <BatikBackground />
+      {/* Base background gradient */}
+      <div className="fixed inset-0 bg-gradient-to-b from-[var(--dark-red)] via-[var(--darker-red)] to-[var(--dark-red)]" />
+
+      {/* Radial blur gradient overlay */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: "radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0,0,0,0.5) 0%, transparent 70%)"
+        }}
+      />
+
       {/* Header Navigation */}
       <div className="absolute top-0 left-0 right-0 z-50 p-4 sm:p-6">
         <div className="flex justify-between items-center">
@@ -42,16 +51,6 @@ export function AuthLayout({ children, title }: AuthLayoutProps) {
             IGNITE UNSW
           </div>
         </div>
-      </div>
-
-      {/* Responsive subtle background elements for depth */}
-      <div className="absolute inset-0 opacity-15 sm:opacity-20">
-        <div className="absolute top-1/4 left-1/4 w-20 h-20 sm:w-32 sm:h-32 lg:w-48 lg:h-48 bg-white/6 sm:bg-white/8 rounded-full blur-2xl sm:blur-3xl" />
-        <div className="absolute bottom-1/3 right-1/3 w-16 h-16 sm:w-24 sm:h-24 lg:w-36 lg:h-36 bg-white/4 sm:bg-white/6 rounded-full blur-xl sm:blur-2xl" />
-        <div className="absolute top-1/2 right-1/4 w-14 h-14 sm:w-20 sm:h-20 lg:w-28 lg:h-28 bg-white/5 sm:bg-white/7 rounded-full blur-xl sm:blur-2xl" />
-
-        {/* Additional mobile-only element */}
-        <div className="absolute top-3/4 left-1/3 w-12 h-12 bg-white/3 rounded-full blur-xl sm:hidden" />
       </div>
 
       {/* Content */}

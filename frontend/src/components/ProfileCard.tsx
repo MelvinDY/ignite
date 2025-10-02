@@ -6,10 +6,13 @@ import {
   Building,
   Award,
   Edit2,
+  Link as LinkIcon,
+  BadgeCheck
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ProfilePictureUpload } from "./ProfilePictureUpload";
 import { BannerModal } from "./ui/BannerModal";
+import { SocialLinksModal } from "./ui/SocialLinksModal";
 
 interface ProfileData {
   id: string;
@@ -28,6 +31,8 @@ interface ProfileData {
   domicileCity?: string | null;
   domicileCountry?: string | null;
   cgpa?: number | null;
+  citizenshipStatus?: string | null;
+  socialLinks?: Record<string, string> | null;
 }
 
 interface ProfileCardProps {
@@ -46,6 +51,7 @@ export function ProfileCard({
   const [photoUrl, setPhotoUrl] = useState(profile.photoUrl);
   const [bannerUrl, setBannerUrl] = useState<string | null>(profile.bannerUrl);
   const [openBannerModal, setOpenBannerModal] = useState(false);
+  const [openLinksModal, setOpenLinksModal] = useState(false);
 
   const getInitials = (name: string) =>
     name
@@ -136,13 +142,23 @@ export function ProfileCard({
           )}
 
           {isOwnProfile && (
-            <Link
-              to="/profile/edit"
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 bg-[#3E000C] text-white rounded-lg hover:bg-[#3E000C]/90 transition-colors text-sm font-medium"
-            >
-              <Edit2 className="w-4 h-4" />
-              Edit Profile
-            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                onClick={() => setOpenLinksModal(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-800 bg-white hover:bg-gray-50"
+                title="View social links"
+              >
+                <LinkIcon className="w-4 h-4" />
+                Links
+              </button>
+              <Link
+                to="/profile/edit"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#3E000C] text-white rounded-lg hover:bg-[#3E000C]/90 transition-colors text-sm font-medium"
+              >
+                <Edit2 className="w-4 h-4" />
+                Edit Profile
+              </Link>
+            </div>
           )}
         </div>
 
@@ -223,6 +239,14 @@ export function ProfileCard({
               🎓 Indonesian Student
             </span>
           )}
+
+          {profile.citizenshipStatus && (
+            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              <BadgeCheck className="w-3.5 h-3.5" />
+              {profile.citizenshipStatus}
+            </span>
+          )}
+
           {profile.yearGrad && (
             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
               Alumni {profile.yearGrad}
@@ -243,6 +267,16 @@ export function ProfileCard({
           }
         />
       )}
+
+      {openLinksModal && (
+        <SocialLinksModal
+          isOpen={openLinksModal}
+          onClose={() => setOpenLinksModal(false)}
+          links={profile.socialLinks}
+          handle={profile.handle}
+        />
+      )}
+
     </div>
   );
 }

@@ -29,6 +29,7 @@ const ProfileMeResponseSchema = z.object({
   headline: z.string().nullable(),
   domicileCity: z.string().nullable(),
   domicileCountry: z.string().nullable(),
+  citizenshipStatus: z.string().nullable(),
   bio: z.string().nullable(),
   socialLinks: z.any(),
   createdAt: z.string(),

@@ -185,6 +185,8 @@ export function MyProfilePage() {
     headline: profile.headline,
     domicileCity: profile.domicileCity,
     domicileCountry: profile.domicileCountry,
+    citizenshipStatus: profile.citizenshipStatus,
+    socialLinks: profile.socialLinks,
   };
 
   return (

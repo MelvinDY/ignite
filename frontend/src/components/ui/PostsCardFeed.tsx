@@ -68,15 +68,23 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       </p>
 
         {post.mediaUrl && (
-            <div className="w-full mt-3">
-            <img
+          <a
+            href={post.mediaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block mt-3"
+          >
+            <div className="w-full max-h-[420px] rounded-lg bg-black/5 overflow-hidden flex items-center justify-center">
+              <img
                 src={post.mediaUrl}
                 alt="post visual"
-                className="w-full aspect-[16/9] object-cover rounded-lg"
                 loading="lazy"
-            />
+                className="max-h-[420px] w-full object-contain"
+              />
             </div>
+          </a>
         )}
+
     </div>
 
     {/* footer */}

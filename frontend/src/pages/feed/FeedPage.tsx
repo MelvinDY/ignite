@@ -80,11 +80,11 @@ export const FeedPage = () => {
     () => [
       {
         id: "p1",
-        author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
+        author: { name: "Share Tea • Sponsored", title: "GET YOUR FREE UPSIZE >3<", location: "" },
         createdAt: "2 hr",
         text:
-          "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiatshfsofsojfsojfsjofjsjfosofjsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        mediaUrl: "https://placehold.co/600x400",
+          "Get your free UPSIZE sharetea by showing your PPIA UNSW card at our Haymarket branch",
+        mediaUrl: "https://scontent.fsyd10-2.fna.fbcdn.net/v/t1.6435-9/163034907_807867463153751_1829461298656869553_n.jpg?stp=dst-jpg_p526x296_tt6&_nc_cat=106&ccb=1-7&_nc_sid=127cfc&_nc_ohc=-CPiWoe5yPcQ7kNvwEFMKGs&_nc_oc=Adk76DzGQQBrRDMPiqimzIEV7v0Jx4TAkviX2I1zjRzqI9BdpNWe6NBVIlWWqPo7TXo&_nc_zt=23&_nc_ht=scontent.fsyd10-2.fna&_nc_gid=7b9BvwDl_4XAw8baaIfxPA&oh=00_AfbtNOGy1_L0wnAmKrCQwhoJNcXNdazDfhJnvZeNfUEY5g&oe=69055151",
         views: 27,
         likes: 16,
       },
@@ -116,7 +116,7 @@ export const FeedPage = () => {
 
               Pengalaman ini semakin memperkuat kemampuan saya dalam data science dan machine learning, serta mempersiapkan saya untuk menghadapi tantangan di dunia digital yang terus berkembang. Terima kasih Digital Talent Scholarship dan DQLab atas kesempatan dan ilmunya!
               hashtag#MachineLearning hashtag#DataScience hashtag#Python hashtag#Digitalent hashtag#DQLab hashtag#LearningJourney hashtag#CustomerSegmentation hashtag#DataVisualization`,
-        mediaUrl: "https://placehold.co/600x400",
+        mediaUrl: "https://atriainnovation.com/uploads/2023/11/portada-9-900x743-c-center.jpg",
         views: 27,
         likes: 16,
       },
@@ -124,7 +124,7 @@ export const FeedPage = () => {
         id: "p3",
         author: { name: "degus sudarmawan", title: "Software Engineer • Google", location: "" },
         createdAt: "2 hr",
-        text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque feugiat...",
+        text: "Placeholder",
         mediaUrl: "https://placehold.co/600x400",
         views: 27,
         likes: 16,

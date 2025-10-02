@@ -97,10 +97,7 @@ export default function Chat() {
   };
 
   const handleSendMessage = () => {
-    if (messageInput.trim() && selectedChat) {
-      // Mock sending - in real app, this would send to backend
-      setMessageInput('');
-    }
+    if (messageInput.trim() && selectedChat) setMessageInput('');
   };
 
   const selectedUser = mockUsers.find(u => u.id === selectedChat);
@@ -108,18 +105,28 @@ export default function Chat() {
 
   return (
     <>
+      {/* Keep navbar see-through */}
       <div className="hidden md:block">
         <Navbar />
       </div>
       <div className="block md:hidden">
         <MobileNavbar />
       </div>
-      <div className="min-h-screen bg-white pt-16">
+
+      {/* 🔴 Red gradient sits BEHIND everything, including the transparent navbar */}
+      <div
+        className="min-h-screen bg-cover bg-center pt-16"  // pt-16 = navbar height
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(62,0,12,0.85), rgba(107,0,21,0.85))',
+        }}
+      >
+        {/* Translucent chat shell so the red bleeds through slightly */}
         <div className="max-w-7xl mx-auto h-[calc(100vh-4rem)]">
-          <div className="flex h-full border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex h-full rounded-lg overflow-hidden border border-white/20 bg-white/80 backdrop-blur-md">
             {/* Users List */}
-            <div className="w-80 bg-gray-50 border-r border-gray-200">
-              <div className="p-6 border-b border-gray-200">
+            <div className="w-80 bg-white/70 border-r border-white/30">
+              <div className="p-6 border-b border-white/30">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Messages</h2>
                 <input
                   type="text"
@@ -132,8 +139,8 @@ export default function Chat() {
                   <div
                     key={user.id}
                     onClick={() => setSelectedChat(user.id)}
-                    className={`p-4 cursor-pointer transition-colors border-b border-gray-200 hover:bg-gray-100 ${
-                      selectedChat === user.id ? 'bg-gray-100' : ''
+                    className={`p-4 cursor-pointer transition-colors border-b border-white/30 hover:bg-white/60 ${
+                      selectedChat === user.id ? 'bg-white/70' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
@@ -142,15 +149,15 @@ export default function Chat() {
                           {user.avatar}
                         </div>
                         {user.online && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <h3 className="font-semibold text-gray-900 truncate">{user.name}</h3>
-                          <span className="text-xs text-gray-500">{user.timestamp}</span>
+                          <span className="text-xs text-gray-600">{user.timestamp}</span>
                         </div>
-                        <p className="text-sm text-gray-600 truncate">{user.lastMessage}</p>
+                        <p className="text-sm text-gray-700 truncate">{user.lastMessage}</p>
                       </div>
                       {user.unread > 0 && (
                         <div className="w-5 h-5 rounded-full bg-[#3E000C] text-white text-xs flex items-center justify-center">
@@ -168,19 +175,19 @@ export default function Chat() {
               {selectedUser ? (
                 <>
                   {/* Chat Header */}
-                  <div className="p-6 bg-white border-b border-gray-200">
+                  <div className="p-6 bg-white/80 border-b border-white/30 backdrop-blur">
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#F5E6D3] to-[#FAF0E6] flex items-center justify-center text-2xl">
                           {selectedUser.avatar}
                         </div>
                         {selectedUser.online && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                         )}
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900">{selectedUser.name}</h3>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-600">
                           {selectedUser.online ? 'Online' : 'Offline'}
                         </p>
                       </div>
@@ -188,36 +195,35 @@ export default function Chat() {
                   </div>
 
                   {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
-                    {messages.map(message => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                      >
+                  <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white/60">
+                    {messages.map(m => (
+                      <div key={m.id} className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div
                           className={`max-w-md px-4 py-3 rounded-2xl ${
-                            message.sender === 'user'
+                            m.sender === 'user'
                               ? 'bg-gradient-to-br from-[#3E000C] to-[#6B0015] text-white'
                               : 'bg-white text-gray-900 border border-gray-200'
                           }`}
                         >
-                          <p>{message.text}</p>
-                          <p className={`text-xs mt-1 ${message.sender === 'user' ? 'opacity-60' : 'text-gray-500'}`}>{message.timestamp}</p>
+                          <p>{m.text}</p>
+                          <p className={`text-xs mt-1 ${m.sender === 'user' ? 'opacity-60' : 'text-gray-500'}`}>
+                            {m.timestamp}
+                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Message Input */}
-                  <div className="p-6 bg-white border-t border-gray-200">
+                  {/* Input */}
+                  <div className="p-6 bg-white/80 border-t border-white/30 backdrop-blur">
                     <div className="flex gap-3">
                       <input
                         type="text"
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                         placeholder="Type a message..."
-                        className="flex-1 px-4 py-3 rounded-lg bg-gray-50 text-gray-900 placeholder-gray-400 border border-gray-300 focus:outline-none focus:border-[#3E000C]"
+                        className="flex-1 px-4 py-3 rounded-lg bg-white text-gray-900 placeholder-gray-400 border border-gray-300 focus:outline-none focus:border-[#3E000C]"
                       />
                       <button
                         onClick={handleSendMessage}
@@ -229,15 +235,11 @@ export default function Chat() {
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="flex-1 flex items-center justify-center bg-white/60">
                   <div className="text-center">
                     <div className="text-6xl mb-4">💬</div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                      Connect with PPIA Members
-                    </h3>
-                    <p className="text-gray-600">
-                      Select a conversation to start chatting
-                    </p>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Connect with PPIA Members</h3>
+                    <p className="text-gray-700">Select a conversation to start chatting</p>
                   </div>
                 </div>
               )}
